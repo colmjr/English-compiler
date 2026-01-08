@@ -36,7 +36,9 @@ def _load_json(path: Path) -> dict | None:
 
 def _write_json(path: Path, data: dict) -> bool:
     try:
-        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        path.write_text(
+            json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
     except OSError as exc:
         print(f"{path}: {exc}")
         return False
