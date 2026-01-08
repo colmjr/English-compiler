@@ -45,6 +45,21 @@ def _write_json(path: Path, data: dict) -> bool:
     return True
 
 
+def _print_ambiguities(ambiguities: list[dict]) -> None:
+    print("Ambiguities detected:")
+    for i, item in enumerate(ambiguities, start=1):
+        question = item.get("question", "(missing question)")
+        options = item.get("options", [])
+        default = item.get("default", None)
+        if isinstance(options, list):
+            options_text = ", ".join(str(opt) for opt in options)
+        else:
+            options_text = str(options)
+        print(f"{i}. {question}")
+        print(f"   options: {options_text}")
+        print(f"   default: {default}")
+
+
 def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.frontend.mock_llm import generate_coreil_from_text
@@ -87,6 +102,10 @@ def _compile_command(args: argparse.Namespace) -> int:
         if doc is None:
             print(f"{coreil_path}: invalid json")
             return 1
+        ambiguities = doc.get("ambiguities", [])
+        if isinstance(ambiguities, list) and ambiguities:
+            _print_ambiguities(ambiguities)
+            return 2
         return run_coreil(doc)
 
     if args.freeze:
@@ -112,6 +131,11 @@ def _compile_command(args: argparse.Namespace) -> int:
     }
     if not _write_json(lock_path, lock_doc):
         return 1
+
+    ambiguities = doc.get("ambiguities", [])
+    if isinstance(ambiguities, list) and ambiguities:
+        _print_ambiguities(ambiguities)
+        return 2
 
     return run_coreil(doc)
 

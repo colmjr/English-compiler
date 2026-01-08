@@ -171,6 +171,39 @@ def validate_coreil(doc: dict) -> list[dict]:
     if doc.get("version") != "coreil-0.1":
         add_error("$.version", "version must be 'coreil-0.1'")
 
+    ambiguities = doc.get("ambiguities")
+    if ambiguities is not None:
+        if not isinstance(ambiguities, list):
+            add_error("$.ambiguities", "ambiguities must be a list")
+        else:
+            for i, item in enumerate(ambiguities):
+                item_path = f"$.ambiguities[{i}]"
+                if not isinstance(item, dict):
+                    add_error(item_path, "ambiguity item must be an object")
+                    continue
+                question = item.get("question")
+                options = item.get("options")
+                default = item.get("default")
+                if not isinstance(question, str) or not question:
+                    add_error(f"{item_path}.question", "missing or invalid question")
+                if not isinstance(options, list) or not options:
+                    add_error(f"{item_path}.options", "missing or invalid options")
+                else:
+                    for j, opt in enumerate(options):
+                        if not isinstance(opt, str) or not opt:
+                            add_error(
+                                f"{item_path}.options[{j}]",
+                                "option must be a non-empty string",
+                            )
+                if not isinstance(default, int):
+                    add_error(f"{item_path}.default", "missing or invalid default")
+                elif isinstance(options, list) and options:
+                    if default < 0 or default >= len(options):
+                        add_error(
+                            f"{item_path}.default",
+                            "default must be a valid option index",
+                        )
+
     body = doc.get("body")
     if not isinstance(body, list):
         add_error("$.body", "body must be a list")
