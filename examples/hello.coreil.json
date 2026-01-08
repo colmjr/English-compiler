@@ -1,0 +1,13 @@
+{
+  "version": "coreil-0.1",
+  "ambiguities": [],
+  "body": [
+    {
+      "type": "Call",
+      "name": "print",
+      "args": [
+        { "type": "Literal", "value": "hello" }
+      ]
+    }
+  ]
+}
