@@ -6,6 +6,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -62,8 +63,8 @@ def _print_ambiguities(ambiguities: list[dict]) -> None:
 
 def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.interp import run_coreil
+    from english_compiler.coreil.validate import validate_coreil
     from english_compiler.frontend.mock_llm import generate_coreil_from_text
-    from englishc.coreil.validate import validate_coreil
 
     if args.regen and args.freeze:
         print("--regen and --freeze cannot be used together")
@@ -112,8 +113,23 @@ def _compile_command(args: argparse.Namespace) -> int:
         print(f"freeze enabled: regeneration required for {source_path}")
         return 1
 
+    frontend = args.frontend
+    if frontend is None:
+        frontend = "claude" if os.getenv("ANTHROPIC_API_KEY") else "mock"
+
+    if frontend == "claude" and not os.getenv("ANTHROPIC_API_KEY"):
+        print("ANTHROPIC_API_KEY is required when using --frontend claude")
+        return 1
+
     print(f"Regenerating Core IL for {source_path}")
-    doc = generate_coreil_from_text(source_text)
+    if frontend == "claude":
+        from english_compiler.frontend.claude import generate_coreil_from_text
+
+        model_name = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+        doc = generate_coreil_from_text(source_text)
+    else:
+        model_name = "mock"
+        doc = generate_coreil_from_text(source_text)
     errors = validate_coreil(doc)
     if errors:
         _print_validation_errors(errors)
@@ -125,7 +141,7 @@ def _compile_command(args: argparse.Namespace) -> int:
     lock_doc = {
         "source_sha256": source_sha256,
         "coreil_sha256": _sha256_file(coreil_path),
-        "model": "mock",
+        "model": model_name,
         "system_prompt_version": "dev",
         "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
@@ -158,11 +174,17 @@ def _run_command(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="english_compiler")
+    parser = argparse.ArgumentParser(prog="english-compiler")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     compile_parser = subparsers.add_parser("compile", help="Compile a source file")
     compile_parser.add_argument("file", help="Path to the source text file")
+    compile_parser.add_argument(
+        "--frontend",
+        choices=["mock", "claude"],
+        default=None,
+        help="Frontend to use (default: mock if no API key, otherwise claude)",
+    )
     compile_parser.add_argument("--regen", action="store_true", help="Force regeneration")
     compile_parser.add_argument(
         "--freeze",
