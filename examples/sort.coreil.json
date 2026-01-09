@@ -1,0 +1,25 @@
+{
+  "ambiguities": [
+    {
+      "default": 0,
+      "options": [
+        "stable",
+        "unstable"
+      ],
+      "question": "Which sort order should be used?"
+    }
+  ],
+  "body": [
+    {
+      "args": [
+        {
+          "type": "Literal",
+          "value": "unimplemented"
+        }
+      ],
+      "name": "print",
+      "type": "Call"
+    }
+  ],
+  "version": "coreil-0.1"
+}

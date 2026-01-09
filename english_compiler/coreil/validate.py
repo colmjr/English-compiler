@@ -11,6 +11,7 @@ _ALLOWED_NODE_TYPES = {
     "If",
     "While",
     "Call",
+    "Print",
     "Literal",
     "Var",
     "Binary",
@@ -94,6 +95,15 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(arg, f"{path}.args[{i}]", defined)
             return
 
+        if node_type == "Print":
+            args = node.get("args")
+            if not isinstance(args, list):
+                add_error(f"{path}.args", "missing or invalid args")
+                return
+            for i, arg in enumerate(args):
+                validate_expr(arg, f"{path}.args[{i}]", defined)
+            return
+
         add_error(path, f"unexpected expression type '{node_type}'")
 
     def validate_stmt(node: Any, path: str, defined: set[str]) -> None:
@@ -159,6 +169,10 @@ def validate_coreil(doc: dict) -> list[dict]:
             return
 
         if node_type == "Call":
+            validate_expr(node, path, defined)
+            return
+
+        if node_type == "Print":
             validate_expr(node, path, defined)
             return
 

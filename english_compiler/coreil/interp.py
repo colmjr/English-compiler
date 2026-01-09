@@ -145,6 +145,14 @@ def run_coreil(doc: dict) -> int:
             call_builtin(node)
             return
 
+        if node_type == "Print":
+            args = node.get("args")
+            if not isinstance(args, list):
+                raise ValueError("Print args must be a list")
+            values = [eval_expr(arg) for arg in args]
+            print(" ".join(str(value) for value in values))
+            return
+
         raise ValueError(f"unexpected statement type '{node_type}'")
 
     try:

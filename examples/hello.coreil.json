@@ -1,13 +1,16 @@
 {
-  "version": "coreil-0.1",
   "ambiguities": [],
   "body": [
     {
-      "type": "Call",
-      "name": "print",
       "args": [
-        { "type": "Literal", "value": "hello" }
-      ]
+        {
+          "type": "Literal",
+          "value": "hello"
+        }
+      ],
+      "name": "print",
+      "type": "Call"
     }
-  ]
+  ],
+  "version": "coreil-0.1"
 }
