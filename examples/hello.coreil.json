@@ -8,8 +8,7 @@
           "value": "hello"
         }
       ],
-      "name": "print",
-      "type": "Call"
+      "type": "Print"
     }
   ],
   "version": "coreil-0.1"

@@ -12,9 +12,13 @@ _ALLOWED_NODE_TYPES = {
     "While",
     "Call",
     "Print",
+    "SetIndex",
     "Literal",
     "Var",
     "Binary",
+    "Array",
+    "Index",
+    "Length",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -32,6 +36,8 @@ _ALLOWED_BINARY_OPS = {
     "and",
     "or",
 }
+
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2"}
 
 
 def validate_coreil(doc: dict) -> list[dict]:
@@ -102,6 +108,33 @@ def validate_coreil(doc: dict) -> list[dict]:
                 return
             for i, arg in enumerate(args):
                 validate_expr(arg, f"{path}.args[{i}]", defined)
+            return
+
+        if node_type == "Array":
+            items = node.get("items")
+            if not isinstance(items, list):
+                add_error(f"{path}.items", "missing or invalid items")
+                return
+            for i, item in enumerate(items):
+                validate_expr(item, f"{path}.items[{i}]", defined)
+            return
+
+        if node_type == "Index":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "index" not in node:
+                add_error(f"{path}.index", "missing index")
+            else:
+                validate_expr(node["index"], f"{path}.index", defined)
+            return
+
+        if node_type == "Length":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
             return
 
         add_error(path, f"unexpected expression type '{node_type}'")
@@ -176,14 +209,30 @@ def validate_coreil(doc: dict) -> list[dict]:
             validate_expr(node, path, defined)
             return
 
+        if node_type == "SetIndex":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "index" not in node:
+                add_error(f"{path}.index", "missing index")
+            else:
+                validate_expr(node["index"], f"{path}.index", defined)
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
         add_error(path, f"unexpected statement type '{node_type}'")
 
     if not isinstance(doc, dict):
         add_error("$", "document must be an object")
         return errors
 
-    if doc.get("version") != "coreil-0.1":
-        add_error("$.version", "version must be 'coreil-0.1'")
+    version = doc.get("version")
+    if version not in _ALLOWED_VERSIONS:
+        add_error("$.version", "version must be 'coreil-0.1' or 'coreil-0.2'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:

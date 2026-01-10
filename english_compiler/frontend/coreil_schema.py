@@ -5,7 +5,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"const": "coreil-0.1"},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -33,6 +33,7 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/if_stmt"},
                 {"$ref": "#/definitions/while_stmt"},
                 {"$ref": "#/definitions/print_stmt"},
+                {"$ref": "#/definitions/setindex_stmt"},
             ]
         },
         "let_stmt": {
@@ -94,11 +95,25 @@ COREIL_JSON_SCHEMA = {
                 "args": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
             },
         },
+        "setindex_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "index", "value"],
+            "properties": {
+                "type": {"const": "SetIndex"},
+                "base": {"$ref": "#/definitions/expr"},
+                "index": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
         "expr": {
             "anyOf": [
                 {"$ref": "#/definitions/literal_expr"},
                 {"$ref": "#/definitions/var_expr"},
                 {"$ref": "#/definitions/binary_expr"},
+                {"$ref": "#/definitions/array_expr"},
+                {"$ref": "#/definitions/index_expr"},
+                {"$ref": "#/definitions/length_expr"},
             ]
         },
         "literal_expr": {
@@ -112,6 +127,8 @@ COREIL_JSON_SCHEMA = {
                         {"type": "string"},
                         {"type": "number"},
                         {"type": "boolean"},
+                        {"type": "array"},
+                        {"type": "object"}
                     ]
                 },
             },
@@ -150,6 +167,34 @@ COREIL_JSON_SCHEMA = {
                 },
                 "left": {"$ref": "#/definitions/expr"},
                 "right": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "array_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "items"],
+            "properties": {
+                "type": {"const": "Array"},
+                "items": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
+            },
+        },
+        "index_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "index"],
+            "properties": {
+                "type": {"const": "Index"},
+                "base": {"$ref": "#/definitions/expr"},
+                "index": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "length_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "Length"},
+                "base": {"$ref": "#/definitions/expr"},
             },
         },
     },
