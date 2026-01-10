@@ -34,6 +34,9 @@ def main() -> None:
     _run_example(examples / "hello.coreil.json", "hello\n")
     _run_example(examples / "math.coreil.json", "49\n")
     _run_example(examples / "if.coreil.json", "even\n")
+    _run_example(examples / "array_index.coreil.json", "4\n")
+    _run_example(examples / "array_setindex.coreil.json", "99\n")
+    _run_example(examples / "array_length.coreil.json", "3\n")
 
     print("All tests passed.")
 

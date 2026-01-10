@@ -79,6 +79,29 @@ def run_coreil(doc: dict) -> int:
                 return bool(left) or bool(right)
             raise ValueError("unsupported binary op")
 
+        if node_type == "Array":
+            items = node.get("items")
+            if not isinstance(items, list):
+                raise ValueError("Array items must be a list")
+            return [eval_expr(item) for item in items]
+
+        if node_type == "Index":
+            base = eval_expr(node.get("base"))
+            index = eval_expr(node.get("index"))
+            if not isinstance(index, int) or index < 0:
+                raise ValueError("Index must be a non-negative integer")
+            if not isinstance(base, list):
+                raise ValueError("Index base must be an array")
+            if index >= len(base):
+                raise ValueError("Index out of range")
+            return base[index]
+
+        if node_type == "Length":
+            base = eval_expr(node.get("base"))
+            if not isinstance(base, list):
+                raise ValueError("Length base must be an array")
+            return len(base)
+
         if node_type == "Call":
             return call_builtin(node)
 
@@ -153,13 +176,26 @@ def run_coreil(doc: dict) -> int:
             print(" ".join(str(value) for value in values))
             return
 
+        if node_type == "SetIndex":
+            base = eval_expr(node.get("base"))
+            index = eval_expr(node.get("index"))
+            value = eval_expr(node.get("value"))
+            if not isinstance(index, int) or index < 0:
+                raise ValueError("SetIndex index must be a non-negative integer")
+            if not isinstance(base, list):
+                raise ValueError("SetIndex base must be an array")
+            if index >= len(base):
+                raise ValueError("SetIndex index out of range")
+            base[index] = value
+            return
+
         raise ValueError(f"unexpected statement type '{node_type}'")
 
     try:
         if not isinstance(doc, dict):
             raise ValueError("document must be an object")
-        if doc.get("version") != "coreil-0.1":
-            raise ValueError("version must be 'coreil-0.1'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2"}:
+            raise ValueError("version must be 'coreil-0.1' or 'coreil-0.2'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

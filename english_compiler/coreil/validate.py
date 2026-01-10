@@ -128,6 +128,10 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.index", "missing index")
             else:
                 validate_expr(node["index"], f"{path}.index", defined)
+                if isinstance(node["index"], dict) and node["index"].get("type") == "Literal":
+                    value = node["index"].get("value")
+                    if not isinstance(value, int) or value < 0:
+                        add_error(f"{path}.index", "index must be a non-negative integer")
             return
 
         if node_type == "Length":
@@ -218,6 +222,10 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.index", "missing index")
             else:
                 validate_expr(node["index"], f"{path}.index", defined)
+                if isinstance(node["index"], dict) and node["index"].get("type") == "Literal":
+                    value = node["index"].get("value")
+                    if not isinstance(value, int) or value < 0:
+                        add_error(f"{path}.index", "index must be a non-negative integer")
             if "value" not in node:
                 add_error(f"{path}.value", "missing value")
             else:
