@@ -38,6 +38,7 @@ def main() -> None:
     _run_example(examples / "array_setindex.coreil.json", "99\n")
     _run_example(examples / "array_length.coreil.json", "3\n")
     _run_example(examples / "bubble_sort.coreil.json", "[1, 2, 3, 4, 5, 6, 7]\n")
+    _run_example(examples / "fn_add.coreil.json", "5\n")
 
     print("All tests passed.")
 

@@ -247,15 +247,20 @@ def validate_coreil(doc: dict) -> list[dict]:
             if not isinstance(params, list):
                 add_error(f"{path}.params", "missing or invalid params")
             else:
+                original_defined = defined.copy()
                 for i, param in enumerate(params):
                     if not isinstance(param, str) or not param:
                         add_error(f"{path}.params[{i}]", "param must be a non-empty string")
+                    elif param:
+                        defined.add(param)
             body = node.get("body")
             if not isinstance(body, list):
                 add_error(f"{path}.body", "missing or invalid body")
             else:
                 for i, stmt in enumerate(body):
                     validate_stmt(stmt, f"{path}.body[{i}]", defined, True)
+            defined.clear()
+            defined.update(original_defined)
             return
 
         if node_type == "Return":
