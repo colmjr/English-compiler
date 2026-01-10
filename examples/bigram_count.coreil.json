@@ -1,0 +1,100 @@
+{
+  "version": "coreil-0.5",
+  "ambiguities": [],
+  "body": [
+    {
+      "type": "Let",
+      "name": "arr",
+      "value": {
+        "type": "Array",
+        "items": [
+          {"type": "Literal", "value": "a"},
+          {"type": "Literal", "value": "b"},
+          {"type": "Literal", "value": "c"},
+          {"type": "Literal", "value": "a"},
+          {"type": "Literal", "value": "b"}
+        ]
+      }
+    },
+    {
+      "type": "Let",
+      "name": "counts",
+      "value": {"type": "Map", "items": []}
+    },
+    {
+      "type": "Let",
+      "name": "i",
+      "value": {"type": "Literal", "value": 0}
+    },
+    {
+      "type": "While",
+      "test": {
+        "type": "Binary",
+        "op": "<",
+        "left": {"type": "Var", "name": "i"},
+        "right": {
+          "type": "Binary",
+          "op": "-",
+          "left": {"type": "Length", "base": {"type": "Var", "name": "arr"}},
+          "right": {"type": "Literal", "value": 1}
+        }
+      },
+      "body": [
+        {
+          "type": "Let",
+          "name": "pair",
+          "value": {
+            "type": "Tuple",
+            "items": [
+              {
+                "type": "Index",
+                "base": {"type": "Var", "name": "arr"},
+                "index": {"type": "Var", "name": "i"}
+              },
+              {
+                "type": "Index",
+                "base": {"type": "Var", "name": "arr"},
+                "index": {
+                  "type": "Binary",
+                  "op": "+",
+                  "left": {"type": "Var", "name": "i"},
+                  "right": {"type": "Literal", "value": 1}
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "Set",
+          "base": {"type": "Var", "name": "counts"},
+          "key": {"type": "Var", "name": "pair"},
+          "value": {
+            "type": "Binary",
+            "op": "+",
+            "left": {
+              "type": "GetDefault",
+              "base": {"type": "Var", "name": "counts"},
+              "key": {"type": "Var", "name": "pair"},
+              "default": {"type": "Literal", "value": 0}
+            },
+            "right": {"type": "Literal", "value": 1}
+          }
+        },
+        {
+          "type": "Assign",
+          "name": "i",
+          "value": {
+            "type": "Binary",
+            "op": "+",
+            "left": {"type": "Var", "name": "i"},
+            "right": {"type": "Literal", "value": 1}
+          }
+        }
+      ]
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "counts"}]
+    }
+  ]
+}

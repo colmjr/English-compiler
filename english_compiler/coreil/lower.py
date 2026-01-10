@@ -34,6 +34,9 @@ def _lower_statement(stmt: Any) -> list[dict]:
     if node_type == "For":
         return _lower_for(stmt)
 
+    if node_type == "ForEach":
+        return _lower_foreach(stmt)
+
     if node_type in {"If", "While"}:
         lowered = dict(stmt)
         test = lowered.get("test")
@@ -93,6 +96,11 @@ def _lower_statement(stmt: Any) -> list[dict]:
 
 
 def _lower_for(stmt: dict) -> list[dict]:
+    """Lower For statement.
+
+    If iter is Range: lower to While with counter (existing behavior)
+    If iter is not Range: treat as ForEach and lower to indexed iteration
+    """
     var = stmt.get("var")
     if not isinstance(var, str) or not var:
         raise ValueError("For.var must be a non-empty string")
@@ -103,9 +111,17 @@ def _lower_for(stmt: dict) -> list[dict]:
     if not isinstance(body, list):
         raise ValueError("For.body must be a list")
 
+    # If iter is not Range, treat as ForEach
     if iter_expr.get("type") != "Range":
-        raise ValueError("For.iter must be a Range expression")
+        foreach_stmt = {
+            "type": "ForEach",
+            "var": var,
+            "iter": iter_expr,
+            "body": body,
+        }
+        return _lower_foreach(foreach_stmt)
 
+    # Original For+Range lowering
     from_expr = iter_expr.get("from")
     to_expr = iter_expr.get("to")
     if from_expr is None or to_expr is None:
@@ -148,6 +164,100 @@ def _lower_for(stmt: dict) -> list[dict]:
     }
 
     return [init_stmt, while_stmt]
+
+
+# Counter for generating unique temp variables
+_temp_counter = 0
+
+
+def _lower_foreach(stmt: dict) -> list[dict]:
+    """Lower ForEach to While + Index + Length.
+
+    ForEach var in iter: body
+
+    Becomes:
+
+    Let __iter_N = iter
+    Let __i_N = 0
+    While __i_N < Length(__iter_N):
+        Let var = Index(__iter_N, __i_N)
+        <lowered body>
+        Assign __i_N = __i_N + 1
+    """
+    global _temp_counter
+
+    var = stmt.get("var")
+    if not isinstance(var, str) or not var:
+        raise ValueError("ForEach.var must be a non-empty string")
+    iter_expr = stmt.get("iter")
+    if not isinstance(iter_expr, dict):
+        raise ValueError("ForEach.iter must be an expression")
+    body = stmt.get("body")
+    if not isinstance(body, list):
+        raise ValueError("ForEach.body must be a list")
+
+    # Generate unique temp variable names
+    temp_suffix = _temp_counter
+    _temp_counter += 1
+    iter_var = f"__iter_{temp_suffix}"
+    index_var = f"__i_{temp_suffix}"
+
+    # Store the iterable in a temp variable
+    iter_let = {
+        "type": "Let",
+        "name": iter_var,
+        "value": _lower_expr(iter_expr),
+    }
+
+    # Initialize index to 0
+    index_init = {
+        "type": "Let",
+        "name": index_var,
+        "value": {"type": "Literal", "value": 0},
+    }
+
+    # While test: __i_N < Length(__iter_N)
+    while_test = {
+        "type": "Binary",
+        "op": "<",
+        "left": {"type": "Var", "name": index_var},
+        "right": {
+            "type": "Length",
+            "base": {"type": "Var", "name": iter_var},
+        },
+    }
+
+    # Loop body: Let var = Index(__iter_N, __i_N); <body>; Assign __i_N = __i_N + 1
+    var_assignment = {
+        "type": "Let",
+        "name": var,
+        "value": {
+            "type": "Index",
+            "base": {"type": "Var", "name": iter_var},
+            "index": {"type": "Var", "name": index_var},
+        },
+    }
+
+    lowered_body = _lower_statements(body)
+
+    index_increment = {
+        "type": "Assign",
+        "name": index_var,
+        "value": {
+            "type": "Binary",
+            "op": "+",
+            "left": {"type": "Var", "name": index_var},
+            "right": {"type": "Literal", "value": 1},
+        },
+    }
+
+    while_stmt = {
+        "type": "While",
+        "test": while_test,
+        "body": [var_assignment] + lowered_body + [index_increment],
+    }
+
+    return [iter_let, index_init, while_stmt]
 
 
 def _lower_expr(expr: Any) -> Any:

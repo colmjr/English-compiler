@@ -5,7 +5,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -38,6 +38,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/funcdef_stmt"},
                 {"$ref": "#/definitions/return_stmt"},
                 {"$ref": "#/definitions/for_stmt"},
+                {"$ref": "#/definitions/foreach_stmt"},
+                {"$ref": "#/definitions/push_stmt"},
             ]
         },
         "let_stmt": {
@@ -147,6 +149,20 @@ COREIL_JSON_SCHEMA = {
                 },
             },
         },
+        "foreach_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "var", "iter", "body"],
+            "properties": {
+                "type": {"const": "ForEach"},
+                "var": {"type": "string"},
+                "iter": {"$ref": "#/definitions/expr"},
+                "body": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/statement"},
+                },
+            },
+        },
         "expr": {
             "anyOf": [
                 {"$ref": "#/definitions/literal_expr"},
@@ -159,6 +175,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/range_expr"},
                 {"$ref": "#/definitions/map_expr"},
                 {"$ref": "#/definitions/get_expr"},
+                {"$ref": "#/definitions/getdefault_expr"},
+                {"$ref": "#/definitions/keys_expr"},
+                {"$ref": "#/definitions/tuple_expr"},
             ]
         },
         "literal_expr": {
@@ -301,6 +320,45 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "Get"},
                 "base": {"$ref": "#/definitions/expr"},
                 "key": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "getdefault_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "key", "default"],
+            "properties": {
+                "type": {"const": "GetDefault"},
+                "base": {"$ref": "#/definitions/expr"},
+                "key": {"$ref": "#/definitions/expr"},
+                "default": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "keys_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "Keys"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "tuple_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "items"],
+            "properties": {
+                "type": {"const": "Tuple"},
+                "items": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
+            },
+        },
+        "push_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "value"],
+            "properties": {
+                "type": {"const": "Push"},
+                "base": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
             },
         },
     },

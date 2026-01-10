@@ -68,6 +68,23 @@ def run_coreil(doc: dict) -> int:
             op = node.get("op")
             if op not in _BINARY_OPS:
                 raise ValueError("Binary missing or invalid op")
+
+            # Implement short-circuit evaluation for 'and' and 'or'
+            if op == "and":
+                left = eval_expr(node.get("left"), local_env, call_depth)
+                if not left:
+                    return False
+                right = eval_expr(node.get("right"), local_env, call_depth)
+                return bool(right)
+
+            if op == "or":
+                left = eval_expr(node.get("left"), local_env, call_depth)
+                if left:
+                    return True
+                right = eval_expr(node.get("right"), local_env, call_depth)
+                return bool(right)
+
+            # For all other operators, evaluate both operands first
             left = eval_expr(node.get("left"), local_env, call_depth)
             right = eval_expr(node.get("right"), local_env, call_depth)
             if op == "+":
@@ -92,10 +109,6 @@ def run_coreil(doc: dict) -> int:
                 return left > right
             if op == ">=":
                 return left >= right
-            if op == "and":
-                return bool(left) and bool(right)
-            if op == "or":
-                return bool(left) or bool(right)
             raise ValueError("unsupported binary op")
 
         if node_type == "Array":
@@ -109,16 +122,18 @@ def run_coreil(doc: dict) -> int:
             index = eval_expr(node.get("index"), local_env, call_depth)
             if not isinstance(index, int) or index < 0:
                 raise ValueError("Index must be a non-negative integer")
-            if not isinstance(base, list):
-                raise ValueError("Index base must be an array")
+            # Allow indexing into both arrays (lists) and tuples
+            if not isinstance(base, (list, tuple)):
+                raise ValueError("Index base must be an array or tuple")
             if index >= len(base):
                 raise ValueError("Index out of range")
             return base[index]
 
         if node_type == "Length":
             base = eval_expr(node.get("base"), local_env, call_depth)
-            if not isinstance(base, list):
-                raise ValueError("Length base must be an array")
+            # Allow length of both arrays (lists) and tuples
+            if not isinstance(base, (list, tuple)):
+                raise ValueError("Length base must be an array or tuple")
             return len(base)
 
         if node_type == "Map":
@@ -130,8 +145,12 @@ def run_coreil(doc: dict) -> int:
                 if not isinstance(item, dict):
                     raise ValueError("Map item must be an object")
                 key = eval_expr(item.get("key"), local_env, call_depth)
-                if not isinstance(key, (str, int)):
-                    raise ValueError("Map key must be a string or integer")
+                # v0.4 backward compatibility: convert list keys to tuples (hashable)
+                if isinstance(key, list):
+                    key = tuple(key)
+                # Allow tuples as keys (hashable)
+                if not isinstance(key, (str, int, tuple)):
+                    raise ValueError("Map key must be a string, integer, or tuple")
                 value = eval_expr(item.get("value"), local_env, call_depth)
                 result[key] = value
             return result
@@ -141,9 +160,43 @@ def run_coreil(doc: dict) -> int:
             key = eval_expr(node.get("key"), local_env, call_depth)
             if not isinstance(base, dict):
                 raise ValueError("Get base must be a map")
-            if not isinstance(key, (str, int)):
-                raise ValueError("Get key must be a string or integer")
+            # v0.4 backward compatibility: convert list keys to tuples
+            if isinstance(key, list):
+                key = tuple(key)
+            if not isinstance(key, (str, int, tuple)):
+                raise ValueError("Get key must be a string, integer, or tuple")
             return base.get(key)
+
+        if node_type == "GetDefault":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            key = eval_expr(node.get("key"), local_env, call_depth)
+            default = eval_expr(node.get("default"), local_env, call_depth)
+            if not isinstance(base, dict):
+                raise ValueError("GetDefault base must be a map")
+            # v0.4 backward compatibility: convert list keys to tuples
+            if isinstance(key, list):
+                key = tuple(key)
+            if not isinstance(key, (str, int, tuple)):
+                raise ValueError("GetDefault key must be a string, integer, or tuple")
+            return base.get(key, default)
+
+        if node_type == "Keys":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            if not isinstance(base, dict):
+                raise ValueError("Keys base must be a map")
+            # Return keys sorted for determinism (if comparable)
+            try:
+                # For tuples with mixed types, compare as tuples
+                return sorted(base.keys())
+            except TypeError:
+                # Mixed types or uncomparable types - preserve insertion order
+                return list(base.keys())
+
+        if node_type == "Tuple":
+            items = node.get("items")
+            if not isinstance(items, list):
+                raise ValueError("Tuple items must be a list")
+            return tuple(eval_expr(item, local_env, call_depth) for item in items)
 
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
@@ -159,6 +212,29 @@ def run_coreil(doc: dict) -> int:
             if args:
                 prompt = str(args[0])
             return input(prompt)
+        # v0.4 backward compatibility: support helper functions as builtins
+        if name == "get_or_default":
+            if len(args) != 3:
+                raise ValueError("get_or_default expects 3 arguments")
+            d, key, default = args
+            if not isinstance(d, dict):
+                raise ValueError("get_or_default base must be a map")
+            return d.get(key, default)
+        if name == "entries":
+            if len(args) != 1:
+                raise ValueError("entries expects 1 argument")
+            d = args[0]
+            if not isinstance(d, dict):
+                raise ValueError("entries base must be a map")
+            return list(d.items())
+        if name == "append":
+            if len(args) != 2:
+                raise ValueError("append expects 2 arguments")
+            lst, value = args
+            if not isinstance(lst, list):
+                raise ValueError("append base must be an array")
+            lst.append(value)
+            return None
         raise ValueError(f"unknown builtin '{name}'")
 
     def call_function(name: str, args: list[Any], call_depth: int) -> Any:
@@ -185,7 +261,8 @@ def run_coreil(doc: dict) -> int:
         if not isinstance(args, list):
             raise ValueError("Call missing args")
         values = [eval_expr(arg, local_env, call_depth) for arg in args]
-        if name in {"print", "input"}:
+        # Check builtins (including v0.4 compatibility helpers)
+        if name in {"print", "input", "get_or_default", "entries", "append"}:
             return call_builtin(name, values)
         return call_function(name, values, call_depth)
 
@@ -270,9 +347,20 @@ def run_coreil(doc: dict) -> int:
             value = eval_expr(node.get("value"), local_env, call_depth)
             if not isinstance(base, dict):
                 raise ValueError("Set base must be a map")
-            if not isinstance(key, (str, int)):
-                raise ValueError("Set key must be a string or integer")
+            # v0.4 backward compatibility: convert list keys to tuples
+            if isinstance(key, list):
+                key = tuple(key)
+            if not isinstance(key, (str, int, tuple)):
+                raise ValueError("Set key must be a string, integer, or tuple")
             base[key] = value
+            return
+
+        if node_type == "Push":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            if not isinstance(base, list):
+                raise ValueError("Push base must be an array")
+            base.append(value)
             return
 
         if node_type == "FuncDef":
@@ -305,8 +393,8 @@ def run_coreil(doc: dict) -> int:
     try:
         if not isinstance(doc, dict):
             raise ValueError("document must be an object")
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', or 'coreil-0.4'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', or 'coreil-0.5'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

@@ -1,0 +1,29 @@
+{
+  "version": "coreil-0.4",
+  "ambiguities": [],
+  "body": [
+    {
+      "type": "Let",
+      "name": "arr",
+      "value": {
+        "type": "Array",
+        "items": [
+          {"type": "Literal", "value": 1},
+          {"type": "Literal", "value": 2},
+          {"type": "Literal", "value": 3}
+        ]
+      }
+    },
+    {
+      "type": "ForEach",
+      "var": "x",
+      "iter": {"type": "Var", "name": "arr"},
+      "body": [
+        {
+          "type": "Print",
+          "args": [{"type": "Var", "name": "x"}]
+        }
+      ]
+    }
+  ]
+}

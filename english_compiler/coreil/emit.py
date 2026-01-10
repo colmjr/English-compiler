@@ -72,6 +72,31 @@ def emit_python(doc: dict) -> str:
         if node_type == "Call":
             name = node.get("name")
             args = node.get("args", [])
+
+            # Special-case helper functions to avoid runtime errors
+            if name == "get_or_default":
+                if len(args) != 3:
+                    raise ValueError(f"get_or_default expects 3 arguments, got {len(args)}")
+                d = emit_expr(args[0])
+                k = emit_expr(args[1])
+                default = emit_expr(args[2])
+                return f"{d}.get({k}, {default})"
+
+            if name == "entries":
+                if len(args) != 1:
+                    raise ValueError(f"entries expects 1 argument, got {len(args)}")
+                d = emit_expr(args[0])
+                return f"list({d}.items())"
+
+            if name == "append":
+                if len(args) != 2:
+                    raise ValueError(f"append expects 2 arguments, got {len(args)}")
+                lst = emit_expr(args[0])
+                value = emit_expr(args[1])
+                # append as expression: wrap to return None explicitly
+                return f"({lst}.append({value}) or None)"
+
+            # Default: emit as regular function call
             arg_strs = [emit_expr(arg) for arg in args]
             return f"{name}({', '.join(arg_strs)})"
 
@@ -81,8 +106,22 @@ def emit_python(doc: dict) -> str:
                 return "{}"
             pairs = []
             for item in items:
-                key = emit_expr(item.get("key"))
-                value = emit_expr(item.get("value"))
+                key_node = item.get("key")
+                value_node = item.get("value")
+
+                # v0.4 backward compatibility: convert Array keys to tuples
+                if isinstance(key_node, dict) and key_node.get("type") == "Array":
+                    key_items = key_node.get("items", [])
+                    key_strs = [emit_expr(k) for k in key_items]
+                    # Use trailing comma for single-element tuples
+                    if len(key_strs) == 1:
+                        key = f"({key_strs[0]},)"
+                    else:
+                        key = f"({', '.join(key_strs)})"
+                else:
+                    key = emit_expr(key_node)
+
+                value = emit_expr(value_node)
                 pairs.append(f"{key}: {value}")
             return "{" + ", ".join(pairs) + "}"
 
@@ -90,6 +129,27 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             key = emit_expr(node.get("key"))
             return f"{base}.get({key})"
+
+        if node_type == "GetDefault":
+            base = emit_expr(node.get("base"))
+            key = emit_expr(node.get("key"))
+            default = emit_expr(node.get("default"))
+            return f"{base}.get({key}, {default})"
+
+        if node_type == "Keys":
+            base = emit_expr(node.get("base"))
+            # Return keys in insertion order (deterministic in Python 3.7+)
+            # Note: We use insertion order instead of sorted() to handle mixed-type keys
+            return f"list({base}.keys())"
+
+        if node_type == "Tuple":
+            items = node.get("items", [])
+            item_strs = [emit_expr(item) for item in items]
+            # Use trailing comma for single-element tuples
+            if len(item_strs) == 1:
+                return f"({item_strs[0]},)"
+            else:
+                return f"({', '.join(item_strs)})"
 
         raise ValueError(f"unknown expression type: {node_type}")
 
@@ -168,6 +228,12 @@ def emit_python(doc: dict) -> str:
             emit_line(f"{base}[{key}] = {value}")
             return
 
+        if node_type == "Push":
+            base = emit_expr(node.get("base"))
+            value = emit_expr(node.get("value"))
+            emit_line(f"{base}.append({value})")
+            return
+
         if node_type == "FuncDef":
             name = node.get("name")
             params = node.get("params", [])
@@ -194,6 +260,17 @@ def emit_python(doc: dict) -> str:
             # Call can be used as a statement (e.g., print("hello"))
             name = node.get("name")
             args = node.get("args", [])
+
+            # Special-case append as statement (no need for "or None" wrapper)
+            if name == "append":
+                if len(args) != 2:
+                    raise ValueError(f"append expects 2 arguments, got {len(args)}")
+                lst = emit_expr(args[0])
+                value = emit_expr(args[1])
+                emit_line(f"{lst}.append({value})")
+                return
+
+            # Default: emit as regular function call statement
             arg_strs = [emit_expr(arg) for arg in args]
             emit_line(f"{name}({', '.join(arg_strs)})")
             return

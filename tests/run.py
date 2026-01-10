@@ -40,6 +40,7 @@ def main() -> None:
     _run_example(examples / "bubble_sort.coreil.json", "[1, 2, 3, 4, 5, 6, 7]\n")
     _run_example(examples / "fn_add.coreil.json", "5\n")
     _run_example(examples / "for_sum.coreil.json", "15\n")
+    _run_example(examples / "foreach_print.coreil.json", "1\n2\n3\n")
     _run_example(examples / "map_demo.coreil.json", "2\n")
 
     print("All tests passed.")

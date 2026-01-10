@@ -65,6 +65,7 @@ Core IL is documented in versioned specifications:
 - `docs/coreil_v0_2.md` - Arrays and indexing
 - `docs/coreil_v0_3.md` - Functions, returns, and syntax sugar (For/Range loops)
 - `docs/coreil_v0_4.md` - Maps/records (Map, Get, Set)
+- `docs/coreil_v0_5.md` - Sealed primitives (GetDefault, Keys, Push, Tuple)
 
 ## Artifacts
 
@@ -117,7 +118,7 @@ python -m english_compiler compile --target python examples/hello.txt
 This produces `examples/hello.py` with the generated Python code. The generated code:
 - Uses standard Python syntax and semantics
 - Matches interpreter output exactly (verified by parity tests)
-- Handles all Core IL v0.1-v0.4 features (including maps, functions, and loops)
+- Handles all Core IL v0.1-v0.5 features (including maps, functions, loops, and sealed primitives)
 
 ### Backend parity tests
 

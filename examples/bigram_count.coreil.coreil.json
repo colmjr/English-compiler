@@ -1,0 +1,16 @@
+{
+  "ambiguities": [],
+  "body": [
+    {
+      "args": [
+        {
+          "type": "Literal",
+          "value": "unimplemented"
+        }
+      ],
+      "name": "print",
+      "type": "Call"
+    }
+  ],
+  "version": "coreil-0.1"
+}

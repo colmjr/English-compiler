@@ -16,7 +16,9 @@ _ALLOWED_NODE_TYPES = {
     "FuncDef",
     "Return",
     "For",
+    "ForEach",
     "Set",
+    "Push",
     "Literal",
     "Var",
     "Binary",
@@ -26,6 +28,9 @@ _ALLOWED_NODE_TYPES = {
     "Range",
     "Map",
     "Get",
+    "GetDefault",
+    "Keys",
+    "Tuple",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -44,11 +49,17 @@ _ALLOWED_BINARY_OPS = {
     "or",
 }
 
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5"}
+
+# Helper functions that are disallowed in v0.5+ (must use explicit primitives)
+_DISALLOWED_HELPER_CALLS = {"get_or_default", "keys", "append", "entries"}
 
 
 def validate_coreil(doc: dict) -> list[dict]:
     errors: list[dict] = []
+
+    # Track version for Call validation
+    version = doc.get("version", "coreil-0.1")
 
     def add_error(path: str, message: str) -> None:
         errors.append({"message": message, "path": path})
@@ -103,6 +114,14 @@ def validate_coreil(doc: dict) -> list[dict]:
             name = node.get("name")
             if not isinstance(name, str) or not name:
                 add_error(f"{path}.name", "missing or invalid name")
+            else:
+                # In v0.5+, disallow helper function calls
+                if version == "coreil-0.5" and name in _DISALLOWED_HELPER_CALLS:
+                    add_error(
+                        f"{path}.name",
+                        f"helper function '{name}' is not allowed in v0.5; "
+                        f"use explicit primitives (GetDefault, Keys, Push, Tuple)",
+                    )
             args = node.get("args")
             if not isinstance(args, list):
                 add_error(f"{path}.args", "missing or invalid args")
@@ -193,6 +212,37 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.key", "missing key")
             else:
                 validate_expr(node["key"], f"{path}.key", defined)
+            return
+
+        if node_type == "GetDefault":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "key" not in node:
+                add_error(f"{path}.key", "missing key")
+            else:
+                validate_expr(node["key"], f"{path}.key", defined)
+            if "default" not in node:
+                add_error(f"{path}.default", "missing default")
+            else:
+                validate_expr(node["default"], f"{path}.default", defined)
+            return
+
+        if node_type == "Keys":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "Tuple":
+            items = node.get("items")
+            if not isinstance(items, list):
+                add_error(f"{path}.items", "missing or invalid items")
+                return
+            for i, item in enumerate(items):
+                validate_expr(item, f"{path}.items[{i}]", defined)
             return
 
         add_error(path, f"unexpected expression type '{node_type}'")
@@ -354,6 +404,37 @@ def validate_coreil(doc: dict) -> list[dict]:
                     validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func)
             return
 
+        if node_type == "ForEach":
+            var_name = node.get("var")
+            if not isinstance(var_name, str) or not var_name:
+                add_error(f"{path}.var", "missing or invalid var")
+            iter_expr = node.get("iter")
+            if iter_expr is None:
+                add_error(f"{path}.iter", "missing iter")
+            else:
+                validate_expr(iter_expr, f"{path}.iter", defined)
+            # Add loop variable to defined set for body validation
+            if isinstance(var_name, str) and var_name:
+                defined.add(var_name)
+            body = node.get("body")
+            if not isinstance(body, list):
+                add_error(f"{path}.body", "missing or invalid body")
+            else:
+                for i, stmt in enumerate(body):
+                    validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func)
+            return
+
+        if node_type == "Push":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
         add_error(path, f"unexpected statement type '{node_type}'")
 
     if not isinstance(doc, dict):
@@ -362,7 +443,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', or 'coreil-0.4'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', or 'coreil-0.5'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:
