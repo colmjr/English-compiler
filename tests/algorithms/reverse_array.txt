@@ -1,0 +1,11 @@
+Reverse an array using a new array and print the result.
+
+Input: [10, 20, 30, 40, 50]
+
+Create an empty array called reversed.
+Start with index i at the length of the input array minus 1.
+While i is greater than or equal to 0:
+  Add the element at position i to the reversed array.
+  Subtract 1 from i.
+
+Print the reversed array.

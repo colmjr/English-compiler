@@ -6,13 +6,34 @@
       "type": "Let",
       "value": {
         "items": [
-          {"type": "Literal", "value": 3},
-          {"type": "Literal", "value": 4},
-          {"type": "Literal", "value": 2},
-          {"type": "Literal", "value": 1},
-          {"type": "Literal", "value": 6},
-          {"type": "Literal", "value": 5},
-          {"type": "Literal", "value": 7}
+          {
+            "type": "Literal",
+            "value": 3
+          },
+          {
+            "type": "Literal",
+            "value": 4
+          },
+          {
+            "type": "Literal",
+            "value": 2
+          },
+          {
+            "type": "Literal",
+            "value": 1
+          },
+          {
+            "type": "Literal",
+            "value": 6
+          },
+          {
+            "type": "Literal",
+            "value": 5
+          },
+          {
+            "type": "Literal",
+            "value": 7
+          }
         ],
         "type": "Array"
       }
@@ -21,63 +42,46 @@
       "name": "n",
       "type": "Let",
       "value": {
-        "base": {"name": "arr", "type": "Var"},
+        "base": {
+          "name": "arr",
+          "type": "Var"
+        },
         "type": "Length"
       }
     },
     {
-      "name": "i",
-      "type": "Let",
-      "value": {"type": "Literal", "value": 0}
-    },
-    {
-      "type": "While",
-      "test": {
-        "left": {"name": "i", "type": "Var"},
-        "op": "<",
-        "right": {"name": "n", "type": "Var"},
-        "type": "Binary"
-      },
       "body": [
         {
-          "name": "j",
-          "type": "Let",
-          "value": {"type": "Literal", "value": 0}
-        },
-        {
-          "type": "While",
-          "test": {
-            "left": {"name": "j", "type": "Var"},
-            "op": "<",
-            "right": {
-              "left": {
-                "left": {"name": "n", "type": "Var"},
-                "op": "-",
-                "right": {"name": "i", "type": "Var"},
-                "type": "Binary"
-              },
-              "op": "-",
-              "right": {"type": "Literal", "value": 1},
-              "type": "Binary"
-            },
-            "type": "Binary"
-          },
           "body": [
             {
-              "type": "If",
               "test": {
                 "left": {
-                  "base": {"name": "arr", "type": "Var"},
-                  "index": {"name": "j", "type": "Var"},
+                  "base": {
+                    "name": "arr",
+                    "type": "Var"
+                  },
+                  "index": {
+                    "name": "j",
+                    "type": "Var"
+                  },
                   "type": "Index"
                 },
                 "op": ">",
                 "right": {
-                  "base": {"name": "arr", "type": "Var"},
+                  "base": {
+                    "name": "arr",
+                    "type": "Var"
+                  },
                   "index": {
-                    "left": {"name": "j", "type": "Var"},
+                    "left": {
+                      "name": "j",
+                      "type": "Var"
+                    },
                     "op": "+",
-                    "right": {"type": "Literal", "value": 1},
+                    "right": {
+                      "type": "Literal",
+                      "value": 1
+                    },
                     "type": "Binary"
                   },
                   "type": "Index"
@@ -89,69 +93,130 @@
                   "name": "temp",
                   "type": "Let",
                   "value": {
-                    "base": {"name": "arr", "type": "Var"},
-                    "index": {"name": "j", "type": "Var"},
+                    "base": {
+                      "name": "arr",
+                      "type": "Var"
+                    },
+                    "index": {
+                      "name": "j",
+                      "type": "Var"
+                    },
                     "type": "Index"
                   }
                 },
                 {
+                  "base": {
+                    "name": "arr",
+                    "type": "Var"
+                  },
+                  "index": {
+                    "name": "j",
+                    "type": "Var"
+                  },
                   "type": "SetIndex",
-                  "base": {"name": "arr", "type": "Var"},
-                  "index": {"name": "j", "type": "Var"},
                   "value": {
-                    "base": {"name": "arr", "type": "Var"},
+                    "base": {
+                      "name": "arr",
+                      "type": "Var"
+                    },
                     "index": {
-                      "left": {"name": "j", "type": "Var"},
+                      "left": {
+                        "name": "j",
+                        "type": "Var"
+                      },
                       "op": "+",
-                      "right": {"type": "Literal", "value": 1},
+                      "right": {
+                        "type": "Literal",
+                        "value": 1
+                      },
                       "type": "Binary"
                     },
                     "type": "Index"
                   }
                 },
                 {
-                  "type": "SetIndex",
-                  "base": {"name": "arr", "type": "Var"},
+                  "base": {
+                    "name": "arr",
+                    "type": "Var"
+                  },
                   "index": {
-                    "left": {"name": "j", "type": "Var"},
+                    "left": {
+                      "name": "j",
+                      "type": "Var"
+                    },
                     "op": "+",
-                    "right": {"type": "Literal", "value": 1},
+                    "right": {
+                      "type": "Literal",
+                      "value": 1
+                    },
                     "type": "Binary"
                   },
-                  "value": {"name": "temp", "type": "Var"}
+                  "type": "SetIndex",
+                  "value": {
+                    "name": "temp",
+                    "type": "Var"
+                  }
                 }
-              ]
-            },
-            {
-              "name": "j",
-              "type": "Assign",
-              "value": {
-                "left": {"name": "j", "type": "Var"},
-                "op": "+",
-                "right": {"type": "Literal", "value": 1},
-                "type": "Binary"
-              }
+              ],
+              "type": "If"
             }
-          ]
-        },
-        {
-          "name": "i",
-          "type": "Assign",
-          "value": {
-            "left": {"name": "i", "type": "Var"},
-            "op": "+",
-            "right": {"type": "Literal", "value": 1},
-            "type": "Binary"
-          }
+          ],
+          "iter": {
+            "from": {
+              "type": "Literal",
+              "value": 0
+            },
+            "inclusive": false,
+            "to": {
+              "left": {
+                "left": {
+                  "name": "n",
+                  "type": "Var"
+                },
+                "op": "-",
+                "right": {
+                  "name": "i",
+                  "type": "Var"
+                },
+                "type": "Binary"
+              },
+              "op": "-",
+              "right": {
+                "type": "Literal",
+                "value": 1
+              },
+              "type": "Binary"
+            },
+            "type": "Range"
+          },
+          "type": "For",
+          "var": "j"
         }
-      ]
+      ],
+      "iter": {
+        "from": {
+          "type": "Literal",
+          "value": 0
+        },
+        "inclusive": false,
+        "to": {
+          "name": "n",
+          "type": "Var"
+        },
+        "type": "Range"
+      },
+      "type": "For",
+      "var": "i"
     },
     {
       "args": [
-        {"name": "arr", "type": "Var"}
+        {
+          "name": "arr",
+          "type": "Var"
+        }
       ],
       "type": "Print"
     }
   ],
-  "version": "coreil-0.2"
+  "version": "coreil-1.0"
 }

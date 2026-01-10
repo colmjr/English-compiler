@@ -1,0 +1,12 @@
+Search for a value in an array. Print the index if found, otherwise print -1.
+
+Input: [10, 23, 45, 70, 11, 15]
+Target: 70
+
+Set result to -1.
+For i from 0 to the length of the array minus 1:
+  If the element at position i equals the target:
+    Set result to i.
+    Break out of the loop.
+
+Print result.

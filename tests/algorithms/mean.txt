@@ -1,0 +1,14 @@
+Compute the average of an array using a helper function for the sum.
+
+Input: [10, 20, 30, 40, 50]
+
+Define a function called compute_sum that takes an array:
+  Set total to 0.
+  For each number in the array, add the number to total.
+  Return total.
+
+Call compute_sum with the input array and store the result in sum.
+Let count be the length of the array.
+Let average be sum divided by count.
+
+Print average.

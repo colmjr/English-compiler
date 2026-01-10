@@ -1,0 +1,9 @@
+Find and print the maximum value in an array.
+
+Input: [15, 42, 8, 23, 105, 67]
+
+Set max_value to the first element of the array.
+For each number in the array:
+  If the number is greater than max_value, set max_value to the number.
+
+Print max_value.

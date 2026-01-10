@@ -20,6 +20,7 @@ All tests pass with 100% parity between interpreter and Python code generation.
 - [MIGRATION.md](MIGRATION.md) - Upgrade guide from v0.5 to v1.0
 - [VERSIONING.md](VERSIONING.md) - Version strategy and code hygiene
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Fast reference for Core IL syntax
+- [tests/ALGORITHM_TESTS.md](tests/ALGORITHM_TESTS.md) - Algorithm corpus regression tests
 
 ## Requirements
 
@@ -171,15 +172,26 @@ This produces `examples/hello.py` with the generated Python code. The generated 
 - Matches interpreter output exactly (verified by parity tests)
 - Handles all Core IL v1.0 features (including maps, functions, loops, tuples, and sealed primitives)
 
-### Backend parity tests
+### Testing
 
-Run tests that verify the generated Python produces identical output to the interpreter:
-
+**Basic tests** (examples in `examples/` directory):
 ```sh
-python -m tests.run_parity
+python -m tests.run
 ```
 
-This tests all examples in the `examples/` directory and reports any mismatches.
+**Algorithm regression tests** (golden corpus with backend parity):
+```sh
+python -m tests.run_algorithms
+```
+
+This enforces:
+- Core IL validation passes
+- Interpreter executes successfully
+- Python backend executes successfully
+- Backend parity (interpreter output == Python output)
+- No invalid helper calls
+
+See [tests/ALGORITHM_TESTS.md](tests/ALGORITHM_TESTS.md) for details on failure modes and test coverage.
 
 ## Exit codes
 

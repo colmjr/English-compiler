@@ -1,0 +1,11 @@
+Count adjacent pairs (bigrams) in an array and print the dictionary.
+
+Input: [1, 2, 1, 2, 3, 2]
+
+Create an empty dictionary called bigram_counts.
+For i from 0 to the length of the array minus 2:
+  Create a pair containing the elements at positions i and i+1.
+  If the pair is in the dictionary, add 1 to its count.
+  Otherwise, set the count for that pair to 1.
+
+Print bigram_counts.

@@ -1,0 +1,10 @@
+Count how many times each number appears in an array and print the dictionary.
+
+Input: [3, 7, 3, 9, 7, 3, 5]
+
+Create an empty dictionary called counts.
+For each number in the array:
+  If the number is in the dictionary, add 1 to its count.
+  Otherwise, set the count for that number to 1.
+
+Print the counts dictionary.

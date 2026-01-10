@@ -1,0 +1,7 @@
+Sum all numbers in an array and print the result.
+
+Input: [5, 12, 3, 8, 15]
+
+Create a variable called total and set it to 0.
+For each number in the array, add the number to total.
+Print the total.
