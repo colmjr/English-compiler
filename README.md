@@ -88,7 +88,7 @@ Required env vars:
 
 ```sh
 export ANTHROPIC_API_KEY="your_api_key_here"
-export ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"
+export ANTHROPIC_MODEL="claude-sonnet-4-5"
 export ANTHROPIC_MAX_TOKENS="4096"
 ```
 
