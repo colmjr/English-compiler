@@ -1,0 +1,9 @@
+Reverse a string "hello" using character-by-character access in a loop.
+
+Create an empty array called result.
+Let the string be "hello".
+For each index from the string length minus 1 down to 0:
+  Get the character at that index.
+  Add it to the result array.
+
+Join the result array with an empty separator and print it.

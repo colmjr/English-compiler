@@ -1,32 +1,38 @@
 """Core IL package.
 
-Core IL v1.0 - Stable and Production Ready
-==========================================
+Core IL v1.1 - Record Support for Structured Data
+==================================================
 
-This package implements the Core IL (Core Intermediate Language) v1.0 specification.
+This package implements the Core IL (Core Intermediate Language) v1.1 specification.
 
-Core IL v1.0 is:
-- Stable: Specification is frozen, no breaking changes
+Core IL v1.1 adds:
+- Record: Mutable structured data with named fields
+- GetField: Access record fields by name
+- SetField: Mutate record fields
+
+Core IL features:
 - Complete: All necessary primitives for algorithmic computation
 - Deterministic: Same input always produces same output
 - Tested: 100% parity between interpreter and Python codegen
+- Closed specification: No extension mechanism or helper functions
 
 Version History:
-- v1.0: Stable release with short-circuit evaluation, tuple support, frozen spec
+- v1.1: Added Record, GetField, SetField for structured data
+- v1.0: Stable release with short-circuit evaluation, tuple support (frozen)
 - v0.5: Sealed primitives (GetDefault, Keys, Push, Tuple)
 - v0.3: Functions and control flow (FuncDef, Return, For, ForEach)
 - v0.2: Arrays and indexing
 - v0.1: Basic statements and expressions
 
 Backward Compatibility:
-All v0.1-v0.5 programs continue to work in v1.0.
+All v0.1-v1.0 programs continue to work in v1.1.
 """
 
 from .interp import run_coreil
 from .validate import validate_coreil
 
-# Current stable version
-COREIL_VERSION = "coreil-1.0"
+# Current version
+COREIL_VERSION = "coreil-1.1"
 
 # All supported versions (for backward compatibility)
 SUPPORTED_VERSIONS = frozenset([
@@ -36,7 +42,8 @@ SUPPORTED_VERSIONS = frozenset([
     "coreil-0.4",
     "coreil-0.5",
     "coreil-1.0",
+    "coreil-1.1",
 ])
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ["run_coreil", "validate_coreil", "COREIL_VERSION", "SUPPORTED_VERSIONS"]

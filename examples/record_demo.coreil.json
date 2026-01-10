@@ -1,0 +1,91 @@
+{
+  "version": "coreil-1.1",
+  "ambiguities": [],
+  "body": [
+    {
+      "type": "Let",
+      "name": "point",
+      "value": {
+        "type": "Record",
+        "fields": [
+          {
+            "name": "x",
+            "value": {
+              "type": "Literal",
+              "value": 2
+            }
+          },
+          {
+            "name": "y",
+            "value": {
+              "type": "Literal",
+              "value": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Print",
+      "args": [
+        {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "GetField",
+            "base": {
+              "type": "Var",
+              "name": "point"
+            },
+            "name": "x"
+          },
+          "right": {
+            "type": "GetField",
+            "base": {
+              "type": "Var",
+              "name": "point"
+            },
+            "name": "y"
+          }
+        }
+      ]
+    },
+    {
+      "type": "SetField",
+      "base": {
+        "type": "Var",
+        "name": "point"
+      },
+      "name": "x",
+      "value": {
+        "type": "Literal",
+        "value": 10
+      }
+    },
+    {
+      "type": "Print",
+      "args": [
+        {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "GetField",
+            "base": {
+              "type": "Var",
+              "name": "point"
+            },
+            "name": "x"
+          },
+          "right": {
+            "type": "GetField",
+            "base": {
+              "type": "Var",
+              "name": "point"
+            },
+            "name": "y"
+          }
+        }
+      ]
+    }
+  ]
+}

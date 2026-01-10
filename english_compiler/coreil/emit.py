@@ -1,15 +1,20 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.0 to Python transpilation.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
+This file implements Core IL v1.1 to Python transpilation.
+Core IL v1.1 adds Record support for algorithm-friendly structured data.
 
 The generated Python code:
 - Matches interpreter semantics exactly
 - Uses standard Python 3.10+ features
 - Preserves dictionary insertion order
 - Implements short-circuit evaluation naturally
+- Record support (mutable named fields)
 
-Backward compatibility: Accepts v0.1 through v1.0 programs.
+Version history:
+- v1.1: Added Record, GetField, SetField
+- v1.0: Stable release (frozen)
+
+Backward compatibility: Accepts v0.1 through v1.1 programs.
 """
 
 from __future__ import annotations
@@ -163,6 +168,45 @@ def emit_python(doc: dict) -> str:
             else:
                 return f"({', '.join(item_strs)})"
 
+        if node_type == "Record":
+            fields = node.get("fields", [])
+            if not fields:
+                return "{}"
+            field_strs = []
+            for field in fields:
+                name = field.get("name")
+                value = emit_expr(field.get("value"))
+                # Use quoted field names for dictionary keys
+                field_strs.append(f'"{name}": {value}')
+            return "{" + ", ".join(field_strs) + "}"
+
+        if node_type == "GetField":
+            base = emit_expr(node.get("base"))
+            name = node.get("name")
+            # Use dictionary access with runtime error on missing field
+            return f'{base}["{name}"]'
+
+        if node_type == "StringLength":
+            base = emit_expr(node.get("base"))
+            return f"len({base})"
+
+        if node_type == "Substring":
+            base = emit_expr(node.get("base"))
+            start = emit_expr(node.get("start"))
+            end = emit_expr(node.get("end"))
+            return f"{base}[{start}:{end}]"
+
+        if node_type == "CharAt":
+            base = emit_expr(node.get("base"))
+            index = emit_expr(node.get("index"))
+            return f"{base}[{index}]"
+
+        if node_type == "Join":
+            sep = emit_expr(node.get("sep"))
+            items = emit_expr(node.get("items"))
+            # Convert items to strings (matching interpreter behavior)
+            return f"{sep}.join(str(x) for x in {items})"
+
         raise ValueError(f"unknown expression type: {node_type}")
 
     def emit_stmt(node: dict) -> None:
@@ -244,6 +288,13 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             value = emit_expr(node.get("value"))
             emit_line(f"{base}.append({value})")
+            return
+
+        if node_type == "SetField":
+            base = emit_expr(node.get("base"))
+            name = node.get("name")
+            value = emit_expr(node.get("value"))
+            emit_line(f'{base}["{name}"] = {value}')
             return
 
         if node_type == "FuncDef":

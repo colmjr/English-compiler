@@ -1,0 +1,1 @@
+Print substring of "abcdef" from index 1 to index 4 (end-exclusive).

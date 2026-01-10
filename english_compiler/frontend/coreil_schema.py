@@ -1,10 +1,14 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.0 structure for LLM frontends.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
+This schema defines Core IL v1.1 structure for LLM frontends.
+Core IL v1.1 adds Record support for algorithm-friendly structured data.
 
-Backward compatibility: Schema accepts v0.1 through v1.0 for validation,
-but LLMs should generate v1.0 programs.
+Version history:
+- v1.1: Added Record, GetField, SetField for structured data
+- v1.0: Stable release (frozen)
+
+Backward compatibility: Schema accepts v0.1 through v1.1 for validation,
+but LLMs should generate v1.1 programs.
 """
 
 COREIL_JSON_SCHEMA = {
@@ -12,7 +16,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -47,6 +51,7 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/for_stmt"},
                 {"$ref": "#/definitions/foreach_stmt"},
                 {"$ref": "#/definitions/push_stmt"},
+                {"$ref": "#/definitions/setfield_stmt"},
             ]
         },
         "let_stmt": {
@@ -185,6 +190,12 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/getdefault_expr"},
                 {"$ref": "#/definitions/keys_expr"},
                 {"$ref": "#/definitions/tuple_expr"},
+                {"$ref": "#/definitions/record_expr"},
+                {"$ref": "#/definitions/getfield_expr"},
+                {"$ref": "#/definitions/stringlength_expr"},
+                {"$ref": "#/definitions/substring_expr"},
+                {"$ref": "#/definitions/charat_expr"},
+                {"$ref": "#/definitions/join_expr"},
             ]
         },
         "literal_expr": {
@@ -366,6 +377,86 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "Push"},
                 "base": {"$ref": "#/definitions/expr"},
                 "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "record_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "fields"],
+            "properties": {
+                "type": {"const": "Record"},
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["name", "value"],
+                        "properties": {
+                            "name": {"type": "string"},
+                            "value": {"$ref": "#/definitions/expr"},
+                        },
+                    },
+                },
+            },
+        },
+        "getfield_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "name"],
+            "properties": {
+                "type": {"const": "GetField"},
+                "base": {"$ref": "#/definitions/expr"},
+                "name": {"type": "string"},
+            },
+        },
+        "setfield_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "name", "value"],
+            "properties": {
+                "type": {"const": "SetField"},
+                "base": {"$ref": "#/definitions/expr"},
+                "name": {"type": "string"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringlength_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "StringLength"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "substring_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "start", "end"],
+            "properties": {
+                "type": {"const": "Substring"},
+                "base": {"$ref": "#/definitions/expr"},
+                "start": {"$ref": "#/definitions/expr"},
+                "end": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "charat_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "index"],
+            "properties": {
+                "type": {"const": "CharAt"},
+                "base": {"$ref": "#/definitions/expr"},
+                "index": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "join_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "sep", "items"],
+            "properties": {
+                "type": {"const": "Join"},
+                "sep": {"$ref": "#/definitions/expr"},
+                "items": {"$ref": "#/definitions/expr"},
             },
         },
     },

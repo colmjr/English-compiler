@@ -1,0 +1,4 @@
+Create a record for a point with x=2 and y=3.
+Print the sum of x and y.
+Set x to 10.
+Print the sum of x and y again.

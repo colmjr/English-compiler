@@ -1,0 +1,34 @@
+{
+  "version": "coreil-1.1",
+  "ambiguities": [],
+  "body": [
+    {
+      "type": "Let",
+      "name": "s",
+      "value": {
+        "type": "Literal",
+        "value": "abcdef"
+      }
+    },
+    {
+      "type": "Print",
+      "args": [
+        {
+          "type": "Substring",
+          "base": {
+            "type": "Var",
+            "name": "s"
+          },
+          "start": {
+            "type": "Literal",
+            "value": 1
+          },
+          "end": {
+            "type": "Literal",
+            "value": 4
+          }
+        }
+      ]
+    }
+  ]
+}

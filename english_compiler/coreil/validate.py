@@ -1,9 +1,13 @@
 """Core IL validation.
 
-This file implements Core IL v1.0 semantics validation.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
+This file implements Core IL v1.1 semantics validation.
+Core IL v1.1 adds Record support for algorithm-friendly structured data.
 
-Backward compatibility: Accepts v0.1 through v1.0 programs.
+Version history:
+- v1.1: Added Record, GetField, SetField
+- v1.0: Stable release (frozen)
+
+Backward compatibility: Accepts v0.1 through v1.1 programs.
 """
 
 from __future__ import annotations
@@ -37,6 +41,13 @@ _ALLOWED_NODE_TYPES = {
     "GetDefault",
     "Keys",
     "Tuple",
+    "Record",
+    "GetField",
+    "SetField",
+    "StringLength",
+    "Substring",
+    "CharAt",
+    "Join",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -56,11 +67,12 @@ _ALLOWED_BINARY_OPS = {
 }
 
 # Core IL Version Support
-# v1.0 is the current stable version (frozen, production-ready)
+# v1.1 is the current version (adds Record support)
+# v1.0 is stable and frozen
 # v0.1-v0.5 are accepted for backward compatibility
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"}
 
-# Helper functions that are disallowed in v0.5+ and v1.0 (must use explicit primitives)
+# Helper functions that are disallowed in v0.5+ and v1.0+ (must use explicit primitives)
 # This ensures Core IL remains a closed specification
 _DISALLOWED_HELPER_CALLS = {"get_or_default", "keys", "append", "entries"}
 
@@ -125,8 +137,8 @@ def validate_coreil(doc: dict) -> list[dict]:
             if not isinstance(name, str) or not name:
                 add_error(f"{path}.name", "missing or invalid name")
             else:
-                # In v0.5+ and v1.0, disallow helper function calls
-                if version in ("coreil-0.5", "coreil-1.0") and name in _DISALLOWED_HELPER_CALLS:
+                # In v0.5+ and v1.0+, disallow helper function calls
+                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1") and name in _DISALLOWED_HELPER_CALLS:
                     add_error(
                         f"{path}.name",
                         f"helper function '{name}' is not allowed in v0.5; "
@@ -253,6 +265,78 @@ def validate_coreil(doc: dict) -> list[dict]:
                 return
             for i, item in enumerate(items):
                 validate_expr(item, f"{path}.items[{i}]", defined)
+            return
+
+        if node_type == "Record":
+            fields = node.get("fields")
+            if not isinstance(fields, list):
+                add_error(f"{path}.fields", "missing or invalid fields")
+                return
+            for i, field in enumerate(fields):
+                if not isinstance(field, dict):
+                    add_error(f"{path}.fields[{i}]", "field must be an object")
+                    continue
+                name = field.get("name")
+                if not isinstance(name, str) or not name:
+                    add_error(f"{path}.fields[{i}].name", "missing or invalid field name")
+                if "value" not in field:
+                    add_error(f"{path}.fields[{i}].value", "missing value")
+                else:
+                    validate_expr(field["value"], f"{path}.fields[{i}].value", defined)
+            return
+
+        if node_type == "GetField":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            name = node.get("name")
+            if not isinstance(name, str) or not name:
+                add_error(f"{path}.name", "missing or invalid field name")
+            return
+
+        if node_type == "StringLength":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "Substring":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "start" not in node:
+                add_error(f"{path}.start", "missing start")
+            else:
+                validate_expr(node["start"], f"{path}.start", defined)
+            if "end" not in node:
+                add_error(f"{path}.end", "missing end")
+            else:
+                validate_expr(node["end"], f"{path}.end", defined)
+            return
+
+        if node_type == "CharAt":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "index" not in node:
+                add_error(f"{path}.index", "missing index")
+            else:
+                validate_expr(node["index"], f"{path}.index", defined)
+            return
+
+        if node_type == "Join":
+            if "sep" not in node:
+                add_error(f"{path}.sep", "missing sep")
+            else:
+                validate_expr(node["sep"], f"{path}.sep", defined)
+            if "items" not in node:
+                add_error(f"{path}.items", "missing items")
+            else:
+                validate_expr(node["items"], f"{path}.items", defined)
             return
 
         add_error(path, f"unexpected expression type '{node_type}'")
@@ -445,6 +529,20 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(node["value"], f"{path}.value", defined)
             return
 
+        if node_type == "SetField":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            name = node.get("name")
+            if not isinstance(name, str) or not name:
+                add_error(f"{path}.name", "missing or invalid field name")
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
         add_error(path, f"unexpected statement type '{node_type}'")
 
     if not isinstance(doc, dict):
@@ -453,7 +551,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', or 'coreil-1.0'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', or 'coreil-1.1'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:

@@ -1,15 +1,20 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.0 semantics interpreter.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
+This file implements Core IL v1.1 semantics interpreter.
+Core IL v1.1 adds Record support for algorithm-friendly structured data.
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
 - Tuple indexing and length support
 - Dictionary insertion order preservation
+- Record support (mutable named fields)
 - Recursion limit: 100 calls
 
-Backward compatibility: Accepts v0.1 through v1.0 programs.
+Version history:
+- v1.1: Added Record, GetField, SetField
+- v1.0: Stable release (frozen)
+
+Backward compatibility: Accepts v0.1 through v1.1 programs.
 """
 
 from __future__ import annotations
@@ -210,6 +215,75 @@ def run_coreil(doc: dict) -> int:
                 raise ValueError("Tuple items must be a list")
             return tuple(eval_expr(item, local_env, call_depth) for item in items)
 
+        if node_type == "Record":
+            fields = node.get("fields")
+            if not isinstance(fields, list):
+                raise ValueError("Record fields must be a list")
+            record = {}
+            for field in fields:
+                if not isinstance(field, dict):
+                    raise ValueError("Record field must be an object")
+                name = field.get("name")
+                if not isinstance(name, str):
+                    raise ValueError("Record field name must be a string")
+                value = eval_expr(field["value"], local_env, call_depth)
+                record[name] = value
+            return record
+
+        if node_type == "GetField":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, dict):
+                raise ValueError(f"runtime error: GetField base must be a record, got {type(base).__name__}")
+            name = node.get("name")
+            if not isinstance(name, str):
+                raise ValueError("GetField name must be a string")
+            if name not in base:
+                raise ValueError(f"runtime error: field '{name}' not found in record")
+            return base[name]
+
+        if node_type == "StringLength":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringLength base must be a string, got {type(base).__name__}")
+            return len(base)
+
+        if node_type == "Substring":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: Substring base must be a string, got {type(base).__name__}")
+            start = eval_expr(node["start"], local_env, call_depth)
+            end = eval_expr(node["end"], local_env, call_depth)
+            if not isinstance(start, int) or start < 0:
+                raise ValueError(f"runtime error: Substring start must be a non-negative integer, got {start}")
+            if not isinstance(end, int) or end < 0:
+                raise ValueError(f"runtime error: Substring end must be a non-negative integer, got {end}")
+            # Python slicing automatically clamps, but we raise error for out-of-range
+            if start > len(base) or end > len(base):
+                raise ValueError(f"runtime error: Substring range [{start}:{end}) out of bounds for string of length {len(base)}")
+            return base[start:end]
+
+        if node_type == "CharAt":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: CharAt base must be a string, got {type(base).__name__}")
+            index = eval_expr(node["index"], local_env, call_depth)
+            if not isinstance(index, int) or index < 0:
+                raise ValueError(f"runtime error: CharAt index must be a non-negative integer, got {index}")
+            if index >= len(base):
+                raise ValueError(f"runtime error: CharAt index {index} out of bounds for string of length {len(base)}")
+            return base[index]
+
+        if node_type == "Join":
+            sep = eval_expr(node["sep"], local_env, call_depth)
+            if not isinstance(sep, str):
+                raise ValueError(f"runtime error: Join separator must be a string, got {type(sep).__name__}")
+            items = eval_expr(node["items"], local_env, call_depth)
+            if not isinstance(items, list):
+                raise ValueError(f"runtime error: Join items must be an array, got {type(items).__name__}")
+            # Convert all items to strings
+            str_items = [str(item) for item in items]
+            return sep.join(str_items)
+
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
 
@@ -375,6 +449,17 @@ def run_coreil(doc: dict) -> int:
             base.append(value)
             return
 
+        if node_type == "SetField":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            if not isinstance(base, dict):
+                raise ValueError(f"runtime error: SetField base must be a record, got {type(base).__name__}")
+            name = node.get("name")
+            if not isinstance(name, str):
+                raise ValueError("SetField name must be a string")
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            base[name] = value
+            return
+
         if node_type == "FuncDef":
             name = node.get("name")
             if not isinstance(name, str) or not name:
@@ -407,10 +492,11 @@ def run_coreil(doc: dict) -> int:
             raise ValueError("document must be an object")
 
         # Core IL Version Check
-        # v1.0 is the current stable version (frozen, production-ready)
+        # v1.1 is the current version (adds Record support)
+        # v1.0 is stable and frozen
         # v0.1-v0.5 are accepted for backward compatibility
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', or 'coreil-1.0'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', or 'coreil-1.1'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")
