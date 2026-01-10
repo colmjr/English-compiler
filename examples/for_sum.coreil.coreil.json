@@ -1,14 +1,5 @@
 {
-  "ambiguities": [
-    {
-      "default": 0,
-      "options": [
-        "stable",
-        "unstable"
-      ],
-      "question": "Which sort order should be used?"
-    }
-  ],
+  "ambiguities": [],
   "body": [
     {
       "args": [

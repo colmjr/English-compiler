@@ -62,6 +62,7 @@ def _print_ambiguities(ambiguities: list[dict]) -> None:
 
 
 def _compile_command(args: argparse.Namespace) -> int:
+    from english_compiler.coreil.emit import emit_python
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.coreil.validate import validate_coreil
     from english_compiler.frontend.mock_llm import generate_coreil_from_text
@@ -103,6 +104,24 @@ def _compile_command(args: argparse.Namespace) -> int:
         if doc is None:
             print(f"{coreil_path}: invalid json")
             return 1
+
+        # Emit Python code if target is "python" (even when using cache)
+        target = getattr(args, "target", "coreil")
+        if target == "python":
+            python_path = source_path.with_suffix(".py")
+            # Only regenerate Python if it doesn't exist or is older than Core IL
+            if not python_path.exists() or python_path.stat().st_mtime < coreil_path.stat().st_mtime:
+                try:
+                    python_code = emit_python(doc)
+                    python_path.write_text(python_code, encoding="utf-8")
+                    print(f"Generated Python code at {python_path}")
+                except OSError as exc:
+                    print(f"{python_path}: {exc}")
+                    return 1
+                except Exception as exc:
+                    print(f"Python codegen failed: {exc}")
+                    return 1
+
         ambiguities = doc.get("ambiguities", [])
         if isinstance(ambiguities, list) and ambiguities:
             _print_ambiguities(ambiguities)
@@ -137,6 +156,21 @@ def _compile_command(args: argparse.Namespace) -> int:
 
     if not _write_json(coreil_path, doc):
         return 1
+
+    # Emit Python code if target is "python"
+    target = getattr(args, "target", "coreil")
+    if target == "python":
+        python_path = source_path.with_suffix(".py")
+        try:
+            python_code = emit_python(doc)
+            python_path.write_text(python_code, encoding="utf-8")
+            print(f"Generated Python code at {python_path}")
+        except OSError as exc:
+            print(f"{python_path}: {exc}")
+            return 1
+        except Exception as exc:
+            print(f"Python codegen failed: {exc}")
+            return 1
 
     lock_doc = {
         "source_sha256": source_sha256,
@@ -184,6 +218,12 @@ def main(argv: list[str] | None = None) -> int:
         choices=["mock", "claude"],
         default=None,
         help="Frontend to use (default: mock if no API key, otherwise claude)",
+    )
+    compile_parser.add_argument(
+        "--target",
+        choices=["coreil", "python"],
+        default="coreil",
+        help="Compilation target (default: coreil)",
     )
     compile_parser.add_argument("--regen", action="store_true", help="Force regeneration")
     compile_parser.add_argument(
