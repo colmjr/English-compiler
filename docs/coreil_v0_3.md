@@ -1,6 +1,6 @@
 # Core IL v0.3 (JSON)
 
-Core IL v0.3 extends v0.2 with function definitions and returns. All v0.1 and v0.2 programs remain valid.
+Core IL v0.3 extends v0.2 with function definitions, returns, and optional syntax sugar for ranges and for-loops. All v0.1 and v0.2 programs remain valid.
 
 ## Top-level
 
@@ -20,7 +20,7 @@ Example:
 }
 ```
 
-## New statements (v0.3)
+## Function statements (v0.3)
 
 ### FuncDef
 
@@ -45,7 +45,35 @@ Call is an expression that invokes a function by name:
 { "type": "Call", "name": "fname", "args": [ <Expr>, ... ] }
 ```
 
+## Range and For (syntax sugar)
+
+### Range expression
+
+```json
+{ "type": "Range", "from": <Expr>, "to": <Expr>, "inclusive": false }
+```
+
+- `inclusive` is optional; default is `false`.
+- Default semantics: `[from, to)`.
+
+### For statement
+
+```json
+{ "type": "For", "var": "i", "iter": <Expr>, "body": [ <Stmt> ] }
+```
+
+Lowering rule (when `iter` is `Range`):
+
+```text
+Let i = from
+While i < to:
+  body
+  i = i + 1
+```
+
+If `inclusive` is `true`, the comparison uses `<=`.
+
 ## Notes
 
-- v0.3 adds structural support for functions.
-- Interpreter semantics for functions may be added later.
+- v0.3 adds structural support for functions and for/range syntax sugar.
+- The interpreter runs lowered Core IL; syntax sugar is not executed directly.

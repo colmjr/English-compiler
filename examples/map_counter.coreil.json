@@ -1,0 +1,89 @@
+{
+  "ambiguities": [],
+  "body": [
+    {
+      "name": "counter",
+      "type": "Let",
+      "value": {
+        "type": "Map",
+        "items": [
+          {
+            "key": {
+              "type": "Literal",
+              "value": "count"
+            },
+            "value": {
+              "type": "Literal",
+              "value": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "For",
+      "var": "i",
+      "iter": {
+        "type": "Range",
+        "from": {
+          "type": "Literal",
+          "value": 1
+        },
+        "to": {
+          "type": "Literal",
+          "value": 6
+        },
+        "inclusive": false
+      },
+      "body": [
+        {
+          "type": "Set",
+          "base": {
+            "name": "counter",
+            "type": "Var"
+          },
+          "key": {
+            "type": "Literal",
+            "value": "count"
+          },
+          "value": {
+            "type": "Binary",
+            "op": "+",
+            "left": {
+              "type": "Get",
+              "base": {
+                "name": "counter",
+                "type": "Var"
+              },
+              "key": {
+                "type": "Literal",
+                "value": "count"
+              }
+            },
+            "right": {
+              "name": "i",
+              "type": "Var"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "args": [
+        {
+          "type": "Get",
+          "base": {
+            "name": "counter",
+            "type": "Var"
+          },
+          "key": {
+            "type": "Literal",
+            "value": "count"
+          }
+        }
+      ],
+      "type": "Print"
+    }
+  ],
+  "version": "coreil-0.4"
+}

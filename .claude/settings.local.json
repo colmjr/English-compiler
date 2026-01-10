@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m tests.run:*)",
+      "Bash(python -m tests.test_lower:*)",
+      "Bash(python -m english_compiler:*)",
+      "Bash(python -m tests.test_map:*)"
+    ]
+  }
+}

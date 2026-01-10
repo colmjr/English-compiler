@@ -5,7 +5,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -34,8 +34,10 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/while_stmt"},
                 {"$ref": "#/definitions/print_stmt"},
                 {"$ref": "#/definitions/setindex_stmt"},
+                {"$ref": "#/definitions/set_stmt"},
                 {"$ref": "#/definitions/funcdef_stmt"},
                 {"$ref": "#/definitions/return_stmt"},
+                {"$ref": "#/definitions/for_stmt"},
             ]
         },
         "let_stmt": {
@@ -131,6 +133,20 @@ COREIL_JSON_SCHEMA = {
                 "value": {"$ref": "#/definitions/expr"},
             },
         },
+        "for_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "var", "iter", "body"],
+            "properties": {
+                "type": {"const": "For"},
+                "var": {"type": "string"},
+                "iter": {"$ref": "#/definitions/expr"},
+                "body": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/statement"},
+                },
+            },
+        },
         "expr": {
             "anyOf": [
                 {"$ref": "#/definitions/literal_expr"},
@@ -140,6 +156,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/index_expr"},
                 {"$ref": "#/definitions/length_expr"},
                 {"$ref": "#/definitions/call_expr"},
+                {"$ref": "#/definitions/range_expr"},
+                {"$ref": "#/definitions/map_expr"},
+                {"$ref": "#/definitions/get_expr"},
             ]
         },
         "literal_expr": {
@@ -231,6 +250,57 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "Call"},
                 "name": {"type": "string"},
                 "args": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
+            },
+        },
+        "range_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "from", "to"],
+            "properties": {
+                "type": {"const": "Range"},
+                "from": {"$ref": "#/definitions/expr"},
+                "to": {"$ref": "#/definitions/expr"},
+                "inclusive": {"type": "boolean"},
+            },
+        },
+        "set_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "key", "value"],
+            "properties": {
+                "type": {"const": "Set"},
+                "base": {"$ref": "#/definitions/expr"},
+                "key": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "map_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "items"],
+            "properties": {
+                "type": {"const": "Map"},
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["key", "value"],
+                        "properties": {
+                            "key": {"$ref": "#/definitions/expr"},
+                            "value": {"$ref": "#/definitions/expr"},
+                        },
+                    },
+                },
+            },
+        },
+        "get_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "key"],
+            "properties": {
+                "type": {"const": "Get"},
+                "base": {"$ref": "#/definitions/expr"},
+                "key": {"$ref": "#/definitions/expr"},
             },
         },
     },

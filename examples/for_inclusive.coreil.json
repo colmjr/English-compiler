@@ -1,0 +1,57 @@
+{
+  "ambiguities": [],
+  "body": [
+    {
+      "name": "sum",
+      "type": "Let",
+      "value": {
+        "type": "Literal",
+        "value": 0
+      }
+    },
+    {
+      "type": "For",
+      "var": "i",
+      "iter": {
+        "type": "Range",
+        "from": {
+          "type": "Literal",
+          "value": 1
+        },
+        "to": {
+          "type": "Literal",
+          "value": 5
+        },
+        "inclusive": true
+      },
+      "body": [
+        {
+          "name": "sum",
+          "type": "Assign",
+          "value": {
+            "type": "Binary",
+            "op": "+",
+            "left": {
+              "name": "sum",
+              "type": "Var"
+            },
+            "right": {
+              "name": "i",
+              "type": "Var"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "args": [
+        {
+          "name": "sum",
+          "type": "Var"
+        }
+      ],
+      "type": "Print"
+    }
+  ],
+  "version": "coreil-0.3"
+}

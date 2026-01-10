@@ -1,0 +1,70 @@
+{
+  "ambiguities": [],
+  "body": [
+    {
+      "name": "scores",
+      "type": "Let",
+      "value": {
+        "type": "Map",
+        "items": []
+      }
+    },
+    {
+      "type": "For",
+      "var": "i",
+      "iter": {
+        "type": "Range",
+        "from": {
+          "type": "Literal",
+          "value": 1
+        },
+        "to": {
+          "type": "Literal",
+          "value": 4
+        }
+      },
+      "body": [
+        {
+          "type": "Set",
+          "base": {
+            "name": "scores",
+            "type": "Var"
+          },
+          "key": {
+            "name": "i",
+            "type": "Var"
+          },
+          "value": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "name": "i",
+              "type": "Var"
+            },
+            "right": {
+              "type": "Literal",
+              "value": 10
+            }
+          }
+        }
+      ]
+    },
+    {
+      "args": [
+        {
+          "type": "Get",
+          "base": {
+            "name": "scores",
+            "type": "Var"
+          },
+          "key": {
+            "type": "Literal",
+            "value": 3
+          }
+        }
+      ],
+      "type": "Print"
+    }
+  ],
+  "version": "coreil-0.4"
+}

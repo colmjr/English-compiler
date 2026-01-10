@@ -31,6 +31,11 @@ class _ReturnSignal(Exception):
 
 
 def run_coreil(doc: dict) -> int:
+    from english_compiler.coreil.lower import lower_coreil
+
+    # Lower syntax sugar (For/Range) to core constructs (While)
+    doc = lower_coreil(doc)
+
     global_env: dict[str, Any] = {}
     functions: dict[str, dict] = {}
 
@@ -115,6 +120,30 @@ def run_coreil(doc: dict) -> int:
             if not isinstance(base, list):
                 raise ValueError("Length base must be an array")
             return len(base)
+
+        if node_type == "Map":
+            items = node.get("items")
+            if not isinstance(items, list):
+                raise ValueError("Map items must be a list")
+            result = {}
+            for item in items:
+                if not isinstance(item, dict):
+                    raise ValueError("Map item must be an object")
+                key = eval_expr(item.get("key"), local_env, call_depth)
+                if not isinstance(key, (str, int)):
+                    raise ValueError("Map key must be a string or integer")
+                value = eval_expr(item.get("value"), local_env, call_depth)
+                result[key] = value
+            return result
+
+        if node_type == "Get":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            key = eval_expr(node.get("key"), local_env, call_depth)
+            if not isinstance(base, dict):
+                raise ValueError("Get base must be a map")
+            if not isinstance(key, (str, int)):
+                raise ValueError("Get key must be a string or integer")
+            return base.get(key)
 
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
@@ -235,6 +264,17 @@ def run_coreil(doc: dict) -> int:
             base[index] = value
             return
 
+        if node_type == "Set":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            key = eval_expr(node.get("key"), local_env, call_depth)
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            if not isinstance(base, dict):
+                raise ValueError("Set base must be a map")
+            if not isinstance(key, (str, int)):
+                raise ValueError("Set key must be a string or integer")
+            base[key] = value
+            return
+
         if node_type == "FuncDef":
             name = node.get("name")
             if not isinstance(name, str) or not name:
@@ -265,8 +305,8 @@ def run_coreil(doc: dict) -> int:
     try:
         if not isinstance(doc, dict):
             raise ValueError("document must be an object")
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', or 'coreil-0.3'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', or 'coreil-0.4'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

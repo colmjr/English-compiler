@@ -56,9 +56,12 @@ python -m english_compiler run examples/hello.coreil.json
 
 ## Core IL format
 
-Core IL v0.1 is documented here:
+Core IL is documented in versioned specifications:
 
-- `docs/coreil_v0_1.md`
+- `docs/coreil_v0_1.md` - Basic statements and expressions
+- `docs/coreil_v0_2.md` - Arrays and indexing
+- `docs/coreil_v0_3.md` - Functions, returns, and syntax sugar (For/Range loops)
+- `docs/coreil_v0_4.md` - Maps/records (Map, Get, Set)
 
 ## Artifacts
 
