@@ -5,7 +5,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -34,6 +34,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/while_stmt"},
                 {"$ref": "#/definitions/print_stmt"},
                 {"$ref": "#/definitions/setindex_stmt"},
+                {"$ref": "#/definitions/funcdef_stmt"},
+                {"$ref": "#/definitions/return_stmt"},
             ]
         },
         "let_stmt": {
@@ -106,6 +108,29 @@ COREIL_JSON_SCHEMA = {
                 "value": {"$ref": "#/definitions/expr"},
             },
         },
+        "funcdef_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "name", "params", "body"],
+            "properties": {
+                "type": {"const": "FuncDef"},
+                "name": {"type": "string"},
+                "params": {"type": "array", "items": {"type": "string"}},
+                "body": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/statement"},
+                },
+            },
+        },
+        "return_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type"],
+            "properties": {
+                "type": {"const": "Return"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
         "expr": {
             "anyOf": [
                 {"$ref": "#/definitions/literal_expr"},
@@ -114,6 +139,7 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/array_expr"},
                 {"$ref": "#/definitions/index_expr"},
                 {"$ref": "#/definitions/length_expr"},
+                {"$ref": "#/definitions/call_expr"},
             ]
         },
         "literal_expr": {
@@ -128,7 +154,7 @@ COREIL_JSON_SCHEMA = {
                         {"type": "number"},
                         {"type": "boolean"},
                         {"type": "array"},
-                        {"type": "object"}
+                        {"type": "object"},
                     ]
                 },
             },
@@ -195,6 +221,16 @@ COREIL_JSON_SCHEMA = {
             "properties": {
                 "type": {"const": "Length"},
                 "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "call_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "name", "args"],
+            "properties": {
+                "type": {"const": "Call"},
+                "name": {"type": "string"},
+                "args": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
             },
         },
     },

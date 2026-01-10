@@ -13,6 +13,8 @@ _ALLOWED_NODE_TYPES = {
     "Call",
     "Print",
     "SetIndex",
+    "FuncDef",
+    "Return",
     "Literal",
     "Var",
     "Binary",
@@ -37,7 +39,7 @@ _ALLOWED_BINARY_OPS = {
     "or",
 }
 
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3"}
 
 
 def validate_coreil(doc: dict) -> list[dict]:
@@ -93,6 +95,9 @@ def validate_coreil(doc: dict) -> list[dict]:
             return
 
         if node_type == "Call":
+            name = node.get("name")
+            if not isinstance(name, str) or not name:
+                add_error(f"{path}.name", "missing or invalid name")
             args = node.get("args")
             if not isinstance(args, list):
                 add_error(f"{path}.args", "missing or invalid args")
@@ -143,7 +148,9 @@ def validate_coreil(doc: dict) -> list[dict]:
 
         add_error(path, f"unexpected expression type '{node_type}'")
 
-    def validate_stmt(node: Any, path: str, defined: set[str]) -> None:
+    def validate_stmt(
+        node: Any, path: str, defined: set[str], in_func: bool
+    ) -> None:
         node_type = expect_type(node, path)
         if node_type is None:
             return
@@ -182,14 +189,14 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.then", "missing or invalid then")
             else:
                 for i, stmt in enumerate(then_body):
-                    validate_stmt(stmt, f"{path}.then[{i}]", defined)
+                    validate_stmt(stmt, f"{path}.then[{i}]", defined, in_func)
             else_body = node.get("else")
             if else_body is not None:
                 if not isinstance(else_body, list):
                     add_error(f"{path}.else", "invalid else")
                 else:
                     for i, stmt in enumerate(else_body):
-                        validate_stmt(stmt, f"{path}.else[{i}]", defined)
+                        validate_stmt(stmt, f"{path}.else[{i}]", defined, in_func)
             return
 
         if node_type == "While":
@@ -202,7 +209,7 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.body", "missing or invalid body")
             else:
                 for i, stmt in enumerate(body):
-                    validate_stmt(stmt, f"{path}.body[{i}]", defined)
+                    validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func)
             return
 
         if node_type == "Call":
@@ -232,6 +239,32 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(node["value"], f"{path}.value", defined)
             return
 
+        if node_type == "FuncDef":
+            name = node.get("name")
+            if not isinstance(name, str) or not name:
+                add_error(f"{path}.name", "missing or invalid name")
+            params = node.get("params")
+            if not isinstance(params, list):
+                add_error(f"{path}.params", "missing or invalid params")
+            else:
+                for i, param in enumerate(params):
+                    if not isinstance(param, str) or not param:
+                        add_error(f"{path}.params[{i}]", "param must be a non-empty string")
+            body = node.get("body")
+            if not isinstance(body, list):
+                add_error(f"{path}.body", "missing or invalid body")
+            else:
+                for i, stmt in enumerate(body):
+                    validate_stmt(stmt, f"{path}.body[{i}]", defined, True)
+            return
+
+        if node_type == "Return":
+            if not in_func:
+                add_error(path, "Return is only allowed inside FuncDef")
+            if "value" in node:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
         add_error(path, f"unexpected statement type '{node_type}'")
 
     if not isinstance(doc, dict):
@@ -240,7 +273,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1' or 'coreil-0.2'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', or 'coreil-0.3'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:
@@ -282,6 +315,6 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     defined: set[str] = set()
     for i, stmt in enumerate(body):
-        validate_stmt(stmt, f"$.body[{i}]", defined)
+        validate_stmt(stmt, f"$.body[{i}]", defined, False)
 
     return errors

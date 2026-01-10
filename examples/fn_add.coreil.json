@@ -1,0 +1,47 @@
+{
+  "ambiguities": [],
+  "body": [
+    {
+      "body": [
+        {
+          "type": "Return",
+          "value": {
+            "left": {
+              "name": "a",
+              "type": "Var"
+            },
+            "op": "+",
+            "right": {
+              "name": "b",
+              "type": "Var"
+            },
+            "type": "Binary"
+          }
+        }
+      ],
+      "name": "add",
+      "params": ["a", "b"],
+      "type": "FuncDef"
+    },
+    {
+      "args": [
+        {
+          "args": [
+            {
+              "type": "Literal",
+              "value": 2
+            },
+            {
+              "type": "Literal",
+              "value": 3
+            }
+          ],
+          "name": "add",
+          "type": "Call"
+        }
+      ],
+      "type": "Print"
+    }
+  ],
+  "version": "coreil-0.3"
+}
