@@ -1,4 +1,16 @@
-"""Lower Core IL syntax sugar into core constructs."""
+"""Lower Core IL syntax sugar into core constructs.
+
+This file implements Core IL v1.0 lowering pass.
+Core IL v1.0 is stable and frozen - no breaking changes will be made.
+
+Lowering transformations:
+- For loops → While loops with manual counter management
+- ForEach loops → While loops with index-based iteration
+
+All other nodes pass through unchanged.
+
+Backward compatibility: Accepts v0.1 through v1.0 programs.
+"""
 
 from __future__ import annotations
 

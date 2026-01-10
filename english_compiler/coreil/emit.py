@@ -1,4 +1,16 @@
-"""Python code generator for Core IL."""
+"""Python code generator for Core IL.
+
+This file implements Core IL v1.0 to Python transpilation.
+Core IL v1.0 is stable and frozen - no breaking changes will be made.
+
+The generated Python code:
+- Matches interpreter semantics exactly
+- Uses standard Python 3.10+ features
+- Preserves dictionary insertion order
+- Implements short-circuit evaluation naturally
+
+Backward compatibility: Accepts v0.1 through v1.0 programs.
+"""
 
 from __future__ import annotations
 

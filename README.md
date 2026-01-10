@@ -18,6 +18,8 @@ All tests pass with 100% parity between interpreter and Python code generation.
 - [STATUS.md](STATUS.md) - Detailed project status and capabilities
 - [CHANGELOG.md](CHANGELOG.md) - Version history and changes
 - [MIGRATION.md](MIGRATION.md) - Upgrade guide from v0.5 to v1.0
+- [VERSIONING.md](VERSIONING.md) - Version strategy and code hygiene
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Fast reference for Core IL syntax
 
 ## Requirements
 

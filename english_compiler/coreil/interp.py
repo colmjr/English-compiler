@@ -1,4 +1,16 @@
-"""Core IL interpreter."""
+"""Core IL interpreter.
+
+This file implements Core IL v1.0 semantics interpreter.
+Core IL v1.0 is stable and frozen - no breaking changes will be made.
+
+Key features:
+- Short-circuit evaluation for 'and' and 'or' operators
+- Tuple indexing and length support
+- Dictionary insertion order preservation
+- Recursion limit: 100 calls
+
+Backward compatibility: Accepts v0.1 through v1.0 programs.
+"""
 
 from __future__ import annotations
 
@@ -393,6 +405,10 @@ def run_coreil(doc: dict) -> int:
     try:
         if not isinstance(doc, dict):
             raise ValueError("document must be an object")
+
+        # Core IL Version Check
+        # v1.0 is the current stable version (frozen, production-ready)
+        # v0.1-v0.5 are accepted for backward compatibility
         if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0"}:
             raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', or 'coreil-1.0'")
         body = doc.get("body")

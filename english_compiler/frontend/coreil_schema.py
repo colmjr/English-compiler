@@ -1,4 +1,11 @@
-"""Core IL JSON schema for structured output."""
+"""Core IL JSON schema for structured output.
+
+This schema defines Core IL v1.0 structure for LLM frontends.
+Core IL v1.0 is stable and frozen - no breaking changes will be made.
+
+Backward compatibility: Schema accepts v0.1 through v1.0 for validation,
+but LLMs should generate v1.0 programs.
+"""
 
 COREIL_JSON_SCHEMA = {
     "type": "object",

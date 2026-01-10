@@ -1,4 +1,10 @@
-"""Core IL validation."""
+"""Core IL validation.
+
+This file implements Core IL v1.0 semantics validation.
+Core IL v1.0 is stable and frozen - no breaking changes will be made.
+
+Backward compatibility: Accepts v0.1 through v1.0 programs.
+"""
 
 from __future__ import annotations
 
@@ -49,9 +55,13 @@ _ALLOWED_BINARY_OPS = {
     "or",
 }
 
+# Core IL Version Support
+# v1.0 is the current stable version (frozen, production-ready)
+# v0.1-v0.5 are accepted for backward compatibility
 _ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0"}
 
 # Helper functions that are disallowed in v0.5+ and v1.0 (must use explicit primitives)
+# This ensures Core IL remains a closed specification
 _DISALLOWED_HELPER_CALLS = {"get_or_default", "keys", "append", "entries"}
 
 
