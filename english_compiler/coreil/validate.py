@@ -49,9 +49,9 @@ _ALLOWED_BINARY_OPS = {
     "or",
 }
 
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0"}
 
-# Helper functions that are disallowed in v0.5+ (must use explicit primitives)
+# Helper functions that are disallowed in v0.5+ and v1.0 (must use explicit primitives)
 _DISALLOWED_HELPER_CALLS = {"get_or_default", "keys", "append", "entries"}
 
 
@@ -115,8 +115,8 @@ def validate_coreil(doc: dict) -> list[dict]:
             if not isinstance(name, str) or not name:
                 add_error(f"{path}.name", "missing or invalid name")
             else:
-                # In v0.5+, disallow helper function calls
-                if version == "coreil-0.5" and name in _DISALLOWED_HELPER_CALLS:
+                # In v0.5+ and v1.0, disallow helper function calls
+                if version in ("coreil-0.5", "coreil-1.0") and name in _DISALLOWED_HELPER_CALLS:
                     add_error(
                         f"{path}.name",
                         f"helper function '{name}' is not allowed in v0.5; "
@@ -443,7 +443,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', or 'coreil-0.5'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', or 'coreil-1.0'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:

@@ -393,8 +393,8 @@ def run_coreil(doc: dict) -> int:
     try:
         if not isinstance(doc, dict):
             raise ValueError("document must be an object")
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', or 'coreil-0.5'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', or 'coreil-1.0'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

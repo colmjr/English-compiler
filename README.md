@@ -1,6 +1,23 @@
-# English-compiler
+# English Compiler
 
-A beginner-friendly compiler-like CLI that turns English or pseudocode into Core IL JSON, validates it, writes artifacts, and can execute the result.
+A production-ready compiler that translates English pseudocode into executable code through a deterministic intermediate representation (Core IL).
+
+## Project Status
+
+**Core IL v1.0 is stable and production-ready.** 🎉
+
+The compiler has successfully compiled and executed real-world algorithms including:
+- Array operations (sum, reverse, max)
+- Sorting algorithms (bubble sort)
+- String processing (bigram frequency)
+- Advanced algorithms (Byte Pair Encoding - 596 lines of Core IL)
+
+All tests pass with 100% parity between interpreter and Python code generation.
+
+**📚 Documentation**:
+- [STATUS.md](STATUS.md) - Detailed project status and capabilities
+- [CHANGELOG.md](CHANGELOG.md) - Version history and changes
+- [MIGRATION.md](MIGRATION.md) - Upgrade guide from v0.5 to v1.0
 
 ## Requirements
 
@@ -57,15 +74,47 @@ Flags:
 python -m english_compiler run examples/hello.coreil.json
 ```
 
-## Core IL format
+## Architecture
 
-Core IL is documented in versioned specifications:
+The compiler follows a three-stage pipeline:
 
-- `docs/coreil_v0_1.md` - Basic statements and expressions
-- `docs/coreil_v0_2.md` - Arrays and indexing
-- `docs/coreil_v0_3.md` - Functions, returns, and syntax sugar (For/Range loops)
-- `docs/coreil_v0_4.md` - Maps/records (Map, Get, Set)
-- `docs/coreil_v0_5.md` - Sealed primitives (GetDefault, Keys, Push, Tuple)
+```
+English Text → LLM Frontend → Core IL (JSON) → Deterministic Backends
+```
+
+1. **Frontend (LLM)**: Claude translates English/pseudocode into Core IL JSON
+   - This is the only non-deterministic step
+   - Output is cached for reproducibility
+
+2. **Core IL**: A closed, deterministic intermediate representation
+   - All semantics are explicitly defined
+   - No extension mechanism or helper functions
+   - Version 1.0 is stable and frozen
+
+3. **Backends**: Deterministic execution
+   - Interpreter: Direct execution of Core IL
+   - Python codegen: Transpiles to executable Python
+   - Both backends produce identical output (verified by tests)
+
+## Core IL v1.0
+
+Core IL is a complete, closed intermediate representation with explicit primitives for all operations.
+
+**Full specification**: [coreil_v1.md](coreil_v1.md)
+
+**Key features**:
+- Expressions: Literal, Var, Binary, Array, Tuple, Map, Index, Length, Get, GetDefault, Keys, Range, Call
+- Statements: Let, Assign, SetIndex, Set, Push, Print, If, While, For, ForEach, FuncDef, Return
+- Short-circuit evaluation for logical operators (`and`, `or`)
+- Runtime type checking with clear error messages
+- Recursion support with depth limits
+- Dictionary insertion order preservation
+
+**Historical versions** (for reference):
+- [docs/coreil_v0_1.md](docs/coreil_v0_1.md) - Basic statements and expressions
+- [docs/coreil_v0_2.md](docs/coreil_v0_2.md) - Arrays and indexing
+- [docs/coreil_v0_3.md](docs/coreil_v0_3.md) - Functions, returns, and syntax sugar (For/Range loops)
+- [docs/coreil_v0_5.md](docs/coreil_v0_5.md) - Sealed primitives (GetDefault, Keys, Push, Tuple)
 
 ## Artifacts
 
@@ -118,7 +167,7 @@ python -m english_compiler compile --target python examples/hello.txt
 This produces `examples/hello.py` with the generated Python code. The generated code:
 - Uses standard Python syntax and semantics
 - Matches interpreter output exactly (verified by parity tests)
-- Handles all Core IL v0.1-v0.5 features (including maps, functions, loops, and sealed primitives)
+- Handles all Core IL v1.0 features (including maps, functions, loops, tuples, and sealed primitives)
 
 ### Backend parity tests
 
