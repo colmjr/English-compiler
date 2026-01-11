@@ -1,0 +1,47 @@
+{
+  "version": "coreil-1.1",
+  "ambiguities": [],
+  "body": [
+    {
+      "type": "Let",
+      "name": "nums",
+      "value": {
+        "type": "Array",
+        "items": [
+          {"type": "Literal", "value": 1},
+          {"type": "Literal", "value": 2},
+          {"type": "Literal", "value": 2},
+          {"type": "Literal", "value": 3},
+          {"type": "Literal", "value": 3},
+          {"type": "Literal", "value": 3}
+        ]
+      }
+    },
+    {
+      "type": "Let",
+      "name": "seen",
+      "value": {
+        "type": "Set",
+        "items": []
+      }
+    },
+    {
+      "type": "ForEach",
+      "var": "n",
+      "iter": {"type": "Var", "name": "nums"},
+      "body": [
+        {
+          "type": "SetAdd",
+          "base": {"type": "Var", "name": "seen"},
+          "value": {"type": "Var", "name": "n"}
+        }
+      ]
+    },
+    {
+      "type": "Print",
+      "args": [
+        {"type": "SetSize", "base": {"type": "Var", "name": "seen"}}
+      ]
+    }
+  ]
+}

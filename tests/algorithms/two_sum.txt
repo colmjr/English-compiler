@@ -1,0 +1,15 @@
+Check if any two numbers in [2, 7, 11, 15] sum to 9 using a set of seen numbers.
+
+Create an array with values [2, 7, 11, 15].
+Let the target be 9.
+Create an empty set called "seen".
+Let found be False.
+
+For each number in the array:
+  Calculate the complement (target minus current number).
+  Check if the complement is in the seen set.
+  If yes:
+    Set found to True.
+  Add the current number to the seen set.
+
+Print the value of found (should be True, since 2 + 7 = 9).

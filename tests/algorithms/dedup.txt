@@ -1,0 +1,8 @@
+Remove duplicates from [1, 2, 2, 3, 3, 3] using a set and print the count of unique elements.
+
+Create an array with values [1, 2, 2, 3, 3, 3].
+Create an empty set called "seen".
+For each number in the array:
+  Add the number to the seen set.
+
+Print the size of the seen set (should be 3).

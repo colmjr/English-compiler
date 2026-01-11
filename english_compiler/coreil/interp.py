@@ -284,6 +284,30 @@ def run_coreil(doc: dict) -> int:
             str_items = [str(item) for item in items]
             return sep.join(str_items)
 
+        if node_type == "Set":
+            items = node.get("items", [])
+            result_set = set()
+            for item_node in items:
+                item_value = eval_expr(item_node, local_env, call_depth)
+                # Check if value is hashable (numbers, strings, tuples)
+                if not isinstance(item_value, (int, float, str, bool, tuple)):
+                    raise ValueError(f"runtime error: Set items must be hashable (numbers, strings, tuples), got {type(item_value).__name__}")
+                result_set.add(item_value)
+            return result_set
+
+        if node_type == "SetHas":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, set):
+                raise ValueError(f"runtime error: SetHas base must be a set, got {type(base).__name__}")
+            value = eval_expr(node["value"], local_env, call_depth)
+            return value in base
+
+        if node_type == "SetSize":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, set):
+                raise ValueError(f"runtime error: SetSize base must be a set, got {type(base).__name__}")
+            return len(base)
+
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
 
@@ -458,6 +482,26 @@ def run_coreil(doc: dict) -> int:
                 raise ValueError("SetField name must be a string")
             value = eval_expr(node.get("value"), local_env, call_depth)
             base[name] = value
+            return
+
+        if node_type == "SetAdd":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            if not isinstance(base, set):
+                raise ValueError(f"runtime error: SetAdd base must be a set, got {type(base).__name__}")
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            # Check if value is hashable (numbers, strings, tuples)
+            if not isinstance(value, (int, float, str, bool, tuple)):
+                raise ValueError(f"runtime error: SetAdd value must be hashable (numbers, strings, tuples), got {type(value).__name__}")
+            base.add(value)
+            return
+
+        if node_type == "SetRemove":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            if not isinstance(base, set):
+                raise ValueError(f"runtime error: SetRemove base must be a set, got {type(base).__name__}")
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            # Use discard for no-op semantics (doesn't error if value not present)
+            base.discard(value)
             return
 
         if node_type == "FuncDef":

@@ -52,6 +52,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/foreach_stmt"},
                 {"$ref": "#/definitions/push_stmt"},
                 {"$ref": "#/definitions/setfield_stmt"},
+                {"$ref": "#/definitions/setadd_stmt"},
+                {"$ref": "#/definitions/setremove_stmt"},
             ]
         },
         "let_stmt": {
@@ -196,6 +198,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/substring_expr"},
                 {"$ref": "#/definitions/charat_expr"},
                 {"$ref": "#/definitions/join_expr"},
+                {"$ref": "#/definitions/set_expr"},
+                {"$ref": "#/definitions/sethas_expr"},
+                {"$ref": "#/definitions/setsize_expr"},
             ]
         },
         "literal_expr": {
@@ -457,6 +462,54 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "Join"},
                 "sep": {"$ref": "#/definitions/expr"},
                 "items": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "set_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "items"],
+            "properties": {
+                "type": {"const": "Set"},
+                "items": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
+            },
+        },
+        "sethas_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "value"],
+            "properties": {
+                "type": {"const": "SetHas"},
+                "base": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "setsize_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "SetSize"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "setadd_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "value"],
+            "properties": {
+                "type": {"const": "SetAdd"},
+                "base": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "setremove_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "value"],
+            "properties": {
+                "type": {"const": "SetRemove"},
+                "base": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
             },
         },
     },

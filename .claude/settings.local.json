@@ -7,7 +7,8 @@
       "Bash(python -m tests.test_map:*)",
       "Bash(python -m tests.run_parity:*)",
       "Bash(python:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(PYTHONPATH=. python:*)"
     ]
   }
 }

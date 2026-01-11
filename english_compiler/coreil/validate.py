@@ -48,6 +48,10 @@ _ALLOWED_NODE_TYPES = {
     "Substring",
     "CharAt",
     "Join",
+    "SetHas",
+    "SetSize",
+    "SetAdd",
+    "SetRemove",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -339,6 +343,36 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(node["items"], f"{path}.items", defined)
             return
 
+        if node_type == "Set":
+            if "items" not in node:
+                add_error(f"{path}.items", "missing items")
+            else:
+                items = node.get("items")
+                if not isinstance(items, list):
+                    add_error(f"{path}.items", "items must be an array")
+                else:
+                    for i, item in enumerate(items):
+                        validate_expr(item, f"{path}.items[{i}]", defined)
+            return
+
+        if node_type == "SetHas":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
+        if node_type == "SetSize":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
         add_error(path, f"unexpected expression type '{node_type}'")
 
     def validate_stmt(
@@ -537,6 +571,28 @@ def validate_coreil(doc: dict) -> list[dict]:
             name = node.get("name")
             if not isinstance(name, str) or not name:
                 add_error(f"{path}.name", "missing or invalid field name")
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
+        if node_type == "SetAdd":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
+        if node_type == "SetRemove":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
             if "value" not in node:
                 add_error(f"{path}.value", "missing value")
             else:

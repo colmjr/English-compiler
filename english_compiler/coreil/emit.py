@@ -207,6 +207,24 @@ def emit_python(doc: dict) -> str:
             # Convert items to strings (matching interpreter behavior)
             return f"{sep}.join(str(x) for x in {items})"
 
+        if node_type == "Set":
+            items = node.get("items", [])
+            if not items:
+                # Empty set must use set() not {}
+                return "set()"
+            # Use set literal with braces for non-empty sets
+            item_exprs = [emit_expr(item) for item in items]
+            return "{" + ", ".join(item_exprs) + "}"
+
+        if node_type == "SetHas":
+            base = emit_expr(node.get("base"))
+            value = emit_expr(node.get("value"))
+            return f"({value} in {base})"
+
+        if node_type == "SetSize":
+            base = emit_expr(node.get("base"))
+            return f"len({base})"
+
         raise ValueError(f"unknown expression type: {node_type}")
 
     def emit_stmt(node: dict) -> None:
@@ -295,6 +313,19 @@ def emit_python(doc: dict) -> str:
             name = node.get("name")
             value = emit_expr(node.get("value"))
             emit_line(f'{base}["{name}"] = {value}')
+            return
+
+        if node_type == "SetAdd":
+            base = emit_expr(node.get("base"))
+            value = emit_expr(node.get("value"))
+            emit_line(f"{base}.add({value})")
+            return
+
+        if node_type == "SetRemove":
+            base = emit_expr(node.get("base"))
+            value = emit_expr(node.get("value"))
+            # Use discard for no-op semantics (matching interpreter)
+            emit_line(f"{base}.discard({value})")
             return
 
         if node_type == "FuncDef":
