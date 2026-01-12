@@ -1,10 +1,10 @@
 """Core IL JSON schema for structured output.
 
 This schema defines Core IL v1.1 structure for LLM frontends.
-Core IL v1.1 adds Record support for algorithm-friendly structured data.
+Core IL v1.1 adds Record, Set, String operations, and Deque support.
 
 Version history:
-- v1.1: Added Record, GetField, SetField for structured data
+- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations
 - v1.0: Stable release (frozen)
 
 Backward compatibility: Schema accepts v0.1 through v1.1 for validation,
@@ -54,6 +54,10 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/setfield_stmt"},
                 {"$ref": "#/definitions/setadd_stmt"},
                 {"$ref": "#/definitions/setremove_stmt"},
+                {"$ref": "#/definitions/pushback_stmt"},
+                {"$ref": "#/definitions/pushfront_stmt"},
+                {"$ref": "#/definitions/popfront_stmt"},
+                {"$ref": "#/definitions/popback_stmt"},
             ]
         },
         "let_stmt": {
@@ -201,6 +205,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/set_expr"},
                 {"$ref": "#/definitions/sethas_expr"},
                 {"$ref": "#/definitions/setsize_expr"},
+                {"$ref": "#/definitions/dequenew_expr"},
+                {"$ref": "#/definitions/dequesize_expr"},
             ]
         },
         "literal_expr": {
@@ -510,6 +516,63 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "SetRemove"},
                 "base": {"$ref": "#/definitions/expr"},
                 "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "dequenew_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type"],
+            "properties": {
+                "type": {"const": "DequeNew"},
+            },
+        },
+        "dequesize_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "DequeSize"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "pushback_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "value"],
+            "properties": {
+                "type": {"const": "PushBack"},
+                "base": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "pushfront_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "value"],
+            "properties": {
+                "type": {"const": "PushFront"},
+                "base": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "popfront_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "target"],
+            "properties": {
+                "type": {"const": "PopFront"},
+                "base": {"$ref": "#/definitions/expr"},
+                "target": {"type": "string"},
+            },
+        },
+        "popback_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "target"],
+            "properties": {
+                "type": {"const": "PopBack"},
+                "base": {"$ref": "#/definitions/expr"},
+                "target": {"type": "string"},
             },
         },
     },

@@ -2,8 +2,8 @@ You are a compiler frontend. Output only Core IL JSON (v1.1) matching the provid
 No prose, no markdown, no code fences.
 
 Core IL v1.1 constructs available:
-- Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, FuncDef, Return
-- Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, Set (literal), SetHas, SetSize, Call
+- Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, FuncDef, Return
+- Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, Set (literal), SetHas, SetSize, DequeNew, DequeSize, Call
 
 IMPORTANT: DO NOT invent helper functions like "get_or_default", "keys", "append", "entries".
 DO NOT use dot notation like "point.x" - use GetField/SetField instead.
@@ -129,4 +129,36 @@ Set example (remove duplicates from [1,2,2,3,3,3]):
     "type": "Print", "args": [{"type": "SetSize", "base": {"type": "Var", "name": "seen"}}]
   }
 
-Version: Use "coreil-1.1" for all programs. This is the current version with Record, string, and set support.
+Deque operations (v1.1 - double-ended queue for BFS/sliding window algorithms):
+  Create deque: {"type": "DequeNew"}
+  Get size: {"type": "DequeSize", "base": <deque_expr>}
+  Add to back (enqueue): {"type": "PushBack", "base": <deque_expr>, "value": <expr>}
+  Add to front: {"type": "PushFront", "base": <deque_expr>, "value": <expr>}
+  Remove from front (dequeue): {"type": "PopFront", "base": <deque_expr>, "target": "var_name"}
+  Remove from back: {"type": "PopBack", "base": <deque_expr>, "target": "var_name"}
+
+IMPORTANT: PopFront and PopBack are STATEMENTS that assign to a target variable, not expressions.
+DO NOT invent queue helper functions like "enqueue", "dequeue", "push", or "pop".
+Use the explicit primitives PushBack, PushFront, PopFront, PopBack instead.
+
+Deque example (FIFO queue - enqueue 1,2,3 then dequeue):
+  {
+    "type": "Let", "name": "q", "value": {"type": "DequeNew"}
+  },
+  {
+    "type": "PushBack", "base": {"type": "Var", "name": "q"}, "value": {"type": "Literal", "value": 1}
+  },
+  {
+    "type": "PushBack", "base": {"type": "Var", "name": "q"}, "value": {"type": "Literal", "value": 2}
+  },
+  {
+    "type": "PushBack", "base": {"type": "Var", "name": "q"}, "value": {"type": "Literal", "value": 3}
+  },
+  {
+    "type": "PopFront", "base": {"type": "Var", "name": "q"}, "target": "x"
+  },
+  {
+    "type": "Print", "args": [{"type": "Var", "name": "x"}]
+  }
+
+Version: Use "coreil-1.1" for all programs. This is the current version with Record, string, set, and deque support.

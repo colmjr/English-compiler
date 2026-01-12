@@ -1,0 +1,3 @@
+Create a queue and enqueue numbers 1, 2, and 3.
+Then dequeue all items and print them in FIFO order.
+Expected output: 1 2 3

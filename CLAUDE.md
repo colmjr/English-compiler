@@ -134,10 +134,12 @@ Cache reuse is based on matching source hash and Core IL hash.
 - Literal, Var, Binary, Array, Tuple, Map, Record, Set
 - Index, Length, Get, GetDefault, Keys, GetField, SetHas, SetSize
 - StringLength, Substring, CharAt, Join
+- DequeNew, DequeSize
 - Range, Call
 
 **Statements** (perform actions):
 - Let, Assign, SetIndex, Set, Push, SetField, SetAdd, SetRemove
+- PushBack, PushFront, PopFront, PopBack
 - Print, If, While, For, ForEach
 - FuncDef, Return
 
@@ -187,6 +189,18 @@ Cache reuse is based on matching source hash and Core IL hash.
 {"type": "SetHas", "base": <set>, "item": <expr>}
 {"type": "SetAdd", "base": <set>, "item": <expr>}
 ```
+
+**Deque (double-ended queue - v1.1)**:
+```json
+{"type": "DequeNew"}
+{"type": "DequeSize", "base": <deque>}
+{"type": "PushBack", "base": <deque>, "value": <expr>}
+{"type": "PushFront", "base": <deque>, "value": <expr>}
+{"type": "PopFront", "base": <deque>, "target": "varName"}
+{"type": "PopBack", "base": <deque>, "target": "varName"}
+```
+
+Note: PopFront and PopBack are statements that assign the popped value to the target variable.
 
 **Loops**:
 ```json

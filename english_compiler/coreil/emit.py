@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
 This file implements Core IL v1.1 to Python transpilation.
-Core IL v1.1 adds Record support for algorithm-friendly structured data.
+Core IL v1.1 adds Record, Set, String operations, and Deque support.
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -9,9 +9,12 @@ The generated Python code:
 - Preserves dictionary insertion order
 - Implements short-circuit evaluation naturally
 - Record support (mutable named fields)
+- Set operations (membership, add, remove, size)
+- Deque operations (double-ended queue)
+- Imports collections.deque only when used
 
 Version history:
-- v1.1: Added Record, GetField, SetField
+- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations
 - v1.0: Stable release (frozen)
 
 Backward compatibility: Accepts v0.1 through v1.1 programs.
@@ -32,6 +35,7 @@ def emit_python(doc: dict) -> str:
 
     lines: list[str] = []
     indent_level = 0
+    uses_deque = False  # Track if deque is used
 
     def emit_line(text: str) -> None:
         """Emit a line with current indentation."""
@@ -225,6 +229,15 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             return f"len({base})"
 
+        if node_type == "DequeNew":
+            nonlocal uses_deque
+            uses_deque = True
+            return "deque()"
+
+        if node_type == "DequeSize":
+            base = emit_expr(node.get("base"))
+            return f"len({base})"
+
         raise ValueError(f"unknown expression type: {node_type}")
 
     def emit_stmt(node: dict) -> None:
@@ -328,6 +341,30 @@ def emit_python(doc: dict) -> str:
             emit_line(f"{base}.discard({value})")
             return
 
+        if node_type == "PushBack":
+            base = emit_expr(node.get("base"))
+            value = emit_expr(node.get("value"))
+            emit_line(f"{base}.append({value})")
+            return
+
+        if node_type == "PushFront":
+            base = emit_expr(node.get("base"))
+            value = emit_expr(node.get("value"))
+            emit_line(f"{base}.appendleft({value})")
+            return
+
+        if node_type == "PopFront":
+            base = emit_expr(node.get("base"))
+            target = node.get("target")
+            emit_line(f"{target} = {base}.popleft()")
+            return
+
+        if node_type == "PopBack":
+            base = emit_expr(node.get("base"))
+            target = node.get("target")
+            emit_line(f"{target} = {base}.pop()")
+            return
+
         if node_type == "FuncDef":
             name = node.get("name")
             params = node.get("params", [])
@@ -375,5 +412,10 @@ def emit_python(doc: dict) -> str:
     body = doc.get("body", [])
     for stmt in body:
         emit_stmt(stmt)
+
+    # Prepend import if deque is used
+    if uses_deque:
+        lines.insert(0, "from collections import deque")
+        lines.insert(1, "")
 
     return "\n".join(lines) + "\n"
