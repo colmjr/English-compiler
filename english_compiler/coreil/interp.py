@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
 This file implements Core IL v1.1 semantics interpreter.
-Core IL v1.1 adds Record, Set, String operations, and Deque support.
+Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -10,10 +10,11 @@ Key features:
 - Record support (mutable named fields)
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
+- Heap operations (min-heap priority queue)
 - Recursion limit: 100 calls
 
 Version history:
-- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations
+- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
 Backward compatibility: Accepts v0.1 through v1.1 programs.
@@ -21,6 +22,7 @@ Backward compatibility: Accepts v0.1 through v1.1 programs.
 
 from __future__ import annotations
 
+import heapq
 from collections import deque
 from dataclasses import dataclass
 from typing import Any
@@ -320,6 +322,25 @@ def run_coreil(doc: dict) -> int:
                 raise ValueError(f"runtime error: DequeSize base must be a deque, got {type(base).__name__}")
             return len(base)
 
+        if node_type == "HeapNew":
+            # Return a dict with items list and counter for stable ordering
+            return {"_heap_items": [], "_heap_counter": 0}
+
+        if node_type == "HeapSize":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, dict) or "_heap_items" not in base:
+                raise ValueError(f"runtime error: HeapSize base must be a heap, got {type(base).__name__}")
+            return len(base["_heap_items"])
+
+        if node_type == "HeapPeek":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, dict) or "_heap_items" not in base:
+                raise ValueError(f"runtime error: HeapPeek base must be a heap, got {type(base).__name__}")
+            if len(base["_heap_items"]) == 0:
+                raise ValueError("runtime error: cannot peek from empty heap")
+            # Return the value (third element of the tuple: priority, counter, value)
+            return base["_heap_items"][0][2]
+
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
 
@@ -558,6 +579,35 @@ def run_coreil(doc: dict) -> int:
             if not isinstance(target, str):
                 raise ValueError("PopBack target must be a variable name")
             popped_value = base.pop()
+            if local_env is not None:
+                local_env[target] = popped_value
+            else:
+                global_env[target] = popped_value
+            return
+
+        if node_type == "HeapPush":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            if not isinstance(base, dict) or "_heap_items" not in base:
+                raise ValueError(f"runtime error: HeapPush base must be a heap, got {type(base).__name__}")
+            priority = eval_expr(node.get("priority"), local_env, call_depth)
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            # Use counter for stable ordering
+            counter = base["_heap_counter"]
+            base["_heap_counter"] = counter + 1
+            heapq.heappush(base["_heap_items"], (priority, counter, value))
+            return
+
+        if node_type == "HeapPop":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            if not isinstance(base, dict) or "_heap_items" not in base:
+                raise ValueError(f"runtime error: HeapPop base must be a heap, got {type(base).__name__}")
+            if len(base["_heap_items"]) == 0:
+                raise ValueError("runtime error: cannot pop from empty heap")
+            target = node.get("target")
+            if not isinstance(target, str):
+                raise ValueError("HeapPop target must be a variable name")
+            # Pop the min element and extract the value (third element)
+            _, _, popped_value = heapq.heappop(base["_heap_items"])
             if local_env is not None:
                 local_env[target] = popped_value
             else:

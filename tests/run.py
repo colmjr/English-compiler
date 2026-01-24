@@ -42,6 +42,8 @@ def main() -> None:
     _run_example(examples / "for_sum.coreil.json", "15\n")
     _run_example(examples / "foreach_print.coreil.json", "1\n2\n3\n")
     _run_example(examples / "map_demo.coreil.json", "2\n")
+    _run_example(examples / "heap_demo.coreil.json", "size: 3\npeek: one\npopped: one\npopped: three\npopped: five\n")
+    _run_example(examples / "heap_kth_smallest.coreil.json", "3rd smallest: 4\n")
 
     print("All tests passed.")
 
