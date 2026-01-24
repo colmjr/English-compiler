@@ -1,10 +1,10 @@
 """Core IL JSON schema for structured output.
 
 This schema defines Core IL v1.1 structure for LLM frontends.
-Core IL v1.1 adds Record, Set, String operations, and Deque support.
+Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
 
 Version history:
-- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations
+- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
 Backward compatibility: Schema accepts v0.1 through v1.1 for validation,
@@ -58,6 +58,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/pushfront_stmt"},
                 {"$ref": "#/definitions/popfront_stmt"},
                 {"$ref": "#/definitions/popback_stmt"},
+                {"$ref": "#/definitions/heappush_stmt"},
+                {"$ref": "#/definitions/heappop_stmt"},
             ]
         },
         "let_stmt": {
@@ -207,6 +209,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/setsize_expr"},
                 {"$ref": "#/definitions/dequenew_expr"},
                 {"$ref": "#/definitions/dequesize_expr"},
+                {"$ref": "#/definitions/heapnew_expr"},
+                {"$ref": "#/definitions/heapsize_expr"},
+                {"$ref": "#/definitions/heappeek_expr"},
             ]
         },
         "literal_expr": {
@@ -571,6 +576,53 @@ COREIL_JSON_SCHEMA = {
             "required": ["type", "base", "target"],
             "properties": {
                 "type": {"const": "PopBack"},
+                "base": {"$ref": "#/definitions/expr"},
+                "target": {"type": "string"},
+            },
+        },
+        "heapnew_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type"],
+            "properties": {
+                "type": {"const": "HeapNew"},
+            },
+        },
+        "heapsize_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "HeapSize"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "heappeek_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "HeapPeek"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "heappush_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "priority", "value"],
+            "properties": {
+                "type": {"const": "HeapPush"},
+                "base": {"$ref": "#/definitions/expr"},
+                "priority": {"$ref": "#/definitions/expr"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "heappop_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "target"],
+            "properties": {
+                "type": {"const": "HeapPop"},
                 "base": {"$ref": "#/definitions/expr"},
                 "target": {"type": "string"},
             },

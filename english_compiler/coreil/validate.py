@@ -1,10 +1,10 @@
 """Core IL validation.
 
 This file implements Core IL v1.1 semantics validation.
-Core IL v1.1 adds Record, Set, String operations, and Deque support.
+Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
 
 Version history:
-- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations
+- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
 Backward compatibility: Accepts v0.1 through v1.1 programs.
@@ -58,6 +58,11 @@ _ALLOWED_NODE_TYPES = {
     "PushFront",
     "PopFront",
     "PopBack",
+    "HeapNew",
+    "HeapSize",
+    "HeapPeek",
+    "HeapPush",
+    "HeapPop",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -390,6 +395,24 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(node["base"], f"{path}.base", defined)
             return
 
+        if node_type == "HeapNew":
+            # HeapNew takes no arguments
+            return
+
+        if node_type == "HeapSize":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "HeapPeek":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
         add_error(path, f"unexpected expression type '{node_type}'")
 
     def validate_stmt(
@@ -651,6 +674,33 @@ def validate_coreil(doc: dict) -> list[dict]:
             return
 
         if node_type == "PopBack":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            target = node.get("target")
+            if not isinstance(target, str) or not target:
+                add_error(f"{path}.target", "missing or invalid target variable name")
+            else:
+                defined.add(target)
+            return
+
+        if node_type == "HeapPush":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "priority" not in node:
+                add_error(f"{path}.priority", "missing priority")
+            else:
+                validate_expr(node["priority"], f"{path}.priority", defined)
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            return
+
+        if node_type == "HeapPop":
             if "base" not in node:
                 add_error(f"{path}.base", "missing base")
             else:

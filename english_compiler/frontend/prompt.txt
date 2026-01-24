@@ -2,12 +2,13 @@ You are a compiler frontend. Output only Core IL JSON (v1.1) matching the provid
 No prose, no markdown, no code fences.
 
 Core IL v1.1 constructs available:
-- Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, FuncDef, Return
-- Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, Set (literal), SetHas, SetSize, DequeNew, DequeSize, Call
+- Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, HeapPush, HeapPop, FuncDef, Return
+- Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Call
 
 IMPORTANT: DO NOT invent helper functions like "get_or_default", "keys", "append", "entries".
 DO NOT use dot notation like "point.x" - use GetField/SetField instead.
 For set membership checks, use SetHas - DO NOT invent "contains" or "has" helpers.
+For heap operations, use HeapPush/HeapPop/HeapPeek - DO NOT invent "heappush", "heappop", "insert", "extract_min" helpers.
 Use the explicit primitives below instead.
 
 Core IL v1.1 is a closed specification. All operations must use explicit primitives.
@@ -161,4 +162,47 @@ Deque example (FIFO queue - enqueue 1,2,3 then dequeue):
     "type": "Print", "args": [{"type": "Var", "name": "x"}]
   }
 
-Version: Use "coreil-1.1" for all programs. This is the current version with Record, string, set, and deque support.
+Heap operations (v1.1 - min-heap priority queue for Dijkstra, k-th smallest, etc.):
+  Create heap: {"type": "HeapNew"}
+  Get size: {"type": "HeapSize", "base": <heap_expr>}
+  Peek min value: {"type": "HeapPeek", "base": <heap_expr>}
+  Push with priority: {"type": "HeapPush", "base": <heap_expr>, "priority": <num_expr>, "value": <expr>}
+  Pop min value: {"type": "HeapPop", "base": <heap_expr>, "target": "var_name"}
+
+IMPORTANT: HeapPush takes BOTH priority and value - use priority for ordering, value for the data.
+HeapPeek and HeapPop return the VALUE, not the priority.
+HeapPop is a STATEMENT that assigns to a target variable (like PopFront).
+DO NOT invent heap helpers like "heappush", "heappop", "insert", "extract_min".
+
+Heap example (find 3rd smallest from [5, 1, 8, 3, 2]):
+  {
+    "type": "Let", "name": "nums", "value": {"type": "Array", "items": [
+      {"type": "Literal", "value": 5},
+      {"type": "Literal", "value": 1},
+      {"type": "Literal", "value": 8},
+      {"type": "Literal", "value": 3},
+      {"type": "Literal", "value": 2}
+    ]}
+  },
+  {
+    "type": "Let", "name": "h", "value": {"type": "HeapNew"}
+  },
+  {
+    "type": "ForEach", "var": "n", "iter": {"type": "Var", "name": "nums"}, "body": [
+      {"type": "HeapPush", "base": {"type": "Var", "name": "h"}, "priority": {"type": "Var", "name": "n"}, "value": {"type": "Var", "name": "n"}}
+    ]
+  },
+  {
+    "type": "HeapPop", "base": {"type": "Var", "name": "h"}, "target": "first"
+  },
+  {
+    "type": "HeapPop", "base": {"type": "Var", "name": "h"}, "target": "second"
+  },
+  {
+    "type": "HeapPop", "base": {"type": "Var", "name": "h"}, "target": "third"
+  },
+  {
+    "type": "Print", "args": [{"type": "Var", "name": "third"}]
+  }
+
+Version: Use "coreil-1.1" for all programs. This is the current version with Record, string, set, deque, and heap support.

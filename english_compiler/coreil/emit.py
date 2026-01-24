@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
 This file implements Core IL v1.1 to Python transpilation.
-Core IL v1.1 adds Record, Set, String operations, and Deque support.
+Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -11,10 +11,11 @@ The generated Python code:
 - Record support (mutable named fields)
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
-- Imports collections.deque only when used
+- Heap operations (min-heap priority queue)
+- Imports collections.deque and heapq only when used
 
 Version history:
-- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations
+- v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
 Backward compatibility: Accepts v0.1 through v1.1 programs.
@@ -36,6 +37,7 @@ def emit_python(doc: dict) -> str:
     lines: list[str] = []
     indent_level = 0
     uses_deque = False  # Track if deque is used
+    uses_heapq = False  # Track if heapq is used
 
     def emit_line(text: str) -> None:
         """Emit a line with current indentation."""
@@ -238,11 +240,24 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             return f"len({base})"
 
+        if node_type == "HeapNew":
+            nonlocal uses_heapq
+            uses_heapq = True
+            return '{"_heap_items": [], "_heap_counter": 0}'
+
+        if node_type == "HeapSize":
+            base = emit_expr(node.get("base"))
+            return f'len({base}["_heap_items"])'
+
+        if node_type == "HeapPeek":
+            base = emit_expr(node.get("base"))
+            return f'{base}["_heap_items"][0][2]'
+
         raise ValueError(f"unknown expression type: {node_type}")
 
     def emit_stmt(node: dict) -> None:
         """Generate Python statement code."""
-        nonlocal indent_level
+        nonlocal indent_level, uses_heapq
 
         if not isinstance(node, dict):
             raise ValueError("expected statement node")
@@ -365,6 +380,24 @@ def emit_python(doc: dict) -> str:
             emit_line(f"{target} = {base}.pop()")
             return
 
+        if node_type == "HeapPush":
+            uses_heapq = True
+            base = emit_expr(node.get("base"))
+            priority = emit_expr(node.get("priority"))
+            value = emit_expr(node.get("value"))
+            # Increment counter and push (priority, counter, value) tuple
+            emit_line(f'{base}["_heap_counter"] += 1')
+            emit_line(f'heapq.heappush({base}["_heap_items"], ({priority}, {base}["_heap_counter"] - 1, {value}))')
+            return
+
+        if node_type == "HeapPop":
+            uses_heapq = True
+            base = emit_expr(node.get("base"))
+            target = node.get("target")
+            # Pop returns (priority, counter, value), extract value
+            emit_line(f'{target} = heapq.heappop({base}["_heap_items"])[2]')
+            return
+
         if node_type == "FuncDef":
             name = node.get("name")
             params = node.get("params", [])
@@ -413,9 +446,15 @@ def emit_python(doc: dict) -> str:
     for stmt in body:
         emit_stmt(stmt)
 
-    # Prepend import if deque is used
+    # Prepend imports if deque or heapq are used
+    import_lines = []
     if uses_deque:
-        lines.insert(0, "from collections import deque")
-        lines.insert(1, "")
+        import_lines.append("from collections import deque")
+    if uses_heapq:
+        import_lines.append("import heapq")
+    if import_lines:
+        for i, line in enumerate(import_lines):
+            lines.insert(i, line)
+        lines.insert(len(import_lines), "")
 
     return "\n".join(lines) + "\n"
