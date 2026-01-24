@@ -1,7 +1,0 @@
-{
-  "coreil_sha256": "15b8bc2749a6276600970ca7b79f7d30f958d12f220d243db70b97ec4bf5cd03",
-  "created_at": "2026-01-10T13:55:34.435054+00:00",
-  "model": "mock",
-  "source_sha256": "db9f51b678b58fcf14dd24ae2156d9cac1c369e9ac3a2d932fe97ea335710905",
-  "system_prompt_version": "dev"
-}

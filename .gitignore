@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# English Compiler generated artifacts
+*.coreil.json
+*.lock.json
+
+# Generated Python code from Core IL transpilation
+examples/*.py
+tests/algorithms/*.py
