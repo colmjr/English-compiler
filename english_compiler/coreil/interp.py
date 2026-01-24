@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.1 semantics interpreter.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This file implements Core IL v1.2 semantics interpreter.
+Core IL v1.2 adds Math operations (Math, MathPow, MathConst).
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -11,18 +11,21 @@ Key features:
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
+- Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
 - Recursion limit: 100 calls
 
 Version history:
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.1 programs.
+Backward compatibility: Accepts v0.1 through v1.2 programs.
 """
 
 from __future__ import annotations
 
 import heapq
+import math
 from collections import deque
 from dataclasses import dataclass
 from typing import Any
@@ -344,6 +347,38 @@ def run_coreil(doc: dict) -> int:
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
 
+        if node_type == "Math":
+            op = node.get("op")
+            arg = eval_expr(node.get("arg"), local_env, call_depth)
+            ops = {
+                "sin": math.sin,
+                "cos": math.cos,
+                "tan": math.tan,
+                "sqrt": math.sqrt,
+                "floor": math.floor,
+                "ceil": math.ceil,
+                "abs": abs,
+                "log": math.log,
+                "exp": math.exp,
+            }
+            if op not in ops:
+                raise ValueError(f"unknown math op '{op}'")
+            return ops[op](arg)
+
+        if node_type == "MathPow":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            exponent = eval_expr(node.get("exponent"), local_env, call_depth)
+            return math.pow(base, exponent)
+
+        if node_type == "MathConst":
+            name = node.get("name")
+            if name == "pi":
+                return math.pi
+            elif name == "e":
+                return math.e
+            else:
+                raise ValueError(f"unknown math constant '{name}'")
+
         raise ValueError(f"unexpected expression type '{node_type}'")
 
     def call_builtin(name: str, args: list[Any]) -> Any:
@@ -646,11 +681,12 @@ def run_coreil(doc: dict) -> int:
             raise ValueError("document must be an object")
 
         # Core IL Version Check
-        # v1.1 is the current version (adds Record support)
+        # v1.2 is the current version (adds Math operations)
+        # v1.1 adds Record support
         # v1.0 is stable and frozen
         # v0.1-v0.5 are accepted for backward compatibility
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', or 'coreil-1.1'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', or 'coreil-1.2'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

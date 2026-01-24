@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.1 to Python transpilation.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This file implements Core IL v1.2 to Python transpilation.
+Core IL v1.2 adds Math operations (Math, MathPow, MathConst).
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -12,13 +12,15 @@ The generated Python code:
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
-- Imports collections.deque and heapq only when used
+- Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
+- Imports collections.deque, heapq, and math only when used
 
 Version history:
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.1 programs.
+Backward compatibility: Accepts v0.1 through v1.2 programs.
 """
 
 from __future__ import annotations
@@ -38,6 +40,7 @@ def emit_python(doc: dict) -> str:
     indent_level = 0
     uses_deque = False  # Track if deque is used
     uses_heapq = False  # Track if heapq is used
+    uses_math = False   # Track if math is used
 
     def emit_line(text: str) -> None:
         """Emit a line with current indentation."""
@@ -45,6 +48,8 @@ def emit_python(doc: dict) -> str:
 
     def emit_expr(node: dict) -> str:
         """Generate Python expression code."""
+        nonlocal uses_deque, uses_heapq, uses_math
+
         if not isinstance(node, dict):
             raise ValueError("expected expression node")
 
@@ -232,7 +237,6 @@ def emit_python(doc: dict) -> str:
             return f"len({base})"
 
         if node_type == "DequeNew":
-            nonlocal uses_deque
             uses_deque = True
             return "deque()"
 
@@ -241,7 +245,6 @@ def emit_python(doc: dict) -> str:
             return f"len({base})"
 
         if node_type == "HeapNew":
-            nonlocal uses_heapq
             uses_heapq = True
             return '{"_heap_items": [], "_heap_counter": 0}'
 
@@ -253,11 +256,30 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             return f'{base}["_heap_items"][0][2]'
 
+        if node_type == "Math":
+            uses_math = True
+            op = node.get("op")
+            arg = emit_expr(node.get("arg"))
+            if op == "abs":
+                return f"abs({arg})"  # abs is a Python builtin
+            return f"math.{op}({arg})"
+
+        if node_type == "MathPow":
+            uses_math = True
+            base = emit_expr(node.get("base"))
+            exponent = emit_expr(node.get("exponent"))
+            return f"math.pow({base}, {exponent})"
+
+        if node_type == "MathConst":
+            uses_math = True
+            name = node.get("name")
+            return f"math.{name}"
+
         raise ValueError(f"unknown expression type: {node_type}")
 
     def emit_stmt(node: dict) -> None:
         """Generate Python statement code."""
-        nonlocal indent_level, uses_heapq
+        nonlocal indent_level, uses_heapq, uses_math
 
         if not isinstance(node, dict):
             raise ValueError("expected statement node")
@@ -446,12 +468,14 @@ def emit_python(doc: dict) -> str:
     for stmt in body:
         emit_stmt(stmt)
 
-    # Prepend imports if deque or heapq are used
+    # Prepend imports if deque, heapq, or math are used
     import_lines = []
     if uses_deque:
         import_lines.append("from collections import deque")
     if uses_heapq:
         import_lines.append("import heapq")
+    if uses_math:
+        import_lines.append("import math")
     if import_lines:
         for i, line in enumerate(import_lines):
             lines.insert(i, line)

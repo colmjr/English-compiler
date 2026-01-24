@@ -1,14 +1,15 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.1 structure for LLM frontends.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This schema defines Core IL v1.2 structure for LLM frontends.
+Core IL v1.2 adds Math operations (Math, MathPow, MathConst).
 
 Version history:
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.1 for validation,
-but LLMs should generate v1.1 programs.
+Backward compatibility: Schema accepts v0.1 through v1.2 for validation,
+but LLMs should generate v1.2 programs.
 """
 
 COREIL_JSON_SCHEMA = {
@@ -16,7 +17,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -212,6 +213,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/heapnew_expr"},
                 {"$ref": "#/definitions/heapsize_expr"},
                 {"$ref": "#/definitions/heappeek_expr"},
+                {"$ref": "#/definitions/math_expr"},
+                {"$ref": "#/definitions/mathpow_expr"},
+                {"$ref": "#/definitions/mathconst_expr"},
             ]
         },
         "literal_expr": {
@@ -625,6 +629,35 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "HeapPop"},
                 "base": {"$ref": "#/definitions/expr"},
                 "target": {"type": "string"},
+            },
+        },
+        "math_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "op", "arg"],
+            "properties": {
+                "type": {"const": "Math"},
+                "op": {"enum": ["sin", "cos", "tan", "sqrt", "floor", "ceil", "abs", "log", "exp"]},
+                "arg": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "mathpow_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "exponent"],
+            "properties": {
+                "type": {"const": "MathPow"},
+                "base": {"$ref": "#/definitions/expr"},
+                "exponent": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "mathconst_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "name"],
+            "properties": {
+                "type": {"const": "MathConst"},
+                "name": {"enum": ["pi", "e"]},
             },
         },
     },

@@ -72,7 +72,7 @@ python -m scripts.demo_claude_compile
     - `claude.py` - Claude API integration
     - `mock_llm.py` - Mock generator (deterministic, for testing)
     - `prompt.txt` - System prompt for Core IL generation
-    - `coreil_schema.py` - JSON schema for Core IL v1.1
+    - `coreil_schema.py` - JSON schema for Core IL v1.2
   - `__main__.py` - CLI entry point
 
 - `tests/` - Test suite
@@ -88,11 +88,11 @@ python -m scripts.demo_claude_compile
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.1 (`"coreil-1.1"`)
+**Current stable version**: Core IL v1.2 (`"coreil-1.2"`)
 
-Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations while maintaining full backward compatibility.
+Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). All maintain full backward compatibility.
 
-All versions from v0.1 through v1.1 are supported for backward compatibility. The codebase uses version constants:
+All versions from v0.1 through v1.2 are supported for backward compatibility. The codebase uses version constants:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
@@ -135,6 +135,7 @@ Cache reuse is based on matching source hash and Core IL hash.
 - Index, Length, Get, GetDefault, Keys, GetField, SetHas, SetSize
 - StringLength, Substring, CharAt, Join
 - DequeNew, DequeSize
+- Math, MathPow, MathConst
 - Range, Call
 
 **Statements** (perform actions):
@@ -208,6 +209,15 @@ Note: PopFront and PopBack are statements that assign the popped value to the ta
 {"type": "ForEach", "var": "x", "iter": <array_expr>, "body": [...]}
 ```
 
+**Math operations (v1.2)**:
+```json
+{"type": "Math", "op": "sin|cos|tan|sqrt|floor|ceil|abs|log|exp", "arg": <expr>}
+{"type": "MathPow", "base": <expr>, "exponent": <expr>}
+{"type": "MathConst", "name": "pi|e"}
+```
+
+Supported ops: sin, cos, tan (radians), sqrt, floor, ceil, abs, log (natural), exp (e^x)
+
 ## Testing Strategy
 
 ### Test Hierarchy
@@ -257,7 +267,7 @@ Create `tests/algorithms/new_algorithm.txt` with natural English pseudocode. The
 
 3. **Don't assume static types**: Core IL uses runtime type checking. Operations validate inputs and produce clear error messages.
 
-4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ with backward compatibility.
+4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque) and v1.2+ (Math) with backward compatibility.
 
 5. **Don't skip lowering**: For/ForEach must be lowered before backend execution (happens automatically in `emit_python()`).
 

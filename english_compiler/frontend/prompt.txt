@@ -18,7 +18,7 @@ No prose, no markdown, no code fences.
 
 Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, HeapPush, HeapPop, FuncDef, Return
 
-Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Call
+Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, Call
 
 === DATA STRUCTURES QUICK REFERENCE ===
 
@@ -123,6 +123,20 @@ Substring (end-exclusive): {"type": "Substring", "base": <string>, "start": <int
 Get character: {"type": "CharAt", "base": <string>, "index": <int>}
 Join array: {"type": "Join", "sep": <string>, "items": <array>}
 
+=== MATH OPERATIONS ===
+
+Unary functions: {"type": "Math", "op": "sin|cos|tan|sqrt|floor|ceil|abs|log|exp", "arg": <expr>}
+Power: {"type": "MathPow", "base": <expr>, "exponent": <expr>}
+Constants: {"type": "MathConst", "name": "pi|e"}
+
+Supported operations:
+- sin, cos, tan: Trigonometric functions (radians)
+- sqrt: Square root
+- floor, ceil: Rounding down/up to integer
+- abs: Absolute value
+- log: Natural logarithm
+- exp: e^x (exponential)
+
 === EXAMPLES ===
 
 Example 1: Counting with Map (bigram frequency)
@@ -171,4 +185,4 @@ Example 5: Record for structured data
 
 === VERSION ===
 
-Use "coreil-1.1" for all programs. This version supports all data structures: Array, Map, Set, Tuple, Record, Deque, and Heap.
+Use "coreil-1.2" for all programs. This version supports all data structures: Array, Map, Set, Tuple, Record, Deque, Heap, and Math operations.

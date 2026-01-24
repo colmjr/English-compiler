@@ -44,6 +44,7 @@ def main() -> None:
     _run_example(examples / "map_demo.coreil.json", "2\n")
     _run_example(examples / "heap_demo.coreil.json", "size: 3\npeek: one\npopped: one\npopped: three\npopped: five\n")
     _run_example(examples / "heap_kth_smallest.coreil.json", "3rd smallest: 4\n")
+    _run_example(examples / "math_basic.coreil.json", "0.8414709848078965\n3.0\n3.141592653589793\n")
 
     print("All tests passed.")
 
