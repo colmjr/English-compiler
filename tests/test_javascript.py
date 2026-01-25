@@ -411,6 +411,51 @@ def test_record():
     _test_parity(doc, "record")
 
 
+def test_slice():
+    doc = {
+        "version": "coreil-1.5",
+        "body": [
+            {"type": "Let", "name": "arr", "value": {"type": "Array", "items": [
+                {"type": "Literal", "value": 1},
+                {"type": "Literal", "value": 2},
+                {"type": "Literal", "value": 3},
+                {"type": "Literal", "value": 4},
+                {"type": "Literal", "value": 5},
+            ]}},
+            # Slice middle elements [1:4] -> [2, 3, 4]
+            {"type": "Print", "args": [{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": 1}, "end": {"type": "Literal", "value": 4}}]},
+            # Slice from start [0:2] -> [1, 2]
+            {"type": "Print", "args": [{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": 0}, "end": {"type": "Literal", "value": 2}}]},
+            # Slice to end [3:5] -> [4, 5]
+            {"type": "Print", "args": [{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": 3}, "end": {"type": "Literal", "value": 5}}]},
+            # Empty slice [2:2] -> []
+            {"type": "Print", "args": [{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": 2}, "end": {"type": "Literal", "value": 2}}]},
+        ]
+    }
+    _test_parity(doc, "slice")
+
+
+def test_not():
+    doc = {
+        "version": "coreil-1.5",
+        "body": [
+            # not True -> False
+            {"type": "Print", "args": [{"type": "Not", "arg": {"type": "Literal", "value": True}}]},
+            # not False -> True
+            {"type": "Print", "args": [{"type": "Not", "arg": {"type": "Literal", "value": False}}]},
+            # not 0 -> True (falsy)
+            {"type": "Print", "args": [{"type": "Not", "arg": {"type": "Literal", "value": 0}}]},
+            # not 1 -> False (truthy)
+            {"type": "Print", "args": [{"type": "Not", "arg": {"type": "Literal", "value": 1}}]},
+            # not "" -> True (falsy)
+            {"type": "Print", "args": [{"type": "Not", "arg": {"type": "Literal", "value": ""}}]},
+            # not "hello" -> False (truthy)
+            {"type": "Print", "args": [{"type": "Not", "arg": {"type": "Literal", "value": "hello"}}]},
+        ]
+    }
+    _test_parity(doc, "not")
+
+
 def main() -> int:
     if not _NODE_AVAILABLE:
         print("Node.js not available - skipping JavaScript tests")
@@ -442,6 +487,8 @@ def main() -> int:
         test_function,
         test_recursive_function,
         test_record,
+        test_slice,
+        test_not,
     ]
 
     failures = []

@@ -1,0 +1,61 @@
+{
+  "version": "coreil-1.5",
+  "body": [
+    {
+      "type": "Let",
+      "name": "arr",
+      "value": {
+        "type": "Array",
+        "items": [
+          {"type": "Literal", "value": 1},
+          {"type": "Literal", "value": 2},
+          {"type": "Literal", "value": 3},
+          {"type": "Literal", "value": 4},
+          {"type": "Literal", "value": 5}
+        ]
+      }
+    },
+    {
+      "type": "Let",
+      "name": "slice1",
+      "value": {
+        "type": "Slice",
+        "base": {"type": "Var", "name": "arr"},
+        "start": {"type": "Literal", "value": 1},
+        "end": {"type": "Literal", "value": 4}
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "slice1"}]
+    },
+    {
+      "type": "Let",
+      "name": "slice2",
+      "value": {
+        "type": "Slice",
+        "base": {"type": "Var", "name": "arr"},
+        "start": {"type": "Literal", "value": 0},
+        "end": {"type": "Literal", "value": 2}
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "slice2"}]
+    },
+    {
+      "type": "Let",
+      "name": "slice3",
+      "value": {
+        "type": "Slice",
+        "base": {"type": "Var", "name": "arr"},
+        "start": {"type": "Literal", "value": 3},
+        "end": {"type": "Literal", "value": 5}
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "slice3"}]
+    }
+  ]
+}

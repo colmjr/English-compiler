@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.4 to Python transpilation.
-Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
+This file implements Core IL v1.5 to Python transpilation.
+Core IL v1.5 adds array/list slicing and unary not operations.
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -15,16 +15,19 @@ The generated Python code:
 - Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
 - JSON operations (parse, stringify)
 - Regex operations (match, findall, replace, split)
+- Array slicing (Slice)
+- Unary not (Not)
 - Imports collections.deque, heapq, math, json, and re only when used
 
 Version history:
+- v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.4 programs.
+Backward compatibility: Accepts v0.1 through v1.5 programs.
 """
 
 from __future__ import annotations
@@ -132,6 +135,16 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             index = emit_expr(node.get("index"))
             return f"{base}[{index}]"
+
+        if node_type == "Slice":
+            base = emit_expr(node.get("base"))
+            start = emit_expr(node.get("start"))
+            end = emit_expr(node.get("end"))
+            return f"{base}[{start}:{end}]"
+
+        if node_type == "Not":
+            arg = emit_expr(node.get("arg"))
+            return f"(not {arg})"
 
         if node_type == "Length":
             base = emit_expr(node.get("base"))

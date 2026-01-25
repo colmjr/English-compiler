@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.4 semantics interpreter.
-Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
+This file implements Core IL v1.5 semantics interpreter.
+Core IL v1.5 adds array/list slicing and unary not operations.
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -14,16 +14,19 @@ Key features:
 - Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
 - JSON operations (parse, stringify)
 - Regex operations (match, findall, replace, split)
+- Array slicing (Slice)
+- Unary not (Not)
 - Recursion limit: 100 calls
 
 Version history:
+- v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.4 programs.
+Backward compatibility: Accepts v0.1 through v1.5 programs.
 """
 
 from __future__ import annotations
@@ -172,6 +175,25 @@ def run_coreil(doc: dict) -> int:
             if index >= len(base):
                 raise ValueError("Index out of range")
             return base[index]
+
+        if node_type == "Slice":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            if not isinstance(base, (list, tuple)):
+                raise ValueError(f"runtime error: Slice base must be an array or tuple, got {type(base).__name__}")
+            start = eval_expr(node["start"], local_env, call_depth)
+            end = eval_expr(node["end"], local_env, call_depth)
+            if not isinstance(start, int) or start < 0:
+                raise ValueError(f"runtime error: Slice start must be a non-negative integer, got {start}")
+            if not isinstance(end, int) or end < 0:
+                raise ValueError(f"runtime error: Slice end must be a non-negative integer, got {end}")
+            # Python slicing automatically clamps, but we raise error for out-of-range
+            if start > len(base) or end > len(base):
+                raise ValueError(f"runtime error: Slice range [{start}:{end}) out of bounds for array of length {len(base)}")
+            return list(base[start:end])
+
+        if node_type == "Not":
+            arg = eval_expr(node.get("arg"), local_env, call_depth)
+            return not arg
 
         if node_type == "Length":
             base = eval_expr(node.get("base"), local_env, call_depth)
@@ -894,8 +916,8 @@ def run_coreil(doc: dict) -> int:
         # v1.1 adds Record support
         # v1.0 is stable and frozen
         # v0.1-v0.5 are accepted for backward compatibility
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', or 'coreil-1.4'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', or 'coreil-1.5'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")
