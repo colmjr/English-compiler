@@ -44,6 +44,8 @@ def main() -> None:
     _run_example(examples / "map_demo.coreil.json", "2\n")
     _run_example(examples / "heap_demo.coreil.json", "size: 3\npeek: one\npopped: one\npopped: three\npopped: five\n")
     _run_example(examples / "heap_kth_smallest.coreil.json", "3rd smallest: 4\n")
+    _run_example(examples / "json_basic.coreil.json", "test\n42\n[1, 2, 3]\n")
+    _run_example(examples / "regex_basic.coreil.json", "has digits: True\nfound digits: ['123', '456']\nreplaced: Hello NUM World NUM\nsplit: ['a', 'b', 'c', 'd']\n")
 
     print("All tests passed.")
 

@@ -1,0 +1,11 @@
+{
+  "version": "coreil-1.3",
+  "body": [
+    {"type": "Let", "name": "jsonStr", "value": {"type": "Literal", "value": "{\"name\": \"test\", \"count\": 42}"}},
+    {"type": "Let", "name": "data", "value": {"type": "JsonParse", "source": {"type": "Var", "name": "jsonStr"}}},
+    {"type": "Print", "args": [{"type": "Get", "base": {"type": "Var", "name": "data"}, "key": {"type": "Literal", "value": "name"}}]},
+    {"type": "Print", "args": [{"type": "Get", "base": {"type": "Var", "name": "data"}, "key": {"type": "Literal", "value": "count"}}]},
+    {"type": "Let", "name": "arr", "value": {"type": "Array", "items": [{"type": "Literal", "value": 1}, {"type": "Literal", "value": 2}, {"type": "Literal", "value": 3}]}},
+    {"type": "Print", "args": [{"type": "JsonStringify", "value": {"type": "Var", "name": "arr"}}]}
+  ]
+}

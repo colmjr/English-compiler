@@ -1,0 +1,15 @@
+{
+  "version": "coreil-1.3",
+  "body": [
+    {"type": "Let", "name": "text", "value": {"type": "Literal", "value": "Hello 123 World 456"}},
+    {"type": "Let", "name": "hasDigits", "value": {"type": "RegexMatch", "string": {"type": "Var", "name": "text"}, "pattern": {"type": "Literal", "value": "\\d+"}}},
+    {"type": "Print", "args": [{"type": "Literal", "value": "has digits:"}, {"type": "Var", "name": "hasDigits"}]},
+    {"type": "Let", "name": "digits", "value": {"type": "RegexFindAll", "string": {"type": "Var", "name": "text"}, "pattern": {"type": "Literal", "value": "\\d+"}}},
+    {"type": "Print", "args": [{"type": "Literal", "value": "found digits:"}, {"type": "Var", "name": "digits"}]},
+    {"type": "Let", "name": "replaced", "value": {"type": "RegexReplace", "string": {"type": "Var", "name": "text"}, "pattern": {"type": "Literal", "value": "\\d+"}, "replacement": {"type": "Literal", "value": "NUM"}}},
+    {"type": "Print", "args": [{"type": "Literal", "value": "replaced:"}, {"type": "Var", "name": "replaced"}]},
+    {"type": "Let", "name": "csv", "value": {"type": "Literal", "value": "a,b,c,d"}},
+    {"type": "Let", "name": "parts", "value": {"type": "RegexSplit", "string": {"type": "Var", "name": "csv"}, "pattern": {"type": "Literal", "value": ","}}},
+    {"type": "Print", "args": [{"type": "Literal", "value": "split:"}, {"type": "Var", "name": "parts"}]}
+  ]
+}

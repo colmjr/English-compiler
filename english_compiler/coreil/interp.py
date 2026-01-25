@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.1 semantics interpreter.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This file implements Core IL v1.3 semantics interpreter.
+Core IL v1.3 adds JSON operations and Regex operations.
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -11,21 +11,39 @@ Key features:
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
+- JSON operations (parse, stringify)
+- Regex operations (match, findall, replace, split)
 - Recursion limit: 100 calls
 
 Version history:
+- v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.1 programs.
+Backward compatibility: Accepts v0.1 through v1.3 programs.
 """
 
 from __future__ import annotations
 
 import heapq
+import json
+import re
 from collections import deque
 from dataclasses import dataclass
 from typing import Any
+
+
+def _parse_regex_flags(flags_str: str) -> int:
+    """Convert flags string to Python re flags."""
+    flags = 0
+    if flags_str:
+        if 'i' in flags_str:
+            flags |= re.IGNORECASE
+        if 'm' in flags_str:
+            flags |= re.MULTILINE
+        if 's' in flags_str:
+            flags |= re.DOTALL
+    return flags
 
 
 _BINARY_OPS = {
@@ -344,6 +362,114 @@ def run_coreil(doc: dict) -> int:
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
 
+        # JSON operations (v1.3)
+        if node_type == "JsonParse":
+            source = eval_expr(node.get("source"), local_env, call_depth)
+            if not isinstance(source, str):
+                raise ValueError(f"runtime error: JsonParse source must be a string, got {type(source).__name__}")
+            try:
+                return json.loads(source)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"runtime error: invalid JSON: {e}")
+
+        if node_type == "JsonStringify":
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            pretty = node.get("pretty")
+            indent = None
+            if pretty:
+                pretty_val = eval_expr(pretty, local_env, call_depth)
+                if pretty_val:
+                    indent = 2
+            # Handle non-serializable types
+            def default_serializer(obj):
+                if isinstance(obj, set):
+                    return list(obj)
+                if isinstance(obj, deque):
+                    return list(obj)
+                if hasattr(obj, '__iter__') and not isinstance(obj, (str, dict, list)):
+                    return list(obj)
+                raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+            return json.dumps(value, indent=indent, default=default_serializer)
+
+        # Regex operations (v1.3)
+        if node_type == "RegexMatch":
+            string = eval_expr(node.get("string"), local_env, call_depth)
+            if not isinstance(string, str):
+                raise ValueError(f"runtime error: RegexMatch string must be a string, got {type(string).__name__}")
+            pattern = eval_expr(node.get("pattern"), local_env, call_depth)
+            if not isinstance(pattern, str):
+                raise ValueError(f"runtime error: RegexMatch pattern must be a string, got {type(pattern).__name__}")
+            flags_node = node.get("flags")
+            flags_str = ""
+            if flags_node:
+                flags_str = eval_expr(flags_node, local_env, call_depth) or ""
+            flags = _parse_regex_flags(flags_str)
+            try:
+                match = re.search(pattern, string, flags)
+                return match is not None
+            except re.error as e:
+                raise ValueError(f"runtime error: invalid regex pattern: {e}")
+
+        if node_type == "RegexFindAll":
+            string = eval_expr(node.get("string"), local_env, call_depth)
+            if not isinstance(string, str):
+                raise ValueError(f"runtime error: RegexFindAll string must be a string, got {type(string).__name__}")
+            pattern = eval_expr(node.get("pattern"), local_env, call_depth)
+            if not isinstance(pattern, str):
+                raise ValueError(f"runtime error: RegexFindAll pattern must be a string, got {type(pattern).__name__}")
+            flags_node = node.get("flags")
+            flags_str = ""
+            if flags_node:
+                flags_str = eval_expr(flags_node, local_env, call_depth) or ""
+            flags = _parse_regex_flags(flags_str)
+            try:
+                return re.findall(pattern, string, flags)
+            except re.error as e:
+                raise ValueError(f"runtime error: invalid regex pattern: {e}")
+
+        if node_type == "RegexReplace":
+            string = eval_expr(node.get("string"), local_env, call_depth)
+            if not isinstance(string, str):
+                raise ValueError(f"runtime error: RegexReplace string must be a string, got {type(string).__name__}")
+            pattern = eval_expr(node.get("pattern"), local_env, call_depth)
+            if not isinstance(pattern, str):
+                raise ValueError(f"runtime error: RegexReplace pattern must be a string, got {type(pattern).__name__}")
+            replacement = eval_expr(node.get("replacement"), local_env, call_depth)
+            if not isinstance(replacement, str):
+                raise ValueError(f"runtime error: RegexReplace replacement must be a string, got {type(replacement).__name__}")
+            flags_node = node.get("flags")
+            flags_str = ""
+            if flags_node:
+                flags_str = eval_expr(flags_node, local_env, call_depth) or ""
+            flags = _parse_regex_flags(flags_str)
+            try:
+                return re.sub(pattern, replacement, string, flags=flags)
+            except re.error as e:
+                raise ValueError(f"runtime error: invalid regex pattern: {e}")
+
+        if node_type == "RegexSplit":
+            string = eval_expr(node.get("string"), local_env, call_depth)
+            if not isinstance(string, str):
+                raise ValueError(f"runtime error: RegexSplit string must be a string, got {type(string).__name__}")
+            pattern = eval_expr(node.get("pattern"), local_env, call_depth)
+            if not isinstance(pattern, str):
+                raise ValueError(f"runtime error: RegexSplit pattern must be a string, got {type(pattern).__name__}")
+            flags_node = node.get("flags")
+            flags_str = ""
+            if flags_node:
+                flags_str = eval_expr(flags_node, local_env, call_depth) or ""
+            flags = _parse_regex_flags(flags_str)
+            maxsplit_node = node.get("maxsplit")
+            maxsplit = 0  # 0 means no limit in re.split
+            if maxsplit_node:
+                maxsplit = eval_expr(maxsplit_node, local_env, call_depth)
+                if not isinstance(maxsplit, int) or maxsplit < 0:
+                    raise ValueError(f"runtime error: RegexSplit maxsplit must be a non-negative integer, got {maxsplit}")
+            try:
+                return re.split(pattern, string, maxsplit=maxsplit, flags=flags)
+            except re.error as e:
+                raise ValueError(f"runtime error: invalid regex pattern: {e}")
+
         raise ValueError(f"unexpected expression type '{node_type}'")
 
     def call_builtin(name: str, args: list[Any]) -> Any:
@@ -646,11 +772,12 @@ def run_coreil(doc: dict) -> int:
             raise ValueError("document must be an object")
 
         # Core IL Version Check
-        # v1.1 is the current version (adds Record support)
+        # v1.3 is the current version (adds JSON and Regex operations)
+        # v1.1 adds Record support
         # v1.0 is stable and frozen
         # v0.1-v0.5 are accepted for backward compatibility
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', or 'coreil-1.1'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.3"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', or 'coreil-1.3'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

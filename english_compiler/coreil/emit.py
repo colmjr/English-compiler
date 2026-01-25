@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.1 to Python transpilation.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This file implements Core IL v1.3 to Python transpilation.
+Core IL v1.3 adds JSON operations and Regex operations.
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -12,13 +12,16 @@ The generated Python code:
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
-- Imports collections.deque and heapq only when used
+- JSON operations (parse, stringify)
+- Regex operations (match, findall, replace, split)
+- Imports collections.deque, heapq, json, and re only when used
 
 Version history:
+- v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.1 programs.
+Backward compatibility: Accepts v0.1 through v1.3 programs.
 """
 
 from __future__ import annotations
@@ -38,6 +41,8 @@ def emit_python(doc: dict) -> str:
     indent_level = 0
     uses_deque = False  # Track if deque is used
     uses_heapq = False  # Track if heapq is used
+    uses_json = False   # Track if json is used
+    uses_regex = False  # Track if re is used
 
     def emit_line(text: str) -> None:
         """Emit a line with current indentation."""
@@ -45,6 +50,8 @@ def emit_python(doc: dict) -> str:
 
     def emit_expr(node: dict) -> str:
         """Generate Python expression code."""
+        nonlocal uses_deque, uses_heapq, uses_json, uses_regex
+
         if not isinstance(node, dict):
             raise ValueError("expected expression node")
 
@@ -232,7 +239,6 @@ def emit_python(doc: dict) -> str:
             return f"len({base})"
 
         if node_type == "DequeNew":
-            nonlocal uses_deque
             uses_deque = True
             return "deque()"
 
@@ -241,7 +247,6 @@ def emit_python(doc: dict) -> str:
             return f"len({base})"
 
         if node_type == "HeapNew":
-            nonlocal uses_heapq
             uses_heapq = True
             return '{"_heap_items": [], "_heap_counter": 0}'
 
@@ -252,6 +257,69 @@ def emit_python(doc: dict) -> str:
         if node_type == "HeapPeek":
             base = emit_expr(node.get("base"))
             return f'{base}["_heap_items"][0][2]'
+
+        # JSON operations (v1.3)
+        if node_type == "JsonParse":
+            uses_json = True
+            source = emit_expr(node.get("source"))
+            return f"json.loads({source})"
+
+        if node_type == "JsonStringify":
+            uses_json = True
+            value = emit_expr(node.get("value"))
+            pretty = node.get("pretty")
+            if pretty:
+                pretty_expr = emit_expr(pretty)
+                return f"json.dumps({value}, indent=2 if {pretty_expr} else None, default=lambda o: list(o) if hasattr(o, '__iter__') and not isinstance(o, (str, dict, list)) else None)"
+            return f"json.dumps({value}, default=lambda o: list(o) if hasattr(o, '__iter__') and not isinstance(o, (str, dict, list)) else None)"
+
+        # Regex operations (v1.3)
+        if node_type == "RegexMatch":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            flags_node = node.get("flags")
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"(re.search({pattern}, {string}, _parse_regex_flags({flags})) is not None)"
+            return f"(re.search({pattern}, {string}) is not None)"
+
+        if node_type == "RegexFindAll":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            flags_node = node.get("flags")
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"re.findall({pattern}, {string}, _parse_regex_flags({flags}))"
+            return f"re.findall({pattern}, {string})"
+
+        if node_type == "RegexReplace":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            replacement = emit_expr(node.get("replacement"))
+            flags_node = node.get("flags")
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"re.sub({pattern}, {replacement}, {string}, flags=_parse_regex_flags({flags}))"
+            return f"re.sub({pattern}, {replacement}, {string})"
+
+        if node_type == "RegexSplit":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            flags_node = node.get("flags")
+            maxsplit_node = node.get("maxsplit")
+            maxsplit = "0"
+            if maxsplit_node:
+                maxsplit = emit_expr(maxsplit_node)
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"re.split({pattern}, {string}, maxsplit={maxsplit}, flags=_parse_regex_flags({flags}))"
+            if maxsplit_node:
+                return f"re.split({pattern}, {string}, maxsplit={maxsplit})"
+            return f"re.split({pattern}, {string})"
 
         raise ValueError(f"unknown expression type: {node_type}")
 
@@ -446,15 +514,43 @@ def emit_python(doc: dict) -> str:
     for stmt in body:
         emit_stmt(stmt)
 
-    # Prepend imports if deque or heapq are used
+    # Prepend imports and helper functions if needed
     import_lines = []
     if uses_deque:
         import_lines.append("from collections import deque")
     if uses_heapq:
         import_lines.append("import heapq")
-    if import_lines:
+    if uses_json:
+        import_lines.append("import json")
+    if uses_regex:
+        import_lines.append("import re")
+
+    # Add helper function for regex flags if regex is used
+    helper_lines = []
+    if uses_regex:
+        helper_lines.extend([
+            "",
+            "def _parse_regex_flags(flags_str):",
+            "    flags = 0",
+            "    if flags_str:",
+            "        if 'i' in flags_str:",
+            "            flags |= re.IGNORECASE",
+            "        if 'm' in flags_str:",
+            "            flags |= re.MULTILINE",
+            "        if 's' in flags_str:",
+            "            flags |= re.DOTALL",
+            "    return flags",
+        ])
+
+    if import_lines or helper_lines:
+        # Insert imports at the beginning
         for i, line in enumerate(import_lines):
             lines.insert(i, line)
-        lines.insert(len(import_lines), "")
+        # Insert helper functions after imports
+        insert_pos = len(import_lines)
+        for i, line in enumerate(helper_lines):
+            lines.insert(insert_pos + i, line)
+        # Add blank line before main code
+        lines.insert(len(import_lines) + len(helper_lines), "")
 
     return "\n".join(lines) + "\n"

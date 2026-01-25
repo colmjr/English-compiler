@@ -1,14 +1,15 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.1 structure for LLM frontends.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This schema defines Core IL v1.3 structure for LLM frontends.
+Core IL v1.3 adds JSON operations and Regex operations.
 
 Version history:
+- v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.1 for validation,
-but LLMs should generate v1.1 programs.
+Backward compatibility: Schema accepts v0.1 through v1.3 for validation,
+but LLMs should generate v1.3 programs.
 """
 
 COREIL_JSON_SCHEMA = {
@@ -16,7 +17,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.3"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -212,6 +213,12 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/heapnew_expr"},
                 {"$ref": "#/definitions/heapsize_expr"},
                 {"$ref": "#/definitions/heappeek_expr"},
+                {"$ref": "#/definitions/jsonparse_expr"},
+                {"$ref": "#/definitions/jsonstringify_expr"},
+                {"$ref": "#/definitions/regexmatch_expr"},
+                {"$ref": "#/definitions/regexfindall_expr"},
+                {"$ref": "#/definitions/regexreplace_expr"},
+                {"$ref": "#/definitions/regexsplit_expr"},
             ]
         },
         "literal_expr": {
@@ -625,6 +632,73 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "HeapPop"},
                 "base": {"$ref": "#/definitions/expr"},
                 "target": {"type": "string"},
+            },
+        },
+        # JSON operations (v1.3)
+        "jsonparse_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "source"],
+            "properties": {
+                "type": {"const": "JsonParse"},
+                "source": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "jsonstringify_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "value"],
+            "properties": {
+                "type": {"const": "JsonStringify"},
+                "value": {"$ref": "#/definitions/expr"},
+                "pretty": {"$ref": "#/definitions/expr"},
+            },
+        },
+        # Regex operations (v1.3)
+        "regexmatch_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern"],
+            "properties": {
+                "type": {"const": "RegexMatch"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "regexfindall_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern"],
+            "properties": {
+                "type": {"const": "RegexFindAll"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "regexreplace_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern", "replacement"],
+            "properties": {
+                "type": {"const": "RegexReplace"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "replacement": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "regexsplit_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern"],
+            "properties": {
+                "type": {"const": "RegexSplit"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+                "maxsplit": {"$ref": "#/definitions/expr"},
             },
         },
     },
