@@ -61,6 +61,14 @@ def _print_ambiguities(ambiguities: list[dict]) -> None:
         print(f"   default: {default}")
 
 
+def _run_python_file(python_path: Path) -> int:
+    """Run a Python file and return exit code."""
+    import subprocess
+    import sys
+    result = subprocess.run([sys.executable, str(python_path)], capture_output=False)
+    return result.returncode
+
+
 def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.emit import emit_python
     from english_compiler.coreil.interp import run_coreil
@@ -126,7 +134,16 @@ def _compile_command(args: argparse.Namespace) -> int:
         if isinstance(ambiguities, list) and ambiguities:
             _print_ambiguities(ambiguities)
             return 2
-        return run_coreil(doc)
+
+        # Try interpreter first, fall back to Python for ExternalCall
+        try:
+            return run_coreil(doc)
+        except ValueError as exc:
+            if "ExternalCall" in str(exc) and target == "python":
+                python_path = source_path.with_suffix(".py")
+                print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
+                return _run_python_file(python_path)
+            raise
 
     if args.freeze:
         print(f"freeze enabled: regeneration required for {source_path}")
@@ -187,7 +204,15 @@ def _compile_command(args: argparse.Namespace) -> int:
         _print_ambiguities(ambiguities)
         return 2
 
-    return run_coreil(doc)
+    # Try interpreter first, fall back to Python for ExternalCall
+    try:
+        return run_coreil(doc)
+    except ValueError as exc:
+        if "ExternalCall" in str(exc) and target == "python":
+            python_path = source_path.with_suffix(".py")
+            print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
+            return _run_python_file(python_path)
+        raise
 
 
 def _run_command(args: argparse.Namespace) -> int:

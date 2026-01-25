@@ -900,6 +900,12 @@ def run_coreil(doc: dict) -> int:
         if not isinstance(body, list):
             raise ValueError("body must be a list")
         exec_block(body, None, False, 0)
+    except ValueError as exc:
+        # Re-raise ExternalCall errors so caller can handle them
+        if "ExternalCall" in str(exc):
+            raise
+        print(f"runtime error: {exc}")
+        return 1
     except Exception as exc:
         print(f"runtime error: {exc}")
         return 1
