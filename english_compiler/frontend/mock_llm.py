@@ -7,38 +7,62 @@ It provides a deterministic alternative to the Claude frontend.
 from __future__ import annotations
 
 
+class MockFrontend:
+    """Mock frontend for testing without an LLM.
+
+    This frontend doesn't extend BaseFrontend since it doesn't need
+    the shared validation/retry logic - it generates deterministic output.
+    """
+
+    def __init__(self) -> None:
+        pass
+
+    def get_model_name(self) -> str:
+        return "mock"
+
+    def generate_coreil_from_text(self, source_text: str) -> dict:
+        """Generate a mock Core IL v1.2 program from source text.
+
+        This is a simple mock that recognizes a few keywords and generates
+        basic Core IL programs. Used for testing without requiring an LLM.
+        """
+        text = source_text.lower()
+        if "hello" in text:
+            message = "hello"
+        else:
+            message = "unimplemented"
+
+        ambiguities = []
+        if "sort" in text:
+            ambiguities = [
+                {
+                    "question": "Which sort order should be used?",
+                    "options": ["stable", "unstable"],
+                    "default": 0,
+                }
+            ]
+
+        # Generate Core IL v1.2 (Print statement, not Call to "print")
+        return {
+            "version": "coreil-1.2",
+            "ambiguities": ambiguities,
+            "body": [
+                {
+                    "type": "Print",
+                    "args": [
+                        {"type": "Literal", "value": message}
+                    ],
+                }
+            ],
+        }
+
+
+# Legacy function for backward compatibility
 def generate_coreil_from_text(source_text: str) -> dict:
     """Generate a mock Core IL v1.2 program from source text.
 
-    This is a simple mock that recognizes a few keywords and generates
-    basic Core IL programs. Used for testing without requiring an LLM.
+    This is a convenience function that creates a MockFrontend instance
+    and calls its generate_coreil_from_text method.
     """
-    text = source_text.lower()
-    if "hello" in text:
-        message = "hello"
-    else:
-        message = "unimplemented"
-
-    ambiguities = []
-    if "sort" in text:
-        ambiguities = [
-            {
-                "question": "Which sort order should be used?",
-                "options": ["stable", "unstable"],
-                "default": 0,
-            }
-        ]
-
-    # Generate Core IL v1.2 (Print statement, not Call to "print")
-    return {
-        "version": "coreil-1.2",
-        "ambiguities": ambiguities,
-        "body": [
-            {
-                "type": "Print",
-                "args": [
-                    {"type": "Literal", "value": message}
-                ],
-            }
-        ],
-    }
+    frontend = MockFrontend()
+    return frontend.generate_coreil_from_text(source_text)

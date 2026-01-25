@@ -4,18 +4,9 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 from typing import Any
 
-import anthropic
-
-from english_compiler.coreil.validate import validate_coreil
-from english_compiler.frontend.coreil_schema import COREIL_JSON_SCHEMA
-
-
-def _load_system_prompt() -> str:
-    prompt_path = Path(__file__).with_name("prompt.txt")
-    return prompt_path.read_text(encoding="utf-8")
+from english_compiler.frontend.base import BaseFrontend
 
 
 def _get_max_tokens() -> int:
@@ -27,15 +18,6 @@ def _get_max_tokens() -> int:
     if value <= 0:
         raise ValueError("ANTHROPIC_MAX_TOKENS must be positive")
     return value
-
-
-def _build_user_message(source_text: str, errors: list[dict] | None) -> str:
-    if not errors:
-        return source_text
-    return (
-        f"{source_text}\n\nPrevious output failed validation. "
-        f"Errors: {json.dumps(errors, sort_keys=True)}"
-    )
 
 
 def _extract_text(response: Any) -> str:
@@ -66,94 +48,88 @@ def _extract_tool_input(response: Any, tool_name: str) -> tuple[dict | None, str
     return None, raw_text
 
 
-def _request_coreil(
-    client: anthropic.Anthropic,
-    model: str,
-    max_tokens: int,
-    system_prompt: str,
-    source_text: str,
-    errors: list[dict] | None,
-) -> tuple[dict, str, str]:
-    user_message = _build_user_message(source_text, errors)
+class ClaudeFrontend(BaseFrontend):
+    """Claude API frontend using Anthropic SDK."""
 
-    try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=0,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {"name": "coreil", "schema": COREIL_JSON_SCHEMA},
-            },
-        )
-        raw_text = _extract_text(response)
-        if not raw_text:
-            raise ValueError("Claude returned an empty response")
+    def __init__(self) -> None:
+        super().__init__()
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise RuntimeError("ANTHROPIC_API_KEY is not set")
+
         try:
-            data = json.loads(raw_text)
-        except json.JSONDecodeError as exc:
-            snippet = raw_text[:400]
-            raise ValueError(
-                "Claude returned invalid JSON. "
-                f"Response snippet: {snippet}"
-            ) from exc
-        if not isinstance(data, dict):
-            raise ValueError("Claude returned JSON that is not an object")
-        return data, raw_text, "structured"
-    except TypeError:
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=0,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-            tools=[
-                {
-                    "name": "emit_coreil",
-                    "description": "Emit Core IL JSON",
-                    "input_schema": COREIL_JSON_SCHEMA,
-                }
-            ],
-            tool_choice={"type": "tool", "name": "emit_coreil"},
-        )
-        tool_input, raw_text = _extract_tool_input(response, "emit_coreil")
-        if tool_input is None:
-            snippet = raw_text[:400]
-            raise ValueError(
-                "Claude did not return tool output. "
-                f"Response snippet: {snippet}"
-            )
-        return tool_input, raw_text, "tool"
-
-
-def generate_coreil_from_text(source_text: str) -> dict:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set")
-
-    model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
-    max_tokens = _get_max_tokens()
-    system_prompt = _load_system_prompt()
-
-    client = anthropic.Anthropic(api_key=api_key)
-
-    data, raw_text, method = _request_coreil(
-        client, model, max_tokens, system_prompt, source_text, None
-    )
-    errors = validate_coreil(data)
-    if errors:
-        data, raw_text, method = _request_coreil(
-            client, model, max_tokens, system_prompt, source_text, errors
-        )
-        errors = validate_coreil(data)
-        if errors:
-            snippet = raw_text[:400]
+            import anthropic
+        except ImportError as exc:
             raise RuntimeError(
-                "Claude output failed validation after retry. "
-                f"model={model} method={method} errors={errors} "
-                f"snippet={snippet}"
-            )
+                "Anthropic SDK not installed. Run: pip install anthropic"
+            ) from exc
 
-    return data
+        self.client = anthropic.Anthropic(api_key=api_key)
+        self.model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+        self.max_tokens = _get_max_tokens()
+
+    def get_model_name(self) -> str:
+        return self.model
+
+    def _call_api(self, user_message: str) -> dict:
+        """Call Claude API with structured output or tool fallback."""
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                temperature=0,
+                system=self.system_prompt,
+                messages=[{"role": "user", "content": user_message}],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {"name": "coreil", "schema": self.schema},
+                },
+            )
+            raw_text = _extract_text(response)
+            if not raw_text:
+                raise ValueError("Claude returned an empty response")
+            try:
+                data = json.loads(raw_text)
+            except json.JSONDecodeError as exc:
+                snippet = raw_text[:400]
+                raise ValueError(
+                    f"Claude returned invalid JSON. Response snippet: {snippet}"
+                ) from exc
+            if not isinstance(data, dict):
+                raise ValueError("Claude returned JSON that is not an object")
+            return data
+        except TypeError:
+            # Fall back to tool use for older models
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                temperature=0,
+                system=self.system_prompt,
+                messages=[{"role": "user", "content": user_message}],
+                tools=[
+                    {
+                        "name": "emit_coreil",
+                        "description": "Emit Core IL JSON",
+                        "input_schema": self.schema,
+                    }
+                ],
+                tool_choice={"type": "tool", "name": "emit_coreil"},
+            )
+            tool_input, raw_text = _extract_tool_input(response, "emit_coreil")
+            if tool_input is None:
+                snippet = raw_text[:400]
+                raise ValueError(
+                    f"Claude did not return tool output. Response snippet: {snippet}"
+                )
+            return tool_input
+
+
+# Legacy function for backward compatibility
+def generate_coreil_from_text(source_text: str) -> dict:
+    """Generate Core IL from source text using Claude.
+
+    This is a convenience function that creates a ClaudeFrontend instance
+    and calls its generate_coreil_from_text method.
+    """
+    frontend = ClaudeFrontend()
+    return frontend.generate_coreil_from_text(source_text)
