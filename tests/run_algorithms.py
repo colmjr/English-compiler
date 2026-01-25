@@ -5,8 +5,9 @@ This test runner enforces:
 2. Interpreter executes without errors
 3. Python backend executes without errors
 4. JavaScript backend executes without errors (if Node.js available)
-5. Interpreter output == Python output == JavaScript output (backend parity)
-6. No invalid helper calls (e.g., "get_or_default", "append")
+5. C++ backend executes without errors (if g++/clang++ available)
+6. Interpreter output == Python output == JavaScript output == C++ output (backend parity)
+7. No invalid helper calls (e.g., "get_or_default", "append")
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from pathlib import Path
 
 from english_compiler.coreil.emit import emit_python
 from english_compiler.coreil.emit_javascript import emit_javascript
+from english_compiler.coreil.emit_cpp import emit_cpp, get_runtime_header_path, get_json_header_path
 from english_compiler.coreil.interp import run_coreil
 from english_compiler.coreil.validate import validate_coreil
 from english_compiler.frontend.mock_llm import generate_coreil_from_text
@@ -29,6 +31,14 @@ from english_compiler.frontend.mock_llm import generate_coreil_from_text
 
 # Check if Node.js is available
 _NODE_AVAILABLE = shutil.which("node") is not None
+
+# Check if C++ compiler is available
+_CPP_COMPILER = None
+for _cc in ["g++", "clang++"]:
+    if shutil.which(_cc):
+        _CPP_COMPILER = _cc
+        break
+_CPP_AVAILABLE = _CPP_COMPILER is not None
 
 
 class TestFailure(Exception):
@@ -190,6 +200,74 @@ def _run_algorithm_test(txt_path: Path) -> None:
                 f"JavaScript output:\n{js_output}"
             )
 
+    # Test C++ backend if compiler is available
+    if _CPP_AVAILABLE:
+        # Generate C++ code
+        try:
+            cpp_code = emit_cpp(doc)
+        except Exception as exc:
+            raise TestFailure(f"{algo_name}: C++ codegen failed: {exc}")
+
+        # Execute C++ code in subprocess
+        try:
+            # Create temp directory for C++ files
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_dir_path = Path(tmp_dir)
+                cpp_path = tmp_dir_path / "test.cpp"
+                exe_path = tmp_dir_path / "test"
+
+                # Write C++ code
+                cpp_path.write_text(cpp_code, encoding="utf-8")
+
+                # Copy runtime headers
+                shutil.copy(get_runtime_header_path(), tmp_dir_path / "coreil_runtime.hpp")
+                shutil.copy(get_json_header_path(), tmp_dir_path / "json.hpp")
+
+                # Compile
+                compile_result = subprocess.run(
+                    [_CPP_COMPILER, "-std=c++17", "-O2", str(cpp_path), "-o", str(exe_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=tmp_dir,
+                )
+
+                if compile_result.returncode != 0:
+                    raise TestFailure(
+                        f"{algo_name}: C++ compilation failed:\n{compile_result.stderr}"
+                    )
+
+                # Execute
+                result = subprocess.run(
+                    [str(exe_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+
+                if result.returncode != 0:
+                    raise TestFailure(
+                        f"{algo_name}: C++ execution failed with exit code {result.returncode}\n"
+                        f"stderr: {result.stderr}"
+                    )
+
+                cpp_output = result.stdout
+
+        except subprocess.TimeoutExpired:
+            raise TestFailure(f"{algo_name}: C++ execution timeout (>10s)")
+        except TestFailure:
+            raise
+        except Exception as exc:
+            raise TestFailure(f"{algo_name}: C++ execution error: {exc}")
+
+        # Compare C++ output with interpreter output
+        if interpreter_output != cpp_output:
+            raise TestFailure(
+                f"{algo_name}: Output mismatch (C++)!\n"
+                f"Interpreter output:\n{interpreter_output}\n"
+                f"C++ output:\n{cpp_output}"
+            )
+
     print("✓")
 
 
@@ -239,10 +317,18 @@ def main() -> int:
     print("  • Python backend executes successfully")
     if _NODE_AVAILABLE:
         print("  • JavaScript backend executes successfully")
-        print("  • Backend parity (interpreter output == Python output == JavaScript output)")
     else:
-        print("  • Backend parity (interpreter output == Python output)")
         print("  • (JavaScript tests skipped - Node.js not available)")
+    if _CPP_AVAILABLE:
+        print(f"  • C++ backend executes successfully ({_CPP_COMPILER})")
+    else:
+        print("  • (C++ tests skipped - no g++/clang++ available)")
+    backends = ["interpreter", "Python"]
+    if _NODE_AVAILABLE:
+        backends.append("JavaScript")
+    if _CPP_AVAILABLE:
+        backends.append("C++")
+    print(f"  • Backend parity ({' == '.join(backends)} output)")
     print("  • No invalid helper calls")
     return 0
 
