@@ -69,8 +69,16 @@ def _run_python_file(python_path: Path) -> int:
     return result.returncode
 
 
+def _run_javascript_file(js_path: Path) -> int:
+    """Run a JavaScript file with Node.js and return exit code."""
+    import subprocess
+    result = subprocess.run(["node", str(js_path)], capture_output=False)
+    return result.returncode
+
+
 def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.emit import emit_python
+    from english_compiler.coreil.emit_javascript import emit_javascript
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.coreil.validate import validate_coreil
     from english_compiler.frontend import get_frontend
@@ -113,7 +121,7 @@ def _compile_command(args: argparse.Namespace) -> int:
             print(f"{coreil_path}: invalid json")
             return 1
 
-        # Emit Python code if target is "python" (even when using cache)
+        # Emit code for the specified target (even when using cache)
         target = getattr(args, "target", "coreil")
         if target == "python":
             python_path = source_path.with_suffix(".py")
@@ -129,20 +137,39 @@ def _compile_command(args: argparse.Namespace) -> int:
                 except Exception as exc:
                     print(f"Python codegen failed: {exc}")
                     return 1
+        elif target == "javascript":
+            js_path = source_path.with_suffix(".js")
+            # Only regenerate JavaScript if it doesn't exist or is older than Core IL
+            if not js_path.exists() or js_path.stat().st_mtime < coreil_path.stat().st_mtime:
+                try:
+                    js_code = emit_javascript(doc)
+                    js_path.write_text(js_code, encoding="utf-8")
+                    print(f"Generated JavaScript code at {js_path}")
+                except OSError as exc:
+                    print(f"{js_path}: {exc}")
+                    return 1
+                except Exception as exc:
+                    print(f"JavaScript codegen failed: {exc}")
+                    return 1
 
         ambiguities = doc.get("ambiguities", [])
         if isinstance(ambiguities, list) and ambiguities:
             _print_ambiguities(ambiguities)
             return 2
 
-        # Try interpreter first, fall back to Python for ExternalCall
+        # Try interpreter first, fall back to generated code for ExternalCall
         try:
             return run_coreil(doc)
         except ValueError as exc:
-            if "ExternalCall" in str(exc) and target == "python":
-                python_path = source_path.with_suffix(".py")
-                print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
-                return _run_python_file(python_path)
+            if "ExternalCall" in str(exc):
+                if target == "python":
+                    python_path = source_path.with_suffix(".py")
+                    print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
+                    return _run_python_file(python_path)
+                elif target == "javascript":
+                    js_path = source_path.with_suffix(".js")
+                    print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
+                    return _run_javascript_file(js_path)
             raise
 
     if args.freeze:
@@ -172,7 +199,7 @@ def _compile_command(args: argparse.Namespace) -> int:
     if not _write_json(coreil_path, doc):
         return 1
 
-    # Emit Python code if target is "python"
+    # Emit code for the specified target
     target = getattr(args, "target", "coreil")
     if target == "python":
         python_path = source_path.with_suffix(".py")
@@ -185,6 +212,18 @@ def _compile_command(args: argparse.Namespace) -> int:
             return 1
         except Exception as exc:
             print(f"Python codegen failed: {exc}")
+            return 1
+    elif target == "javascript":
+        js_path = source_path.with_suffix(".js")
+        try:
+            js_code = emit_javascript(doc)
+            js_path.write_text(js_code, encoding="utf-8")
+            print(f"Generated JavaScript code at {js_path}")
+        except OSError as exc:
+            print(f"{js_path}: {exc}")
+            return 1
+        except Exception as exc:
+            print(f"JavaScript codegen failed: {exc}")
             return 1
 
     lock_doc = {
@@ -202,14 +241,19 @@ def _compile_command(args: argparse.Namespace) -> int:
         _print_ambiguities(ambiguities)
         return 2
 
-    # Try interpreter first, fall back to Python for ExternalCall
+    # Try interpreter first, fall back to generated code for ExternalCall
     try:
         return run_coreil(doc)
     except ValueError as exc:
-        if "ExternalCall" in str(exc) and target == "python":
-            python_path = source_path.with_suffix(".py")
-            print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
-            return _run_python_file(python_path)
+        if "ExternalCall" in str(exc):
+            if target == "python":
+                python_path = source_path.with_suffix(".py")
+                print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
+                return _run_python_file(python_path)
+            elif target == "javascript":
+                js_path = source_path.with_suffix(".js")
+                print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
+                return _run_javascript_file(js_path)
         raise
 
 
@@ -244,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     compile_parser.add_argument(
         "--target",
-        choices=["coreil", "python"],
+        choices=["coreil", "python", "javascript"],
         default="coreil",
         help="Compilation target (default: coreil)",
     )

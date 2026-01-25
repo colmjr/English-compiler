@@ -39,6 +39,8 @@ All v0.1-v1.3 programs continue to work in v1.4.
 
 from .interp import run_coreil
 from .validate import validate_coreil
+from .emit import emit_python
+from .emit_javascript import emit_javascript
 
 # Current version
 COREIL_VERSION = "coreil-1.4"
@@ -58,4 +60,11 @@ SUPPORTED_VERSIONS = frozenset([
 ])
 
 __version__ = "1.4.0"
-__all__ = ["run_coreil", "validate_coreil", "COREIL_VERSION", "SUPPORTED_VERSIONS"]
+__all__ = [
+    "run_coreil",
+    "validate_coreil",
+    "emit_python",
+    "emit_javascript",
+    "COREIL_VERSION",
+    "SUPPORTED_VERSIONS",
+]
