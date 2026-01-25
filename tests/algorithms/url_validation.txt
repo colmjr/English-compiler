@@ -1,0 +1,6 @@
+Check if a URL is valid by verifying:
+1. It starts with "https://"
+2. It contains "."
+3. Print "valid" if both conditions are true, otherwise print "invalid"
+
+Test with: "https://example.com"
