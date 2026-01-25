@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.3 semantics interpreter.
-Core IL v1.3 adds JSON operations and Regex operations.
+This file implements Core IL v1.4 semantics interpreter.
+Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -11,22 +11,26 @@ Key features:
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
+- Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
 - JSON operations (parse, stringify)
 - Regex operations (match, findall, replace, split)
 - Recursion limit: 100 calls
 
 Version history:
+- v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.3 programs.
+Backward compatibility: Accepts v0.1 through v1.4 programs.
 """
 
 from __future__ import annotations
 
 import heapq
 import json
+import math
 import re
 from collections import deque
 from dataclasses import dataclass
@@ -361,6 +365,39 @@ def run_coreil(doc: dict) -> int:
 
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
+
+        # Math operations (v1.2)
+        if node_type == "Math":
+            op = node.get("op")
+            arg = eval_expr(node.get("arg"), local_env, call_depth)
+            ops = {
+                "sin": math.sin,
+                "cos": math.cos,
+                "tan": math.tan,
+                "sqrt": math.sqrt,
+                "floor": math.floor,
+                "ceil": math.ceil,
+                "abs": abs,
+                "log": math.log,
+                "exp": math.exp,
+            }
+            if op not in ops:
+                raise ValueError(f"unknown math op '{op}'")
+            return ops[op](arg)
+
+        if node_type == "MathPow":
+            base = eval_expr(node.get("base"), local_env, call_depth)
+            exponent = eval_expr(node.get("exponent"), local_env, call_depth)
+            return math.pow(base, exponent)
+
+        if node_type == "MathConst":
+            name = node.get("name")
+            if name == "pi":
+                return math.pi
+            elif name == "e":
+                return math.e
+            else:
+                raise ValueError(f"unknown math constant '{name}'")
 
         # JSON operations (v1.3)
         if node_type == "JsonParse":
@@ -772,12 +809,14 @@ def run_coreil(doc: dict) -> int:
             raise ValueError("document must be an object")
 
         # Core IL Version Check
-        # v1.3 is the current version (adds JSON and Regex operations)
+        # v1.4 is the current version (consolidates Math + JSON/Regex)
+        # v1.3 adds JSON and Regex operations
+        # v1.2 adds Math operations
         # v1.1 adds Record support
         # v1.0 is stable and frozen
         # v0.1-v0.5 are accepted for backward compatibility
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.3"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', or 'coreil-1.3'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', or 'coreil-1.4'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

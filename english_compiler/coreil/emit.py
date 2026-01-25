@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.3 to Python transpilation.
-Core IL v1.3 adds JSON operations and Regex operations.
+This file implements Core IL v1.4 to Python transpilation.
+Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -12,16 +12,19 @@ The generated Python code:
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
+- Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
 - JSON operations (parse, stringify)
 - Regex operations (match, findall, replace, split)
-- Imports collections.deque, heapq, json, and re only when used
+- Imports collections.deque, heapq, math, json, and re only when used
 
 Version history:
+- v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.3 programs.
+Backward compatibility: Accepts v0.1 through v1.4 programs.
 """
 
 from __future__ import annotations
@@ -41,6 +44,7 @@ def emit_python(doc: dict) -> str:
     indent_level = 0
     uses_deque = False  # Track if deque is used
     uses_heapq = False  # Track if heapq is used
+    uses_math = False   # Track if math is used
     uses_json = False   # Track if json is used
     uses_regex = False  # Track if re is used
 
@@ -50,7 +54,7 @@ def emit_python(doc: dict) -> str:
 
     def emit_expr(node: dict) -> str:
         """Generate Python expression code."""
-        nonlocal uses_deque, uses_heapq, uses_json, uses_regex
+        nonlocal uses_deque, uses_heapq, uses_math, uses_json, uses_regex
 
         if not isinstance(node, dict):
             raise ValueError("expected expression node")
@@ -258,6 +262,26 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             return f'{base}["_heap_items"][0][2]'
 
+        # Math operations (v1.2)
+        if node_type == "Math":
+            uses_math = True
+            op = node.get("op")
+            arg = emit_expr(node.get("arg"))
+            if op == "abs":
+                return f"abs({arg})"  # abs is a Python builtin
+            return f"math.{op}({arg})"
+
+        if node_type == "MathPow":
+            uses_math = True
+            base = emit_expr(node.get("base"))
+            exponent = emit_expr(node.get("exponent"))
+            return f"math.pow({base}, {exponent})"
+
+        if node_type == "MathConst":
+            uses_math = True
+            name = node.get("name")
+            return f"math.{name}"
+
         # JSON operations (v1.3)
         if node_type == "JsonParse":
             uses_json = True
@@ -325,7 +349,7 @@ def emit_python(doc: dict) -> str:
 
     def emit_stmt(node: dict) -> None:
         """Generate Python statement code."""
-        nonlocal indent_level, uses_heapq
+        nonlocal indent_level, uses_heapq, uses_math
 
         if not isinstance(node, dict):
             raise ValueError("expected statement node")
@@ -520,6 +544,8 @@ def emit_python(doc: dict) -> str:
         import_lines.append("from collections import deque")
     if uses_heapq:
         import_lines.append("import heapq")
+    if uses_math:
+        import_lines.append("import math")
     if uses_json:
         import_lines.append("import json")
     if uses_regex:

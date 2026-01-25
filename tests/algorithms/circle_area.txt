@@ -1,0 +1,3 @@
+Calculate the area of a circle with radius 5.
+Use the formula: area = pi * radius^2
+Print the result.

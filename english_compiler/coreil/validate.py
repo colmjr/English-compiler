@@ -1,14 +1,16 @@
 """Core IL validation.
 
-This file implements Core IL v1.3 semantics validation.
-Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations.
+This file implements Core IL v1.4 semantics validation.
+Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
 
 Version history:
+- v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.3 programs.
+Backward compatibility: Accepts v0.1 through v1.4 programs.
 """
 
 from __future__ import annotations
@@ -64,6 +66,10 @@ _ALLOWED_NODE_TYPES = {
     "HeapPeek",
     "HeapPush",
     "HeapPop",
+    # Math operations (v1.2)
+    "Math",
+    "MathPow",
+    "MathConst",
     # JSON operations (v1.3)
     "JsonParse",
     "JsonStringify",
@@ -91,11 +97,13 @@ _ALLOWED_BINARY_OPS = {
 }
 
 # Core IL Version Support
-# v1.3 is the current version (adds JSON and Regex operations)
+# v1.4 is the current version (consolidates Math + JSON/Regex)
+# v1.3 adds JSON and Regex operations
+# v1.2 adds Math operations
 # v1.1 adds Record support
 # v1.0 is stable and frozen
 # v0.1-v0.5 are accepted for backward compatibility
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.3"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"}
 
 # Helper functions that are disallowed in v0.5+ and v1.0+ (must use explicit primitives)
 # This ensures Core IL remains a closed specification
@@ -163,7 +171,7 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.name", "missing or invalid name")
             else:
                 # In v0.5+ and v1.0+, disallow helper function calls
-                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.3") and name in _DISALLOWED_HELPER_CALLS:
+                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4") and name in _DISALLOWED_HELPER_CALLS:
                     add_error(
                         f"{path}.name",
                         f"helper function '{name}' is not allowed in v0.5; "
@@ -421,6 +429,35 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.base", "missing base")
             else:
                 validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        # Math operations (v1.2)
+        if node_type == "Math":
+            valid_ops = {"sin", "cos", "tan", "sqrt", "floor", "ceil", "abs", "log", "exp"}
+            op = node.get("op")
+            if op not in valid_ops:
+                add_error(f"{path}.op", f"invalid math op '{op}', must be one of {valid_ops}")
+            if "arg" not in node:
+                add_error(f"{path}.arg", "missing arg")
+            else:
+                validate_expr(node["arg"], f"{path}.arg", defined)
+            return
+
+        if node_type == "MathPow":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "exponent" not in node:
+                add_error(f"{path}.exponent", "missing exponent")
+            else:
+                validate_expr(node["exponent"], f"{path}.exponent", defined)
+            return
+
+        if node_type == "MathConst":
+            name = node.get("name")
+            if name not in {"pi", "e"}:
+                add_error(f"{path}.name", f"invalid math constant '{name}', must be 'pi' or 'e'")
             return
 
         # JSON operations (v1.3)
@@ -806,7 +843,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', or 'coreil-1.3'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', or 'coreil-1.4'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:

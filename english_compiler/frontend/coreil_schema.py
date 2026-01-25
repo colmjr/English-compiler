@@ -1,15 +1,17 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.3 structure for LLM frontends.
-Core IL v1.3 adds JSON operations and Regex operations.
+This schema defines Core IL v1.4 structure for LLM frontends.
+Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
 
 Version history:
+- v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.3 for validation,
-but LLMs should generate v1.3 programs.
+Backward compatibility: Schema accepts v0.1 through v1.4 for validation,
+but LLMs should generate v1.4 programs.
 """
 
 COREIL_JSON_SCHEMA = {
@@ -17,7 +19,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.3"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -213,8 +215,14 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/heapnew_expr"},
                 {"$ref": "#/definitions/heapsize_expr"},
                 {"$ref": "#/definitions/heappeek_expr"},
+                # Math operations (v1.2)
+                {"$ref": "#/definitions/math_expr"},
+                {"$ref": "#/definitions/mathpow_expr"},
+                {"$ref": "#/definitions/mathconst_expr"},
+                # JSON operations (v1.3)
                 {"$ref": "#/definitions/jsonparse_expr"},
                 {"$ref": "#/definitions/jsonstringify_expr"},
+                # Regex operations (v1.3)
                 {"$ref": "#/definitions/regexmatch_expr"},
                 {"$ref": "#/definitions/regexfindall_expr"},
                 {"$ref": "#/definitions/regexreplace_expr"},
@@ -632,6 +640,36 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "HeapPop"},
                 "base": {"$ref": "#/definitions/expr"},
                 "target": {"type": "string"},
+            },
+        },
+        # Math operations (v1.2)
+        "math_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "op", "arg"],
+            "properties": {
+                "type": {"const": "Math"},
+                "op": {"enum": ["sin", "cos", "tan", "sqrt", "floor", "ceil", "abs", "log", "exp"]},
+                "arg": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "mathpow_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "exponent"],
+            "properties": {
+                "type": {"const": "MathPow"},
+                "base": {"$ref": "#/definitions/expr"},
+                "exponent": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "mathconst_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "name"],
+            "properties": {
+                "type": {"const": "MathConst"},
+                "name": {"enum": ["pi", "e"]},
             },
         },
         # JSON operations (v1.3)
