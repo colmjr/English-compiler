@@ -133,7 +133,7 @@ def generate_coreil_from_text(source_text: str) -> dict:
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is not set")
 
-    model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+    model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
     max_tokens = _get_max_tokens()
     system_prompt = _load_system_prompt()
 

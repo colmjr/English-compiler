@@ -1,0 +1,20 @@
+{
+  "version": "coreil-1.4",
+  "body": [
+    {"type": "Print", "args": [{"type": "Literal", "value": "=== ExternalCall Demo (Tier 2, Non-Portable) ==="}]},
+
+    {"type": "Print", "args": [{"type": "Literal", "value": "\n1. Getting current Unix timestamp:"}]},
+    {"type": "Let", "name": "timestamp", "value": {"type": "ExternalCall", "module": "time", "function": "time", "args": []}},
+    {"type": "Print", "args": [{"type": "Literal", "value": "   timestamp:"}, {"type": "Var", "name": "timestamp"}]},
+
+    {"type": "Print", "args": [{"type": "Literal", "value": "\n2. Getting current working directory:"}]},
+    {"type": "Let", "name": "cwd", "value": {"type": "ExternalCall", "module": "os", "function": "getcwd", "args": []}},
+    {"type": "Print", "args": [{"type": "Literal", "value": "   cwd:"}, {"type": "Var", "name": "cwd"}]},
+
+    {"type": "Print", "args": [{"type": "Literal", "value": "\n3. Getting environment variable (USER):"}]},
+    {"type": "Let", "name": "user", "value": {"type": "ExternalCall", "module": "os", "function": "getenv", "args": [{"type": "Literal", "value": "USER"}]}},
+    {"type": "Print", "args": [{"type": "Literal", "value": "   USER:"}, {"type": "Var", "name": "user"}]},
+
+    {"type": "Print", "args": [{"type": "Literal", "value": "\nDone!"}]}
+  ]
+}

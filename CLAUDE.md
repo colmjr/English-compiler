@@ -72,7 +72,7 @@ python -m scripts.demo_claude_compile
     - `claude.py` - Claude API integration
     - `mock_llm.py` - Mock generator (deterministic, for testing)
     - `prompt.txt` - System prompt for Core IL generation
-    - `coreil_schema.py` - JSON schema for Core IL v1.1
+    - `coreil_schema.py` - JSON schema for Core IL v1.4
   - `__main__.py` - CLI entry point
 
 - `tests/` - Test suite
@@ -88,11 +88,11 @@ python -m scripts.demo_claude_compile
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.1 (`"coreil-1.1"`)
+**Current stable version**: Core IL v1.4 (`"coreil-1.4"`)
 
-Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations while maintaining full backward compatibility.
+Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. All versions maintain full backward compatibility.
 
-All versions from v0.1 through v1.1 are supported for backward compatibility. The codebase uses version constants:
+All versions from v0.1 through v1.4 are supported for backward compatibility. The codebase uses version constants:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
@@ -135,11 +135,18 @@ Cache reuse is based on matching source hash and Core IL hash.
 - Index, Length, Get, GetDefault, Keys, GetField, SetHas, SetSize
 - StringLength, Substring, CharAt, Join
 - DequeNew, DequeSize
+- HeapNew, HeapSize, HeapPeek
+- Math, MathPow, MathConst
+- JsonParse, JsonStringify
+- RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace
+- ExternalCall (Tier 2, non-portable)
 - Range, Call
 
 **Statements** (perform actions):
 - Let, Assign, SetIndex, Set, Push, SetField, SetAdd, SetRemove
 - PushBack, PushFront, PopFront, PopBack
+- HeapPush, HeapPop
 - Print, If, While, For, ForEach
 - FuncDef, Return
 
@@ -208,6 +215,71 @@ Note: PopFront and PopBack are statements that assign the popped value to the ta
 {"type": "ForEach", "var": "x", "iter": <array_expr>, "body": [...]}
 ```
 
+**Heap (priority queue - v1.1)**:
+```json
+{"type": "HeapNew"}
+{"type": "HeapSize", "base": <heap>}
+{"type": "HeapPeek", "base": <heap>}
+{"type": "HeapPush", "base": <heap>, "priority": <num>, "value": <expr>}
+{"type": "HeapPop", "base": <heap>, "target": "varName"}
+```
+
+**Math operations (v1.2/v1.4)**:
+```json
+{"type": "Math", "op": "sin|cos|tan|sqrt|floor|ceil|abs|log|exp", "arg": <expr>}
+{"type": "MathPow", "base": <expr>, "exponent": <expr>}
+{"type": "MathConst", "name": "pi|e"}
+```
+
+Supported ops: sin, cos, tan (radians), sqrt, floor, ceil, abs, log (natural), exp (e^x)
+
+**JSON operations (v1.3/v1.4)**:
+```json
+{"type": "JsonParse", "source": <string>}
+{"type": "JsonStringify", "value": <expr>}
+{"type": "JsonStringify", "value": <expr>, "pretty": <bool>}
+```
+
+**Regex operations (v1.3/v1.4)**:
+```json
+{"type": "RegexMatch", "string": <str>, "pattern": <str>}
+{"type": "RegexFindAll", "string": <str>, "pattern": <str>}
+{"type": "RegexReplace", "string": <str>, "pattern": <str>, "replacement": <str>}
+{"type": "RegexSplit", "string": <str>, "pattern": <str>}
+```
+
+Optional "flags" parameter: "i" (case-insensitive), "m" (multiline), "s" (dotall).
+
+**String operations (v1.4)**:
+```json
+{"type": "StringSplit", "base": <str>, "delimiter": <str>}
+{"type": "StringTrim", "base": <str>}
+{"type": "StringUpper", "base": <str>}
+{"type": "StringLower", "base": <str>}
+{"type": "StringStartsWith", "base": <str>, "prefix": <str>}
+{"type": "StringEndsWith", "base": <str>, "suffix": <str>}
+{"type": "StringContains", "base": <str>, "substring": <str>}
+{"type": "StringReplace", "base": <str>, "old": <str>, "new": <str>}
+```
+
+### Operation Tiers
+
+**Tier 1 (Portable)**: All operations above are portable - identical semantics across all platforms.
+
+**Tier 2 (Non-Portable)**: ExternalCall enables platform-specific operations. Programs using ExternalCall cannot run in the interpreter and are marked as non-portable.
+
+**ExternalCall (Tier 2, v1.4)**:
+```json
+{"type": "ExternalCall", "module": "time", "function": "now", "args": []}
+```
+
+Available modules: fs (file system), http, os, crypto, time
+
+Notes:
+- ExternalCall raises an error in the interpreter
+- Python backend generates appropriate imports
+- Use Tier 1 operations when possible
+
 ## Testing Strategy
 
 ### Test Hierarchy
@@ -257,7 +329,7 @@ Create `tests/algorithms/new_algorithm.txt` with natural English pseudocode. The
 
 3. **Don't assume static types**: Core IL uses runtime type checking. Operations validate inputs and produce clear error messages.
 
-4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ with backward compatibility.
+4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque, Heap), v1.2+ (Math), and v1.3+/v1.4+ (JSON, Regex) with backward compatibility.
 
 5. **Don't skip lowering**: For/ForEach must be lowered before backend execution (happens automatically in `emit_python()`).
 

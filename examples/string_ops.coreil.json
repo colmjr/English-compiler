@@ -1,0 +1,64 @@
+{
+  "version": "coreil-1.4",
+  "body": [
+    {
+      "type": "Let",
+      "name": "s",
+      "value": {"type": "Literal", "value": "  Hello World  "}
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "StringTrim", "base": {"type": "Var", "name": "s"}}]
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "StringUpper", "base": {"type": "Literal", "value": "hello"}}]
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "StringLower", "base": {"type": "Literal", "value": "WORLD"}}]
+    },
+    {
+      "type": "Let",
+      "name": "parts",
+      "value": {"type": "StringSplit", "base": {"type": "Literal", "value": "a,b,c"}, "delimiter": {"type": "Literal", "value": ","}}
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "parts"}]
+    },
+    {
+      "type": "Print",
+      "args": [{
+        "type": "StringStartsWith",
+        "base": {"type": "Literal", "value": "hello world"},
+        "prefix": {"type": "Literal", "value": "hello"}
+      }]
+    },
+    {
+      "type": "Print",
+      "args": [{
+        "type": "StringEndsWith",
+        "base": {"type": "Literal", "value": "hello world"},
+        "suffix": {"type": "Literal", "value": "world"}
+      }]
+    },
+    {
+      "type": "Print",
+      "args": [{
+        "type": "StringContains",
+        "base": {"type": "Literal", "value": "hello world"},
+        "substring": {"type": "Literal", "value": "lo wo"}
+      }]
+    },
+    {
+      "type": "Print",
+      "args": [{
+        "type": "StringReplace",
+        "base": {"type": "Literal", "value": "foo bar foo"},
+        "old": {"type": "Literal", "value": "foo"},
+        "new": {"type": "Literal", "value": "baz"}
+      }]
+    }
+  ]
+}

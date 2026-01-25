@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.1 to Python transpilation.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This file implements Core IL v1.4 to Python transpilation.
+Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -12,16 +12,50 @@ The generated Python code:
 - Set operations (membership, add, remove, size)
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
-- Imports collections.deque and heapq only when used
+- Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
+- JSON operations (parse, stringify)
+- Regex operations (match, findall, replace, split)
+- Imports collections.deque, heapq, math, json, and re only when used
 
 Version history:
+- v1.4: Consolidated Math, JSON, and Regex operations
+- v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.1 programs.
+Backward compatibility: Accepts v0.1 through v1.4 programs.
 """
 
 from __future__ import annotations
+
+
+# Map Core IL external module names to Python module names
+_EXTERNAL_MODULE_MAP = {
+    "fs": "pathlib",  # File system operations
+    "http": "urllib.request",  # HTTP requests
+    "os": "os",  # OS operations
+    "crypto": "hashlib",  # Cryptographic operations
+    "time": "time",  # Time operations
+}
+
+# Map Core IL external function names to Python function names
+_EXTERNAL_FUNCTION_MAP = {
+    # time module
+    ("time", "now"): "time",        # time.now() -> time.time()
+    ("time", "sleep"): "sleep",     # time.sleep() -> time.sleep()
+    # os module
+    ("os", "env"): "getenv",        # os.env() -> os.getenv()
+    ("os", "cwd"): "getcwd",        # os.cwd() -> os.getcwd()
+    ("os", "argv"): "sys.argv",     # Special case - needs sys import
+    ("os", "exit"): "sys.exit",     # Special case - needs sys import
+    # fs module (pathlib)
+    ("fs", "readFile"): "Path({}).read_text",   # Needs special handling
+    ("fs", "writeFile"): "Path({}).write_text", # Needs special handling
+    ("fs", "exists"): "Path({}).exists",        # Needs special handling
+    # crypto module (hashlib)
+    ("crypto", "hash"): "sha256",   # crypto.hash() -> hashlib.sha256()
+}
 
 
 def emit_python(doc: dict) -> str:
@@ -38,6 +72,10 @@ def emit_python(doc: dict) -> str:
     indent_level = 0
     uses_deque = False  # Track if deque is used
     uses_heapq = False  # Track if heapq is used
+    uses_math = False   # Track if math is used
+    uses_json = False   # Track if json is used
+    uses_regex = False  # Track if re is used
+    external_modules: set[str] = set()  # Track external modules for Tier 2
 
     def emit_line(text: str) -> None:
         """Emit a line with current indentation."""
@@ -45,6 +83,8 @@ def emit_python(doc: dict) -> str:
 
     def emit_expr(node: dict) -> str:
         """Generate Python expression code."""
+        nonlocal uses_deque, uses_heapq, uses_math, uses_json, uses_regex, external_modules
+
         if not isinstance(node, dict):
             raise ValueError("expected expression node")
 
@@ -53,8 +93,13 @@ def emit_python(doc: dict) -> str:
         if node_type == "Literal":
             value = node.get("value")
             if isinstance(value, str):
-                # Escape quotes in string literals
-                escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+                # Escape special characters in string literals
+                escaped = (value
+                    .replace("\\", "\\\\")
+                    .replace('"', '\\"')
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t"))
                 return f'"{escaped}"'
             elif isinstance(value, bool):
                 return "True" if value else "False"
@@ -213,6 +258,45 @@ def emit_python(doc: dict) -> str:
             # Convert items to strings (matching interpreter behavior)
             return f"{sep}.join(str(x) for x in {items})"
 
+        # String operations (v1.4)
+        if node_type == "StringSplit":
+            base = emit_expr(node.get("base"))
+            delimiter = emit_expr(node.get("delimiter"))
+            return f"{base}.split({delimiter})"
+
+        if node_type == "StringTrim":
+            base = emit_expr(node.get("base"))
+            return f"{base}.strip()"
+
+        if node_type == "StringUpper":
+            base = emit_expr(node.get("base"))
+            return f"{base}.upper()"
+
+        if node_type == "StringLower":
+            base = emit_expr(node.get("base"))
+            return f"{base}.lower()"
+
+        if node_type == "StringStartsWith":
+            base = emit_expr(node.get("base"))
+            prefix = emit_expr(node.get("prefix"))
+            return f"{base}.startswith({prefix})"
+
+        if node_type == "StringEndsWith":
+            base = emit_expr(node.get("base"))
+            suffix = emit_expr(node.get("suffix"))
+            return f"{base}.endswith({suffix})"
+
+        if node_type == "StringContains":
+            base = emit_expr(node.get("base"))
+            substring = emit_expr(node.get("substring"))
+            return f"({substring} in {base})"
+
+        if node_type == "StringReplace":
+            base = emit_expr(node.get("base"))
+            old = emit_expr(node.get("old"))
+            new = emit_expr(node.get("new"))
+            return f"{base}.replace({old}, {new})"
+
         if node_type == "Set":
             items = node.get("items", [])
             if not items:
@@ -232,7 +316,6 @@ def emit_python(doc: dict) -> str:
             return f"len({base})"
 
         if node_type == "DequeNew":
-            nonlocal uses_deque
             uses_deque = True
             return "deque()"
 
@@ -241,7 +324,6 @@ def emit_python(doc: dict) -> str:
             return f"len({base})"
 
         if node_type == "HeapNew":
-            nonlocal uses_heapq
             uses_heapq = True
             return '{"_heap_items": [], "_heap_counter": 0}'
 
@@ -253,11 +335,106 @@ def emit_python(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             return f'{base}["_heap_items"][0][2]'
 
+        # Math operations (v1.2)
+        if node_type == "Math":
+            uses_math = True
+            op = node.get("op")
+            arg = emit_expr(node.get("arg"))
+            if op == "abs":
+                return f"abs({arg})"  # abs is a Python builtin
+            return f"math.{op}({arg})"
+
+        if node_type == "MathPow":
+            uses_math = True
+            base = emit_expr(node.get("base"))
+            exponent = emit_expr(node.get("exponent"))
+            return f"math.pow({base}, {exponent})"
+
+        if node_type == "MathConst":
+            uses_math = True
+            name = node.get("name")
+            return f"math.{name}"
+
+        # JSON operations (v1.3)
+        if node_type == "JsonParse":
+            uses_json = True
+            source = emit_expr(node.get("source"))
+            return f"json.loads({source})"
+
+        if node_type == "JsonStringify":
+            uses_json = True
+            value = emit_expr(node.get("value"))
+            pretty = node.get("pretty")
+            if pretty:
+                pretty_expr = emit_expr(pretty)
+                return f"json.dumps({value}, indent=2 if {pretty_expr} else None, default=lambda o: list(o) if hasattr(o, '__iter__') and not isinstance(o, (str, dict, list)) else None)"
+            return f"json.dumps({value}, default=lambda o: list(o) if hasattr(o, '__iter__') and not isinstance(o, (str, dict, list)) else None)"
+
+        # Regex operations (v1.3)
+        if node_type == "RegexMatch":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            flags_node = node.get("flags")
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"(re.search({pattern}, {string}, _parse_regex_flags({flags})) is not None)"
+            return f"(re.search({pattern}, {string}) is not None)"
+
+        if node_type == "RegexFindAll":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            flags_node = node.get("flags")
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"re.findall({pattern}, {string}, _parse_regex_flags({flags}))"
+            return f"re.findall({pattern}, {string})"
+
+        if node_type == "RegexReplace":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            replacement = emit_expr(node.get("replacement"))
+            flags_node = node.get("flags")
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"re.sub({pattern}, {replacement}, {string}, flags=_parse_regex_flags({flags}))"
+            return f"re.sub({pattern}, {replacement}, {string})"
+
+        if node_type == "RegexSplit":
+            uses_regex = True
+            string = emit_expr(node.get("string"))
+            pattern = emit_expr(node.get("pattern"))
+            flags_node = node.get("flags")
+            maxsplit_node = node.get("maxsplit")
+            maxsplit = "0"
+            if maxsplit_node:
+                maxsplit = emit_expr(maxsplit_node)
+            if flags_node:
+                flags = emit_expr(flags_node)
+                return f"re.split({pattern}, {string}, maxsplit={maxsplit}, flags=_parse_regex_flags({flags}))"
+            if maxsplit_node:
+                return f"re.split({pattern}, {string}, maxsplit={maxsplit})"
+            return f"re.split({pattern}, {string})"
+
+        # External call (Tier 2, non-portable)
+        if node_type == "ExternalCall":
+            module = node.get("module")
+            function = node.get("function")
+            args = node.get("args", [])
+            arg_strs = [emit_expr(arg) for arg in args]
+            external_modules.add(module)
+            # Map module and function names to Python equivalents
+            python_module = _EXTERNAL_MODULE_MAP.get(module, module)
+            python_function = _EXTERNAL_FUNCTION_MAP.get((module, function), function)
+            return f"{python_module}.{python_function}({', '.join(arg_strs)})"
+
         raise ValueError(f"unknown expression type: {node_type}")
 
     def emit_stmt(node: dict) -> None:
         """Generate Python statement code."""
-        nonlocal indent_level, uses_heapq
+        nonlocal indent_level, uses_heapq, uses_math
 
         if not isinstance(node, dict):
             raise ValueError("expected statement node")
@@ -446,15 +623,56 @@ def emit_python(doc: dict) -> str:
     for stmt in body:
         emit_stmt(stmt)
 
-    # Prepend imports if deque or heapq are used
+    # Prepend imports and helper functions if needed
     import_lines = []
     if uses_deque:
         import_lines.append("from collections import deque")
     if uses_heapq:
         import_lines.append("import heapq")
-    if import_lines:
+    if uses_math:
+        import_lines.append("import math")
+    if uses_json:
+        import_lines.append("import json")
+    if uses_regex:
+        import_lines.append("import re")
+
+    # Add imports for external modules (Tier 2)
+    for module in sorted(external_modules):
+        python_module = _EXTERNAL_MODULE_MAP.get(module, module)
+        import_lines.append(f"import {python_module}  # External module: {module}")
+
+    # Add helper function for regex flags if regex is used
+    helper_lines = []
+    if uses_regex:
+        helper_lines.extend([
+            "",
+            "def _parse_regex_flags(flags_str):",
+            "    flags = 0",
+            "    if flags_str:",
+            "        if 'i' in flags_str:",
+            "            flags |= re.IGNORECASE",
+            "        if 'm' in flags_str:",
+            "            flags |= re.MULTILINE",
+            "        if 's' in flags_str:",
+            "            flags |= re.DOTALL",
+            "    return flags",
+        ])
+
+    # Add warning comment for non-portable programs
+    if external_modules:
+        helper_lines.insert(0, "")
+        helper_lines.insert(1, "# WARNING: This program uses external calls and is NOT PORTABLE")
+        helper_lines.insert(2, f"# Required external modules: {', '.join(sorted(external_modules))}")
+
+    if import_lines or helper_lines:
+        # Insert imports at the beginning
         for i, line in enumerate(import_lines):
             lines.insert(i, line)
-        lines.insert(len(import_lines), "")
+        # Insert helper functions after imports
+        insert_pos = len(import_lines)
+        for i, line in enumerate(helper_lines):
+            lines.insert(insert_pos + i, line)
+        # Add blank line before main code
+        lines.insert(len(import_lines) + len(helper_lines), "")
 
     return "\n".join(lines) + "\n"

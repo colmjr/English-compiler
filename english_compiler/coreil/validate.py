@@ -1,13 +1,16 @@
 """Core IL validation.
 
-This file implements Core IL v1.1 semantics validation.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This file implements Core IL v1.4 semantics validation.
+Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
 
 Version history:
+- v1.4: Consolidated Math, JSON, and Regex operations
+- v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.1 programs.
+Backward compatibility: Accepts v0.1 through v1.4 programs.
 """
 
 from __future__ import annotations
@@ -63,6 +66,29 @@ _ALLOWED_NODE_TYPES = {
     "HeapPeek",
     "HeapPush",
     "HeapPop",
+    # Math operations (v1.2)
+    "Math",
+    "MathPow",
+    "MathConst",
+    # JSON operations (v1.3)
+    "JsonParse",
+    "JsonStringify",
+    # Regex operations (v1.3)
+    "RegexMatch",
+    "RegexFindAll",
+    "RegexReplace",
+    "RegexSplit",
+    # String operations (v1.4)
+    "StringSplit",
+    "StringTrim",
+    "StringUpper",
+    "StringLower",
+    "StringStartsWith",
+    "StringEndsWith",
+    "StringContains",
+    "StringReplace",
+    # External call (Tier 2, non-portable)
+    "ExternalCall",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -82,10 +108,13 @@ _ALLOWED_BINARY_OPS = {
 }
 
 # Core IL Version Support
-# v1.1 is the current version (adds Record support)
+# v1.4 is the current version (consolidates Math + JSON/Regex)
+# v1.3 adds JSON and Regex operations
+# v1.2 adds Math operations
+# v1.1 adds Record support
 # v1.0 is stable and frozen
 # v0.1-v0.5 are accepted for backward compatibility
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"}
 
 # Helper functions that are disallowed in v0.5+ and v1.0+ (must use explicit primitives)
 # This ensures Core IL remains a closed specification
@@ -153,7 +182,7 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.name", "missing or invalid name")
             else:
                 # In v0.5+ and v1.0+, disallow helper function calls
-                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1") and name in _DISALLOWED_HELPER_CALLS:
+                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4") and name in _DISALLOWED_HELPER_CALLS:
                     add_error(
                         f"{path}.name",
                         f"helper function '{name}' is not allowed in v0.5; "
@@ -354,6 +383,87 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(node["items"], f"{path}.items", defined)
             return
 
+        # String operations (v1.4)
+        if node_type == "StringSplit":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "delimiter" not in node:
+                add_error(f"{path}.delimiter", "missing delimiter")
+            else:
+                validate_expr(node["delimiter"], f"{path}.delimiter", defined)
+            return
+
+        if node_type == "StringTrim":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "StringUpper":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "StringLower":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "StringStartsWith":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "prefix" not in node:
+                add_error(f"{path}.prefix", "missing prefix")
+            else:
+                validate_expr(node["prefix"], f"{path}.prefix", defined)
+            return
+
+        if node_type == "StringEndsWith":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "suffix" not in node:
+                add_error(f"{path}.suffix", "missing suffix")
+            else:
+                validate_expr(node["suffix"], f"{path}.suffix", defined)
+            return
+
+        if node_type == "StringContains":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "substring" not in node:
+                add_error(f"{path}.substring", "missing substring")
+            else:
+                validate_expr(node["substring"], f"{path}.substring", defined)
+            return
+
+        if node_type == "StringReplace":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "old" not in node:
+                add_error(f"{path}.old", "missing old")
+            else:
+                validate_expr(node["old"], f"{path}.old", defined)
+            if "new" not in node:
+                add_error(f"{path}.new", "missing new")
+            else:
+                validate_expr(node["new"], f"{path}.new", defined)
+            return
+
         if node_type == "Set":
             if "items" not in node:
                 add_error(f"{path}.items", "missing items")
@@ -411,6 +521,127 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.base", "missing base")
             else:
                 validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        # Math operations (v1.2)
+        if node_type == "Math":
+            valid_ops = {"sin", "cos", "tan", "sqrt", "floor", "ceil", "abs", "log", "exp"}
+            op = node.get("op")
+            if op not in valid_ops:
+                add_error(f"{path}.op", f"invalid math op '{op}', must be one of {valid_ops}")
+            if "arg" not in node:
+                add_error(f"{path}.arg", "missing arg")
+            else:
+                validate_expr(node["arg"], f"{path}.arg", defined)
+            return
+
+        if node_type == "MathPow":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "exponent" not in node:
+                add_error(f"{path}.exponent", "missing exponent")
+            else:
+                validate_expr(node["exponent"], f"{path}.exponent", defined)
+            return
+
+        if node_type == "MathConst":
+            name = node.get("name")
+            if name not in {"pi", "e"}:
+                add_error(f"{path}.name", f"invalid math constant '{name}', must be 'pi' or 'e'")
+            return
+
+        # JSON operations (v1.3)
+        if node_type == "JsonParse":
+            if "source" not in node:
+                add_error(f"{path}.source", "missing source")
+            else:
+                validate_expr(node["source"], f"{path}.source", defined)
+            return
+
+        if node_type == "JsonStringify":
+            if "value" not in node:
+                add_error(f"{path}.value", "missing value")
+            else:
+                validate_expr(node["value"], f"{path}.value", defined)
+            if "pretty" in node:
+                validate_expr(node["pretty"], f"{path}.pretty", defined)
+            return
+
+        # Regex operations (v1.3)
+        if node_type == "RegexMatch":
+            if "string" not in node:
+                add_error(f"{path}.string", "missing string")
+            else:
+                validate_expr(node["string"], f"{path}.string", defined)
+            if "pattern" not in node:
+                add_error(f"{path}.pattern", "missing pattern")
+            else:
+                validate_expr(node["pattern"], f"{path}.pattern", defined)
+            if "flags" in node:
+                validate_expr(node["flags"], f"{path}.flags", defined)
+            return
+
+        if node_type == "RegexFindAll":
+            if "string" not in node:
+                add_error(f"{path}.string", "missing string")
+            else:
+                validate_expr(node["string"], f"{path}.string", defined)
+            if "pattern" not in node:
+                add_error(f"{path}.pattern", "missing pattern")
+            else:
+                validate_expr(node["pattern"], f"{path}.pattern", defined)
+            if "flags" in node:
+                validate_expr(node["flags"], f"{path}.flags", defined)
+            return
+
+        if node_type == "RegexReplace":
+            if "string" not in node:
+                add_error(f"{path}.string", "missing string")
+            else:
+                validate_expr(node["string"], f"{path}.string", defined)
+            if "pattern" not in node:
+                add_error(f"{path}.pattern", "missing pattern")
+            else:
+                validate_expr(node["pattern"], f"{path}.pattern", defined)
+            if "replacement" not in node:
+                add_error(f"{path}.replacement", "missing replacement")
+            else:
+                validate_expr(node["replacement"], f"{path}.replacement", defined)
+            if "flags" in node:
+                validate_expr(node["flags"], f"{path}.flags", defined)
+            return
+
+        if node_type == "RegexSplit":
+            if "string" not in node:
+                add_error(f"{path}.string", "missing string")
+            else:
+                validate_expr(node["string"], f"{path}.string", defined)
+            if "pattern" not in node:
+                add_error(f"{path}.pattern", "missing pattern")
+            else:
+                validate_expr(node["pattern"], f"{path}.pattern", defined)
+            if "flags" in node:
+                validate_expr(node["flags"], f"{path}.flags", defined)
+            if "maxsplit" in node:
+                validate_expr(node["maxsplit"], f"{path}.maxsplit", defined)
+            return
+
+        # External call (Tier 2, non-portable)
+        if node_type == "ExternalCall":
+            module = node.get("module")
+            if not isinstance(module, str) or not module:
+                add_error(f"{path}.module", "missing or invalid module name")
+            function = node.get("function")
+            if not isinstance(function, str) or not function:
+                add_error(f"{path}.function", "missing or invalid function name")
+            args = node.get("args")
+            if not isinstance(args, list):
+                add_error(f"{path}.args", "missing or invalid args")
+            else:
+                for i, arg in enumerate(args):
+                    validate_expr(arg, f"{path}.args[{i}]", defined)
             return
 
         add_error(path, f"unexpected expression type '{node_type}'")
@@ -720,7 +951,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', or 'coreil-1.1'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', or 'coreil-1.4'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:

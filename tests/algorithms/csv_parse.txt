@@ -1,0 +1,3 @@
+Parse a simple CSV line into fields and print them.
+
+Given the string "apple,banana,cherry", split it by comma and print each field on its own line.

@@ -1,14 +1,20 @@
 """Core IL package.
 
-Core IL v1.1 - Record Support for Structured Data
-==================================================
+Core IL v1.4 - Math, JSON, and Regex Operations
+================================================
 
-This package implements the Core IL (Core Intermediate Language) v1.1 specification.
+This package implements the Core IL (Core Intermediate Language) v1.4 specification.
 
-Core IL v1.1 adds:
-- Record: Mutable structured data with named fields
-- GetField: Access record fields by name
-- SetField: Mutate record fields
+Core IL v1.4 consolidates:
+- Math: Unary math functions (sin, cos, tan, sqrt, floor, ceil, abs, log, exp)
+- MathPow: Power function (base^exponent)
+- MathConst: Math constants (pi, e)
+- JsonParse: Parse JSON string to Core IL value
+- JsonStringify: Convert value to JSON string
+- RegexMatch: Test if string matches pattern
+- RegexFindAll: Find all matches of pattern
+- RegexReplace: Replace pattern matches
+- RegexSplit: Split string by pattern
 
 Core IL features:
 - Complete: All necessary primitives for algorithmic computation
@@ -17,6 +23,9 @@ Core IL features:
 - Closed specification: No extension mechanism or helper functions
 
 Version History:
+- v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
+- v1.3: Added JSON operations (JsonParse, JsonStringify) and Regex operations
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField for structured data
 - v1.0: Stable release with short-circuit evaluation, tuple support (frozen)
 - v0.5: Sealed primitives (GetDefault, Keys, Push, Tuple)
@@ -25,14 +34,14 @@ Version History:
 - v0.1: Basic statements and expressions
 
 Backward Compatibility:
-All v0.1-v1.0 programs continue to work in v1.1.
+All v0.1-v1.3 programs continue to work in v1.4.
 """
 
 from .interp import run_coreil
 from .validate import validate_coreil
 
 # Current version
-COREIL_VERSION = "coreil-1.1"
+COREIL_VERSION = "coreil-1.4"
 
 # All supported versions (for backward compatibility)
 SUPPORTED_VERSIONS = frozenset([
@@ -43,7 +52,10 @@ SUPPORTED_VERSIONS = frozenset([
     "coreil-0.5",
     "coreil-1.0",
     "coreil-1.1",
+    "coreil-1.2",
+    "coreil-1.3",
+    "coreil-1.4",
 ])
 
-__version__ = "1.1.0"
+__version__ = "1.4.0"
 __all__ = ["run_coreil", "validate_coreil", "COREIL_VERSION", "SUPPORTED_VERSIONS"]

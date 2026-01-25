@@ -1,0 +1,6 @@
+Given an array of strings with leading/trailing whitespace, clean them up:
+1. Trim whitespace from each string
+2. Convert to lowercase
+3. Print each cleaned string
+
+Test with: ["  Hello  ", "  WORLD  ", "  Foo Bar  "]

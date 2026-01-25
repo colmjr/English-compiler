@@ -1,14 +1,17 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.1 structure for LLM frontends.
-Core IL v1.1 adds Record, Set, String operations, Deque support, and Heap support.
+This schema defines Core IL v1.4 structure for LLM frontends.
+Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
 
 Version history:
+- v1.4: Consolidated Math, JSON, and Regex operations
+- v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.1 for validation,
-but LLMs should generate v1.1 programs.
+Backward compatibility: Schema accepts v0.1 through v1.4 for validation,
+but LLMs should generate v1.4 programs.
 """
 
 COREIL_JSON_SCHEMA = {
@@ -16,7 +19,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -212,6 +215,29 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/heapnew_expr"},
                 {"$ref": "#/definitions/heapsize_expr"},
                 {"$ref": "#/definitions/heappeek_expr"},
+                # Math operations (v1.2)
+                {"$ref": "#/definitions/math_expr"},
+                {"$ref": "#/definitions/mathpow_expr"},
+                {"$ref": "#/definitions/mathconst_expr"},
+                # JSON operations (v1.3)
+                {"$ref": "#/definitions/jsonparse_expr"},
+                {"$ref": "#/definitions/jsonstringify_expr"},
+                # Regex operations (v1.3)
+                {"$ref": "#/definitions/regexmatch_expr"},
+                {"$ref": "#/definitions/regexfindall_expr"},
+                {"$ref": "#/definitions/regexreplace_expr"},
+                {"$ref": "#/definitions/regexsplit_expr"},
+                # String operations (v1.4)
+                {"$ref": "#/definitions/stringsplit_expr"},
+                {"$ref": "#/definitions/stringtrim_expr"},
+                {"$ref": "#/definitions/stringupper_expr"},
+                {"$ref": "#/definitions/stringlower_expr"},
+                {"$ref": "#/definitions/stringstartswith_expr"},
+                {"$ref": "#/definitions/stringendswith_expr"},
+                {"$ref": "#/definitions/stringcontains_expr"},
+                {"$ref": "#/definitions/stringreplace_expr"},
+                # External call (Tier 2, non-portable)
+                {"$ref": "#/definitions/externalcall_expr"},
             ]
         },
         "literal_expr": {
@@ -625,6 +651,194 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "HeapPop"},
                 "base": {"$ref": "#/definitions/expr"},
                 "target": {"type": "string"},
+            },
+        },
+        # Math operations (v1.2)
+        "math_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "op", "arg"],
+            "properties": {
+                "type": {"const": "Math"},
+                "op": {"enum": ["sin", "cos", "tan", "sqrt", "floor", "ceil", "abs", "log", "exp"]},
+                "arg": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "mathpow_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "exponent"],
+            "properties": {
+                "type": {"const": "MathPow"},
+                "base": {"$ref": "#/definitions/expr"},
+                "exponent": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "mathconst_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "name"],
+            "properties": {
+                "type": {"const": "MathConst"},
+                "name": {"enum": ["pi", "e"]},
+            },
+        },
+        # JSON operations (v1.3)
+        "jsonparse_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "source"],
+            "properties": {
+                "type": {"const": "JsonParse"},
+                "source": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "jsonstringify_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "value"],
+            "properties": {
+                "type": {"const": "JsonStringify"},
+                "value": {"$ref": "#/definitions/expr"},
+                "pretty": {"$ref": "#/definitions/expr"},
+            },
+        },
+        # Regex operations (v1.3)
+        "regexmatch_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern"],
+            "properties": {
+                "type": {"const": "RegexMatch"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "regexfindall_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern"],
+            "properties": {
+                "type": {"const": "RegexFindAll"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "regexreplace_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern", "replacement"],
+            "properties": {
+                "type": {"const": "RegexReplace"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "replacement": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "regexsplit_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "string", "pattern"],
+            "properties": {
+                "type": {"const": "RegexSplit"},
+                "string": {"$ref": "#/definitions/expr"},
+                "pattern": {"$ref": "#/definitions/expr"},
+                "flags": {"$ref": "#/definitions/expr"},
+                "maxsplit": {"$ref": "#/definitions/expr"},
+            },
+        },
+        # String operations (v1.4)
+        "stringsplit_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "delimiter"],
+            "properties": {
+                "type": {"const": "StringSplit"},
+                "base": {"$ref": "#/definitions/expr"},
+                "delimiter": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringtrim_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "StringTrim"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringupper_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "StringUpper"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringlower_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base"],
+            "properties": {
+                "type": {"const": "StringLower"},
+                "base": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringstartswith_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "prefix"],
+            "properties": {
+                "type": {"const": "StringStartsWith"},
+                "base": {"$ref": "#/definitions/expr"},
+                "prefix": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringendswith_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "suffix"],
+            "properties": {
+                "type": {"const": "StringEndsWith"},
+                "base": {"$ref": "#/definitions/expr"},
+                "suffix": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringcontains_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "substring"],
+            "properties": {
+                "type": {"const": "StringContains"},
+                "base": {"$ref": "#/definitions/expr"},
+                "substring": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "stringreplace_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "old", "new"],
+            "properties": {
+                "type": {"const": "StringReplace"},
+                "base": {"$ref": "#/definitions/expr"},
+                "old": {"$ref": "#/definitions/expr"},
+                "new": {"$ref": "#/definitions/expr"},
+            },
+        },
+        # External call (Tier 2, non-portable)
+        "externalcall_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "module", "function", "args"],
+            "properties": {
+                "type": {"const": "ExternalCall"},
+                "module": {"type": "string"},
+                "function": {"type": "string"},
+                "args": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
             },
         },
     },
