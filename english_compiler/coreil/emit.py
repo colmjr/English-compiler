@@ -39,6 +39,24 @@ _EXTERNAL_MODULE_MAP = {
     "time": "time",  # Time operations
 }
 
+# Map Core IL external function names to Python function names
+_EXTERNAL_FUNCTION_MAP = {
+    # time module
+    ("time", "now"): "time",        # time.now() -> time.time()
+    ("time", "sleep"): "sleep",     # time.sleep() -> time.sleep()
+    # os module
+    ("os", "env"): "getenv",        # os.env() -> os.getenv()
+    ("os", "cwd"): "getcwd",        # os.cwd() -> os.getcwd()
+    ("os", "argv"): "sys.argv",     # Special case - needs sys import
+    ("os", "exit"): "sys.exit",     # Special case - needs sys import
+    # fs module (pathlib)
+    ("fs", "readFile"): "Path({}).read_text",   # Needs special handling
+    ("fs", "writeFile"): "Path({}).write_text", # Needs special handling
+    ("fs", "exists"): "Path({}).exists",        # Needs special handling
+    # crypto module (hashlib)
+    ("crypto", "hash"): "sha256",   # crypto.hash() -> hashlib.sha256()
+}
+
 
 def emit_python(doc: dict) -> str:
     """Generate Python code from Core IL document.
@@ -407,9 +425,10 @@ def emit_python(doc: dict) -> str:
             args = node.get("args", [])
             arg_strs = [emit_expr(arg) for arg in args]
             external_modules.add(module)
-            # Map module names to Python equivalents
+            # Map module and function names to Python equivalents
             python_module = _EXTERNAL_MODULE_MAP.get(module, module)
-            return f"{python_module}.{function}({', '.join(arg_strs)})"
+            python_function = _EXTERNAL_FUNCTION_MAP.get((module, function), function)
+            return f"{python_module}.{python_function}({', '.join(arg_strs)})"
 
         raise ValueError(f"unknown expression type: {node_type}")
 

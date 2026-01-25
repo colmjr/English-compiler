@@ -1,0 +1,3 @@
+Get the current Unix timestamp and print it.
+Then print the current working directory.
+Finally, print the value of the USER environment variable.
