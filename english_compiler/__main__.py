@@ -73,7 +73,7 @@ def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.emit import emit_python
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.coreil.validate import validate_coreil
-    from english_compiler.frontend.mock_llm import generate_coreil_from_text
+    from english_compiler.frontend import get_frontend
 
     if args.regen and args.freeze:
         print("--regen and --freeze cannot be used together")
@@ -149,23 +149,21 @@ def _compile_command(args: argparse.Namespace) -> int:
         print(f"freeze enabled: regeneration required for {source_path}")
         return 1
 
-    frontend = args.frontend
-    if frontend is None:
-        frontend = "claude" if os.getenv("ANTHROPIC_API_KEY") else "mock"
-
-    if frontend == "claude" and not os.getenv("ANTHROPIC_API_KEY"):
-        print("ANTHROPIC_API_KEY is required when using --frontend claude")
+    # Get frontend (auto-detect if not specified)
+    frontend_name = args.frontend
+    try:
+        frontend = get_frontend(frontend_name)
+    except RuntimeError as exc:
+        print(str(exc))
         return 1
 
-    print(f"Regenerating Core IL for {source_path}")
-    if frontend == "claude":
-        from english_compiler.frontend.claude import generate_coreil_from_text
-
-        model_name = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
-        doc = generate_coreil_from_text(source_text)
-    else:
-        model_name = "mock"
-        doc = generate_coreil_from_text(source_text)
+    print(f"Regenerating Core IL for {source_path} using {frontend.get_model_name()}")
+    try:
+        doc = frontend.generate_coreil_from_text(source_text)
+    except RuntimeError as exc:
+        print(f"Frontend error: {exc}")
+        return 1
+    model_name = frontend.get_model_name()
     errors = validate_coreil(doc)
     if errors:
         _print_validation_errors(errors)
@@ -240,9 +238,9 @@ def main(argv: list[str] | None = None) -> int:
     compile_parser.add_argument("file", help="Path to the source text file")
     compile_parser.add_argument(
         "--frontend",
-        choices=["mock", "claude"],
+        choices=["mock", "claude", "openai", "gemini", "qwen"],
         default=None,
-        help="Frontend to use (default: mock if no API key, otherwise claude)",
+        help="Frontend to use (default: auto-detect based on available API keys)",
     )
     compile_parser.add_argument(
         "--target",

@@ -32,11 +32,15 @@ python -m tests.test_regression_suite # Meta-tests for regression suite
 ### Compilation and Execution
 
 ```bash
-# Compile with mock frontend (default when no API key)
+# Compile with auto-detected frontend (checks env vars: Claude > OpenAI > Gemini > Qwen > mock)
 python -m english_compiler compile examples/hello.txt
 
-# Compile with Claude frontend
+# Compile with explicit frontend selection
 python -m english_compiler compile --frontend claude examples/hello.txt
+python -m english_compiler compile --frontend openai examples/hello.txt
+python -m english_compiler compile --frontend gemini examples/hello.txt
+python -m english_compiler compile --frontend qwen examples/hello.txt
+python -m english_compiler compile --frontend mock examples/hello.txt
 
 # Generate Python code (in addition to Core IL)
 python -m english_compiler compile --target python examples/hello.txt
@@ -69,10 +73,15 @@ python -m scripts.demo_claude_compile
     - `emit.py` - Python code generator (transpilation)
     - `lower.py` - Lowering pass (For/ForEach → While)
   - `frontend/` - LLM frontends
-    - `claude.py` - Claude API integration
+    - `__init__.py` - Factory function `get_frontend()` for provider selection
+    - `base.py` - Abstract base class with shared logic
+    - `claude.py` - Claude API integration (Anthropic)
+    - `openai_provider.py` - OpenAI API integration
+    - `gemini.py` - Google Gemini API integration
+    - `qwen.py` - Alibaba Qwen API integration (DashScope or OpenAI-compatible)
     - `mock_llm.py` - Mock generator (deterministic, for testing)
-    - `prompt.txt` - System prompt for Core IL generation
-    - `coreil_schema.py` - JSON schema for Core IL v1.4
+    - `prompt.txt` - System prompt for Core IL generation (shared)
+    - `coreil_schema.py` - JSON schema for Core IL v1.4 (shared)
   - `__main__.py` - CLI entry point
 
 - `tests/` - Test suite
@@ -344,11 +353,29 @@ Create `tests/algorithms/new_algorithm.txt` with natural English pseudocode. The
 ## Environment Variables
 
 ```bash
-# Claude API configuration
+# Claude API configuration (Anthropic)
 export ANTHROPIC_API_KEY="your_api_key"
-export ANTHROPIC_MODEL="claude-sonnet-4-5"  # or other model
+export ANTHROPIC_MODEL="claude-haiku-4-5-20251001"  # or other model
 export ANTHROPIC_MAX_TOKENS="4096"
+
+# OpenAI API configuration
+export OPENAI_API_KEY="your_api_key"
+export OPENAI_MODEL="gpt-4o"  # or other model
+export OPENAI_MAX_TOKENS="4096"
+
+# Google Gemini API configuration
+export GEMINI_API_KEY="your_api_key"
+export GEMINI_MODEL="gemini-1.5-pro"  # or other model
+
+# Alibaba Qwen API configuration (DashScope)
+export QWEN_API_KEY="your_api_key"
+export QWEN_MODEL="qwen-turbo"  # or other model
+export QWEN_MAX_TOKENS="4096"
+# Optional: Use OpenAI-compatible endpoint instead of DashScope
+# export QWEN_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
 ```
+
+Frontend auto-detection checks for API keys in order: Claude > OpenAI > Gemini > Qwen > mock
 
 ## Key Documentation
 
