@@ -139,6 +139,8 @@ Cache reuse is based on matching source hash and Core IL hash.
 - Math, MathPow, MathConst
 - JsonParse, JsonStringify
 - RegexMatch, RegexFindAll, RegexReplace, RegexSplit
+- StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace
+- ExternalCall (Tier 2, non-portable)
 - Range, Call
 
 **Statements** (perform actions):
@@ -247,6 +249,36 @@ Supported ops: sin, cos, tan (radians), sqrt, floor, ceil, abs, log (natural), e
 ```
 
 Optional "flags" parameter: "i" (case-insensitive), "m" (multiline), "s" (dotall).
+
+**String operations (v1.4)**:
+```json
+{"type": "StringSplit", "base": <str>, "delimiter": <str>}
+{"type": "StringTrim", "base": <str>}
+{"type": "StringUpper", "base": <str>}
+{"type": "StringLower", "base": <str>}
+{"type": "StringStartsWith", "base": <str>, "prefix": <str>}
+{"type": "StringEndsWith", "base": <str>, "suffix": <str>}
+{"type": "StringContains", "base": <str>, "substring": <str>}
+{"type": "StringReplace", "base": <str>, "old": <str>, "new": <str>}
+```
+
+### Operation Tiers
+
+**Tier 1 (Portable)**: All operations above are portable - identical semantics across all platforms.
+
+**Tier 2 (Non-Portable)**: ExternalCall enables platform-specific operations. Programs using ExternalCall cannot run in the interpreter and are marked as non-portable.
+
+**ExternalCall (Tier 2, v1.4)**:
+```json
+{"type": "ExternalCall", "module": "time", "function": "now", "args": []}
+```
+
+Available modules: fs (file system), http, os, crypto, time
+
+Notes:
+- ExternalCall raises an error in the interpreter
+- Python backend generates appropriate imports
+- Use Tier 1 operations when possible
 
 ## Testing Strategy
 

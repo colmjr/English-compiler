@@ -18,7 +18,7 @@ No prose, no markdown, no code fences.
 
 Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, HeapPush, HeapPop, FuncDef, Return
 
-Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, Call
+Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, ExternalCall (Tier 2), Call
 
 === DATA STRUCTURES QUICK REFERENCE ===
 
@@ -122,6 +122,14 @@ Get length: {"type": "StringLength", "base": <string>}
 Substring (end-exclusive): {"type": "Substring", "base": <string>, "start": <int>, "end": <int>}
 Get character: {"type": "CharAt", "base": <string>, "index": <int>}
 Join array: {"type": "Join", "sep": <string>, "items": <array>}
+Split by delimiter: {"type": "StringSplit", "base": <string>, "delimiter": <string>}
+Trim whitespace: {"type": "StringTrim", "base": <string>}
+To uppercase: {"type": "StringUpper", "base": <string>}
+To lowercase: {"type": "StringLower", "base": <string>}
+Check prefix: {"type": "StringStartsWith", "base": <string>, "prefix": <string>}
+Check suffix: {"type": "StringEndsWith", "base": <string>, "suffix": <string>}
+Check contains: {"type": "StringContains", "base": <string>, "substring": <string>}
+Replace all: {"type": "StringReplace", "base": <string>, "old": <string>, "new": <string>}
 
 === MATH OPERATIONS ===
 
@@ -219,6 +227,27 @@ Example 5: Record for structured data
   ]}},
   {"type": "Print", "args": [{"type": "GetField", "base": {"type": "Var", "name": "point"}, "name": "x"}]},
   {"type": "SetField", "base": {"type": "Var", "name": "point"}, "name": "x", "value": {"type": "Literal", "value": 10}}
+
+=== EXTERNAL CALLS (Tier 2, Non-Portable) ===
+
+IMPORTANT: ExternalCall makes a program NON-PORTABLE. Use only when necessary.
+
+External call: {"type": "ExternalCall", "module": <module>, "function": <function>, "args": [<expr>, ...]}
+
+Available modules (platform-specific):
+- "fs": File system (readFile, writeFile, exists)
+- "http": HTTP requests (get, post)
+- "os": OS operations (env, argv, exit)
+- "crypto": Cryptographic functions (hash, randomBytes)
+- "time": Time operations (now, sleep)
+
+Example:
+  {"type": "ExternalCall", "module": "time", "function": "now", "args": []}
+
+Notes:
+- Programs using ExternalCall cannot run in the interpreter (will error)
+- Python backend generates appropriate imports
+- Use Tier 1 operations (portable) when possible
 
 === VERSION ===
 

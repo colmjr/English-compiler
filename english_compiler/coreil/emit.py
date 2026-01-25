@@ -30,6 +30,16 @@ Backward compatibility: Accepts v0.1 through v1.4 programs.
 from __future__ import annotations
 
 
+# Map Core IL external module names to Python module names
+_EXTERNAL_MODULE_MAP = {
+    "fs": "pathlib",  # File system operations
+    "http": "urllib.request",  # HTTP requests
+    "os": "os",  # OS operations
+    "crypto": "hashlib",  # Cryptographic operations
+    "time": "time",  # Time operations
+}
+
+
 def emit_python(doc: dict) -> str:
     """Generate Python code from Core IL document.
 
@@ -47,6 +57,7 @@ def emit_python(doc: dict) -> str:
     uses_math = False   # Track if math is used
     uses_json = False   # Track if json is used
     uses_regex = False  # Track if re is used
+    external_modules: set[str] = set()  # Track external modules for Tier 2
 
     def emit_line(text: str) -> None:
         """Emit a line with current indentation."""
@@ -54,7 +65,7 @@ def emit_python(doc: dict) -> str:
 
     def emit_expr(node: dict) -> str:
         """Generate Python expression code."""
-        nonlocal uses_deque, uses_heapq, uses_math, uses_json, uses_regex
+        nonlocal uses_deque, uses_heapq, uses_math, uses_json, uses_regex, external_modules
 
         if not isinstance(node, dict):
             raise ValueError("expected expression node")
@@ -224,6 +235,45 @@ def emit_python(doc: dict) -> str:
             # Convert items to strings (matching interpreter behavior)
             return f"{sep}.join(str(x) for x in {items})"
 
+        # String operations (v1.4)
+        if node_type == "StringSplit":
+            base = emit_expr(node.get("base"))
+            delimiter = emit_expr(node.get("delimiter"))
+            return f"{base}.split({delimiter})"
+
+        if node_type == "StringTrim":
+            base = emit_expr(node.get("base"))
+            return f"{base}.strip()"
+
+        if node_type == "StringUpper":
+            base = emit_expr(node.get("base"))
+            return f"{base}.upper()"
+
+        if node_type == "StringLower":
+            base = emit_expr(node.get("base"))
+            return f"{base}.lower()"
+
+        if node_type == "StringStartsWith":
+            base = emit_expr(node.get("base"))
+            prefix = emit_expr(node.get("prefix"))
+            return f"{base}.startswith({prefix})"
+
+        if node_type == "StringEndsWith":
+            base = emit_expr(node.get("base"))
+            suffix = emit_expr(node.get("suffix"))
+            return f"{base}.endswith({suffix})"
+
+        if node_type == "StringContains":
+            base = emit_expr(node.get("base"))
+            substring = emit_expr(node.get("substring"))
+            return f"({substring} in {base})"
+
+        if node_type == "StringReplace":
+            base = emit_expr(node.get("base"))
+            old = emit_expr(node.get("old"))
+            new = emit_expr(node.get("new"))
+            return f"{base}.replace({old}, {new})"
+
         if node_type == "Set":
             items = node.get("items", [])
             if not items:
@@ -344,6 +394,17 @@ def emit_python(doc: dict) -> str:
             if maxsplit_node:
                 return f"re.split({pattern}, {string}, maxsplit={maxsplit})"
             return f"re.split({pattern}, {string})"
+
+        # External call (Tier 2, non-portable)
+        if node_type == "ExternalCall":
+            module = node.get("module")
+            function = node.get("function")
+            args = node.get("args", [])
+            arg_strs = [emit_expr(arg) for arg in args]
+            external_modules.add(module)
+            # Map module names to Python equivalents
+            python_module = _EXTERNAL_MODULE_MAP.get(module, module)
+            return f"{python_module}.{function}({', '.join(arg_strs)})"
 
         raise ValueError(f"unknown expression type: {node_type}")
 
@@ -551,6 +612,11 @@ def emit_python(doc: dict) -> str:
     if uses_regex:
         import_lines.append("import re")
 
+    # Add imports for external modules (Tier 2)
+    for module in sorted(external_modules):
+        python_module = _EXTERNAL_MODULE_MAP.get(module, module)
+        import_lines.append(f"import {python_module}  # External module: {module}")
+
     # Add helper function for regex flags if regex is used
     helper_lines = []
     if uses_regex:
@@ -567,6 +633,12 @@ def emit_python(doc: dict) -> str:
             "            flags |= re.DOTALL",
             "    return flags",
         ])
+
+    # Add warning comment for non-portable programs
+    if external_modules:
+        helper_lines.insert(0, "")
+        helper_lines.insert(1, "# WARNING: This program uses external calls and is NOT PORTABLE")
+        helper_lines.insert(2, f"# Required external modules: {', '.join(sorted(external_modules))}")
 
     if import_lines or helper_lines:
         # Insert imports at the beginning

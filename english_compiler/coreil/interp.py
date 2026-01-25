@@ -311,6 +311,73 @@ def run_coreil(doc: dict) -> int:
             str_items = [str(item) for item in items]
             return sep.join(str_items)
 
+        # String operations (v1.4)
+        if node_type == "StringSplit":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringSplit base must be a string, got {type(base).__name__}")
+            delimiter = eval_expr(node["delimiter"], local_env, call_depth)
+            if not isinstance(delimiter, str):
+                raise ValueError(f"runtime error: StringSplit delimiter must be a string, got {type(delimiter).__name__}")
+            return base.split(delimiter)
+
+        if node_type == "StringTrim":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringTrim base must be a string, got {type(base).__name__}")
+            return base.strip()
+
+        if node_type == "StringUpper":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringUpper base must be a string, got {type(base).__name__}")
+            return base.upper()
+
+        if node_type == "StringLower":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringLower base must be a string, got {type(base).__name__}")
+            return base.lower()
+
+        if node_type == "StringStartsWith":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringStartsWith base must be a string, got {type(base).__name__}")
+            prefix = eval_expr(node["prefix"], local_env, call_depth)
+            if not isinstance(prefix, str):
+                raise ValueError(f"runtime error: StringStartsWith prefix must be a string, got {type(prefix).__name__}")
+            return base.startswith(prefix)
+
+        if node_type == "StringEndsWith":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringEndsWith base must be a string, got {type(base).__name__}")
+            suffix = eval_expr(node["suffix"], local_env, call_depth)
+            if not isinstance(suffix, str):
+                raise ValueError(f"runtime error: StringEndsWith suffix must be a string, got {type(suffix).__name__}")
+            return base.endswith(suffix)
+
+        if node_type == "StringContains":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringContains base must be a string, got {type(base).__name__}")
+            substring = eval_expr(node["substring"], local_env, call_depth)
+            if not isinstance(substring, str):
+                raise ValueError(f"runtime error: StringContains substring must be a string, got {type(substring).__name__}")
+            return substring in base
+
+        if node_type == "StringReplace":
+            base = eval_expr(node["base"], local_env, call_depth)
+            if not isinstance(base, str):
+                raise ValueError(f"runtime error: StringReplace base must be a string, got {type(base).__name__}")
+            old = eval_expr(node["old"], local_env, call_depth)
+            if not isinstance(old, str):
+                raise ValueError(f"runtime error: StringReplace old must be a string, got {type(old).__name__}")
+            new = eval_expr(node["new"], local_env, call_depth)
+            if not isinstance(new, str):
+                raise ValueError(f"runtime error: StringReplace new must be a string, got {type(new).__name__}")
+            return base.replace(old, new)
+
         if node_type == "Set":
             items = node.get("items", [])
             result_set = set()
@@ -506,6 +573,18 @@ def run_coreil(doc: dict) -> int:
                 return re.split(pattern, string, maxsplit=maxsplit, flags=flags)
             except re.error as e:
                 raise ValueError(f"runtime error: invalid regex pattern: {e}")
+
+        # External call (Tier 2, non-portable)
+        if node_type == "ExternalCall":
+            module = node.get("module")
+            function = node.get("function")
+            # Evaluate args but don't execute - just raise error for now
+            args = node.get("args", [])
+            _ = [eval_expr(arg, local_env, call_depth) for arg in args]
+            raise ValueError(
+                f"runtime error: ExternalCall to {module}.{function} is not supported in interpreter. "
+                f"External calls are platform-specific and require a compatible backend."
+            )
 
         raise ValueError(f"unexpected expression type '{node_type}'")
 

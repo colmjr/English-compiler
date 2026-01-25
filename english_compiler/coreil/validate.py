@@ -78,6 +78,17 @@ _ALLOWED_NODE_TYPES = {
     "RegexFindAll",
     "RegexReplace",
     "RegexSplit",
+    # String operations (v1.4)
+    "StringSplit",
+    "StringTrim",
+    "StringUpper",
+    "StringLower",
+    "StringStartsWith",
+    "StringEndsWith",
+    "StringContains",
+    "StringReplace",
+    # External call (Tier 2, non-portable)
+    "ExternalCall",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -372,6 +383,87 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(node["items"], f"{path}.items", defined)
             return
 
+        # String operations (v1.4)
+        if node_type == "StringSplit":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "delimiter" not in node:
+                add_error(f"{path}.delimiter", "missing delimiter")
+            else:
+                validate_expr(node["delimiter"], f"{path}.delimiter", defined)
+            return
+
+        if node_type == "StringTrim":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "StringUpper":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "StringLower":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            return
+
+        if node_type == "StringStartsWith":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "prefix" not in node:
+                add_error(f"{path}.prefix", "missing prefix")
+            else:
+                validate_expr(node["prefix"], f"{path}.prefix", defined)
+            return
+
+        if node_type == "StringEndsWith":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "suffix" not in node:
+                add_error(f"{path}.suffix", "missing suffix")
+            else:
+                validate_expr(node["suffix"], f"{path}.suffix", defined)
+            return
+
+        if node_type == "StringContains":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "substring" not in node:
+                add_error(f"{path}.substring", "missing substring")
+            else:
+                validate_expr(node["substring"], f"{path}.substring", defined)
+            return
+
+        if node_type == "StringReplace":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "old" not in node:
+                add_error(f"{path}.old", "missing old")
+            else:
+                validate_expr(node["old"], f"{path}.old", defined)
+            if "new" not in node:
+                add_error(f"{path}.new", "missing new")
+            else:
+                validate_expr(node["new"], f"{path}.new", defined)
+            return
+
         if node_type == "Set":
             if "items" not in node:
                 add_error(f"{path}.items", "missing items")
@@ -534,6 +626,22 @@ def validate_coreil(doc: dict) -> list[dict]:
                 validate_expr(node["flags"], f"{path}.flags", defined)
             if "maxsplit" in node:
                 validate_expr(node["maxsplit"], f"{path}.maxsplit", defined)
+            return
+
+        # External call (Tier 2, non-portable)
+        if node_type == "ExternalCall":
+            module = node.get("module")
+            if not isinstance(module, str) or not module:
+                add_error(f"{path}.module", "missing or invalid module name")
+            function = node.get("function")
+            if not isinstance(function, str) or not function:
+                add_error(f"{path}.function", "missing or invalid function name")
+            args = node.get("args")
+            if not isinstance(args, list):
+                add_error(f"{path}.args", "missing or invalid args")
+            else:
+                for i, arg in enumerate(args):
+                    validate_expr(arg, f"{path}.args[{i}]", defined)
             return
 
         add_error(path, f"unexpected expression type '{node_type}'")
