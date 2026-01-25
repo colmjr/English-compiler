@@ -75,8 +75,13 @@ def emit_python(doc: dict) -> str:
         if node_type == "Literal":
             value = node.get("value")
             if isinstance(value, str):
-                # Escape quotes in string literals
-                escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+                # Escape special characters in string literals
+                escaped = (value
+                    .replace("\\", "\\\\")
+                    .replace('"', '\\"')
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t"))
                 return f'"{escaped}"'
             elif isinstance(value, bool):
                 return "True" if value else "False"
