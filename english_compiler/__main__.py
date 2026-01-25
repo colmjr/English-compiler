@@ -76,9 +76,59 @@ def _run_javascript_file(js_path: Path) -> int:
     return result.returncode
 
 
+def _run_cpp_file(cpp_path: Path) -> int:
+    """Compile and run a C++ file and return exit code."""
+    import subprocess
+    import tempfile
+    import shutil
+
+    # Check for g++ or clang++
+    compiler = None
+    for cc in ["g++", "clang++"]:
+        if shutil.which(cc):
+            compiler = cc
+            break
+
+    if compiler is None:
+        print("Error: No C++ compiler found (tried g++, clang++)")
+        return 1
+
+    # Create temp executable
+    with tempfile.NamedTemporaryFile(suffix="", delete=False) as tmp:
+        exe_path = tmp.name
+
+    try:
+        # Compile with runtime header directory in include path
+        from english_compiler.coreil.emit_cpp import get_runtime_header_path
+        include_dir = get_runtime_header_path().parent
+
+        compile_result = subprocess.run(
+            [compiler, "-std=c++17", "-O2", "-I", str(include_dir), str(cpp_path), "-o", exe_path],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        if compile_result.returncode != 0:
+            print(f"C++ compilation failed:\n{compile_result.stderr}")
+            return 1
+
+        # Run the compiled executable
+        result = subprocess.run([exe_path], capture_output=False, timeout=30)
+        return result.returncode
+
+    except subprocess.TimeoutExpired:
+        print("C++ execution timeout")
+        return 1
+    finally:
+        # Clean up temp executable
+        Path(exe_path).unlink(missing_ok=True)
+
+
 def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.emit import emit_python
     from english_compiler.coreil.emit_javascript import emit_javascript
+    from english_compiler.coreil.emit_cpp import emit_cpp, get_runtime_header_path, get_json_header_path
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.coreil.validate import validate_coreil
     from english_compiler.frontend import get_frontend
@@ -151,6 +201,25 @@ def _compile_command(args: argparse.Namespace) -> int:
                 except Exception as exc:
                     print(f"JavaScript codegen failed: {exc}")
                     return 1
+        elif target == "cpp":
+            cpp_path = source_path.with_suffix(".cpp")
+            # Only regenerate C++ if it doesn't exist or is older than Core IL
+            if not cpp_path.exists() or cpp_path.stat().st_mtime < coreil_path.stat().st_mtime:
+                try:
+                    cpp_code = emit_cpp(doc)
+                    cpp_path.write_text(cpp_code, encoding="utf-8")
+                    print(f"Generated C++ code at {cpp_path}")
+                    # Copy runtime headers to same directory
+                    runtime_dir = cpp_path.parent
+                    import shutil
+                    shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
+                    shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
+                except OSError as exc:
+                    print(f"{cpp_path}: {exc}")
+                    return 1
+                except Exception as exc:
+                    print(f"C++ codegen failed: {exc}")
+                    return 1
 
         ambiguities = doc.get("ambiguities", [])
         if isinstance(ambiguities, list) and ambiguities:
@@ -170,6 +239,10 @@ def _compile_command(args: argparse.Namespace) -> int:
                     js_path = source_path.with_suffix(".js")
                     print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
                     return _run_javascript_file(js_path)
+                elif target == "cpp":
+                    cpp_path = source_path.with_suffix(".cpp")
+                    print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
+                    return _run_cpp_file(cpp_path)
             raise
 
     if args.freeze:
@@ -225,6 +298,23 @@ def _compile_command(args: argparse.Namespace) -> int:
         except Exception as exc:
             print(f"JavaScript codegen failed: {exc}")
             return 1
+    elif target == "cpp":
+        cpp_path = source_path.with_suffix(".cpp")
+        try:
+            cpp_code = emit_cpp(doc)
+            cpp_path.write_text(cpp_code, encoding="utf-8")
+            print(f"Generated C++ code at {cpp_path}")
+            # Copy runtime headers to same directory
+            runtime_dir = cpp_path.parent
+            import shutil
+            shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
+            shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
+        except OSError as exc:
+            print(f"{cpp_path}: {exc}")
+            return 1
+        except Exception as exc:
+            print(f"C++ codegen failed: {exc}")
+            return 1
 
     lock_doc = {
         "source_sha256": source_sha256,
@@ -254,6 +344,10 @@ def _compile_command(args: argparse.Namespace) -> int:
                 js_path = source_path.with_suffix(".js")
                 print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
                 return _run_javascript_file(js_path)
+            elif target == "cpp":
+                cpp_path = source_path.with_suffix(".cpp")
+                print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
+                return _run_cpp_file(cpp_path)
         raise
 
 
@@ -288,7 +382,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     compile_parser.add_argument(
         "--target",
-        choices=["coreil", "python", "javascript"],
+        choices=["coreil", "python", "javascript", "cpp"],
         default="coreil",
         help="Compilation target (default: coreil)",
     )
