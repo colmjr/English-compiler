@@ -1,7 +1,7 @@
 """JavaScript code generator for Core IL.
 
-This file implements Core IL v1.4 to JavaScript (ES Modules) transpilation.
-Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
+This file implements Core IL v1.5 to JavaScript (ES Modules) transpilation.
+Core IL v1.5 adds array/list slicing and unary not operations.
 
 The generated JavaScript code:
 - Matches interpreter semantics exactly
@@ -15,12 +15,15 @@ The generated JavaScript code:
 - Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
 - JSON operations (parse, stringify)
 - Regex operations (match, findall, replace, split)
+- Array slicing (Slice)
+- Unary not (Not)
 - Imports Node.js modules only for Tier 2 ExternalCall operations
 
 Version history:
+- v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Initial JavaScript backend (matching Python emit.py)
 
-Backward compatibility: Accepts v0.1 through v1.4 programs.
+Backward compatibility: Accepts v0.1 through v1.5 programs.
 """
 
 from __future__ import annotations
@@ -120,6 +123,16 @@ def emit_javascript(doc: dict) -> str:
             base = emit_expr(node.get("base"))
             index = emit_expr(node.get("index"))
             return f"{base}[{index}]"
+
+        if node_type == "Slice":
+            base = emit_expr(node.get("base"))
+            start = emit_expr(node.get("start"))
+            end = emit_expr(node.get("end"))
+            return f"{base}.slice({start}, {end})"
+
+        if node_type == "Not":
+            arg = emit_expr(node.get("arg"))
+            return f"(!{arg})"
 
         if node_type == "Length":
             base = emit_expr(node.get("base"))
@@ -792,6 +805,7 @@ def emit_javascript(doc: dict) -> str:
         header_lines.append("  if (v === null) return 'None';")
         if uses_float:
             header_lines.append("  if (v instanceof __Float) return v.toString();")
+        header_lines.append("  if (Array.isArray(v)) return '[' + v.map(__format).join(', ') + ']';")
         header_lines.append("  return v;")
         header_lines.append("}")
         header_lines.append("function __print(...args) {")

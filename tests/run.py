@@ -48,6 +48,7 @@ def main() -> None:
     _run_example(examples / "json_basic.coreil.json", "test\n42\n[1, 2, 3]\n")
     _run_example(examples / "regex_basic.coreil.json", "has digits: True\nfound digits: ['123', '456']\nreplaced: Hello NUM World NUM\nsplit: ['a', 'b', 'c', 'd']\n")
     _run_example(examples / "string_ops.coreil.json", "Hello World\nHELLO\nworld\n['a', 'b', 'c']\nTrue\nTrue\nTrue\nbaz bar baz\n")
+    _run_example(examples / "slice_test.coreil.json", "[2, 3, 4]\n[1, 2]\n[4, 5]\n")
 
     print("All tests passed.")
 

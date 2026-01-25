@@ -1,16 +1,17 @@
 """Core IL validation.
 
-This file implements Core IL v1.4 semantics validation.
-Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
+This file implements Core IL v1.5 semantics validation.
+Core IL v1.5 adds array/list slicing and unary not operations.
 
 Version history:
+- v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.4 programs.
+Backward compatibility: Accepts v0.1 through v1.5 programs.
 """
 
 from __future__ import annotations
@@ -89,6 +90,10 @@ _ALLOWED_NODE_TYPES = {
     "StringReplace",
     # External call (Tier 2, non-portable)
     "ExternalCall",
+    # Array slicing (v1.5)
+    "Slice",
+    # Unary not (v1.5)
+    "Not",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -114,7 +119,7 @@ _ALLOWED_BINARY_OPS = {
 # v1.1 adds Record support
 # v1.0 is stable and frozen
 # v0.1-v0.5 are accepted for backward compatibility
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5"}
 
 # Helper functions that are disallowed in v0.5+ and v1.0+ (must use explicit primitives)
 # This ensures Core IL remains a closed specification
@@ -644,6 +649,30 @@ def validate_coreil(doc: dict) -> list[dict]:
                     validate_expr(arg, f"{path}.args[{i}]", defined)
             return
 
+        # Array slicing (v1.5)
+        if node_type == "Slice":
+            if "base" not in node:
+                add_error(f"{path}.base", "missing base")
+            else:
+                validate_expr(node["base"], f"{path}.base", defined)
+            if "start" not in node:
+                add_error(f"{path}.start", "missing start")
+            else:
+                validate_expr(node["start"], f"{path}.start", defined)
+            if "end" not in node:
+                add_error(f"{path}.end", "missing end")
+            else:
+                validate_expr(node["end"], f"{path}.end", defined)
+            return
+
+        # Unary not (v1.5)
+        if node_type == "Not":
+            if "arg" not in node:
+                add_error(f"{path}.arg", "missing arg")
+            else:
+                validate_expr(node["arg"], f"{path}.arg", defined)
+            return
+
         add_error(path, f"unexpected expression type '{node_type}'")
 
     def validate_stmt(
@@ -951,7 +980,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', or 'coreil-1.4'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', or 'coreil-1.5'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:
