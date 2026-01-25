@@ -1306,3 +1306,159 @@ The specification is:
 - **Documented**: This specification provides full reference
 
 Core IL v1.0 is ready for production use.
+
+---
+
+## Appendix: Core IL v1.4 Extensions
+
+Core IL v1.4 adds several extensions while maintaining full backward compatibility with v1.0. This appendix documents the Tier 2 (non-portable) operations.
+
+### Operation Tiers
+
+Core IL operations are divided into two tiers:
+
+**Tier 1 (Portable)**: All operations documented in the main specification above. These have identical semantics across all platforms and backends.
+
+**Tier 2 (Non-Portable)**: Platform-specific operations that enable system integration. Programs using Tier 2 operations cannot run in the interpreter and are marked as non-portable.
+
+---
+
+### ExternalCall (Tier 2)
+
+**Purpose**: Calls external platform-specific functions for system integration.
+
+**Shape**:
+```json
+{
+  "type": "ExternalCall",
+  "module": "<module_name>",
+  "function": "<function_name>",
+  "args": [<expr>, <expr>, ...]
+}
+```
+
+**Semantics**:
+- Calls the specified function from the specified module with the given arguments.
+- Returns the result of the external function call.
+- **Non-portable**: This operation is not supported in the interpreter and will raise an error.
+- The Python backend generates appropriate import statements and function calls.
+
+**Available Modules**:
+
+| Module | Functions | Description |
+|--------|-----------|-------------|
+| `time` | `time` | Get current Unix timestamp (seconds since epoch) |
+| `os` | `getcwd`, `getenv` | Get current directory, get environment variable |
+| `fs` | (file operations) | File system operations |
+| `http` | (HTTP operations) | HTTP client operations |
+| `crypto` | (crypto operations) | Cryptographic operations |
+
+**Example** (get current timestamp):
+```json
+{
+  "type": "Let",
+  "name": "timestamp",
+  "value": {
+    "type": "ExternalCall",
+    "module": "time",
+    "function": "time",
+    "args": []
+  }
+}
+```
+
+**Example** (get environment variable):
+```json
+{
+  "type": "Let",
+  "name": "user",
+  "value": {
+    "type": "ExternalCall",
+    "module": "os",
+    "function": "getenv",
+    "args": [{"type": "Literal", "value": "USER"}]
+  }
+}
+```
+
+**Example** (get current working directory):
+```json
+{
+  "type": "Let",
+  "name": "cwd",
+  "value": {
+    "type": "ExternalCall",
+    "module": "os",
+    "function": "getcwd",
+    "args": []
+  }
+}
+```
+
+**Invariants**:
+- `module` must be a string identifying a supported module.
+- `function` must be a string identifying a valid function in that module.
+- `args` must be an array of expressions (can be empty).
+- Programs using ExternalCall must be executed via Python backend only.
+
+**Backend Requirements**:
+- **Interpreter**: Must raise an error indicating the operation is non-portable.
+- **Python backend**: Must generate appropriate imports and function calls.
+
+---
+
+### Complete ExternalCall Example
+
+```json
+{
+  "version": "coreil-1.4",
+  "body": [
+    {
+      "type": "Print",
+      "args": [{"type": "Literal", "value": "=== ExternalCall Demo ==="}]
+    },
+    {
+      "type": "Let",
+      "name": "timestamp",
+      "value": {
+        "type": "ExternalCall",
+        "module": "time",
+        "function": "time",
+        "args": []
+      }
+    },
+    {
+      "type": "Print",
+      "args": [
+        {"type": "Literal", "value": "Current timestamp:"},
+        {"type": "Var", "name": "timestamp"}
+      ]
+    },
+    {
+      "type": "Let",
+      "name": "cwd",
+      "value": {
+        "type": "ExternalCall",
+        "module": "os",
+        "function": "getcwd",
+        "args": []
+      }
+    },
+    {
+      "type": "Print",
+      "args": [
+        {"type": "Literal", "value": "Working directory:"},
+        {"type": "Var", "name": "cwd"}
+      ]
+    }
+  ]
+}
+```
+
+To run this example:
+```sh
+python -m english_compiler compile --target python examples/external_call_demo.coreil.json
+python examples/external_call_demo.coreil.py
+```
+
+Note: The `run` command (which uses the interpreter) will fail for ExternalCall programs. You must compile to Python and execute the generated Python file.

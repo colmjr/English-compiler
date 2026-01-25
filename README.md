@@ -172,6 +172,62 @@ This produces `examples/hello.py` with the generated Python code. The generated 
 - Matches interpreter output exactly (verified by parity tests)
 - Handles all Core IL v1.0 features (including maps, functions, loops, tuples, and sealed primitives)
 
+## ExternalCall (Tier 2 operations)
+
+Core IL v1.4 supports ExternalCall for platform-specific operations like file I/O, HTTP requests, and system calls. These are **non-portable** and only work with the Python backend (not the interpreter).
+
+**Example**: Get current timestamp and working directory
+
+```json
+{
+  "version": "coreil-1.4",
+  "body": [
+    {
+      "type": "Let",
+      "name": "timestamp",
+      "value": {
+        "type": "ExternalCall",
+        "module": "time",
+        "function": "time",
+        "args": []
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Literal", "value": "Timestamp:"}, {"type": "Var", "name": "timestamp"}]
+    },
+    {
+      "type": "Let",
+      "name": "cwd",
+      "value": {
+        "type": "ExternalCall",
+        "module": "os",
+        "function": "getcwd",
+        "args": []
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Literal", "value": "Working dir:"}, {"type": "Var", "name": "cwd"}]
+    }
+  ]
+}
+```
+
+**Running ExternalCall programs**:
+
+```sh
+# Compile to Python (required for ExternalCall)
+python -m english_compiler compile --target python examples/external_call_demo.coreil.json
+
+# Run the generated Python
+python examples/external_call_demo.coreil.py
+```
+
+**Available modules**: `time`, `os`, `fs`, `http`, `crypto`
+
+See [coreil_v1.md](coreil_v1.md#appendix-core-il-v14-extensions) for full ExternalCall documentation.
+
 ### Testing
 
 **Basic tests** (examples in `examples/` directory):
