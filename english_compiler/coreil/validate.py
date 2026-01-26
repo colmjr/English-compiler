@@ -187,7 +187,7 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.name", "missing or invalid name")
             else:
                 # In v0.5+ and v1.0+, disallow helper function calls
-                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4") and name in _DISALLOWED_HELPER_CALLS:
+                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5") and name in _DISALLOWED_HELPER_CALLS:
                     add_error(
                         f"{path}.name",
                         f"helper function '{name}' is not allowed in v0.5; "

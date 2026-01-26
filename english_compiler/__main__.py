@@ -6,9 +6,7 @@ import argparse
 import datetime
 import hashlib
 import json
-import os
 from pathlib import Path
-from typing import Any
 
 
 def _print_validation_errors(errors: list[dict]) -> None:
@@ -125,10 +123,75 @@ def _run_cpp_file(cpp_path: Path) -> int:
         Path(exe_path).unlink(missing_ok=True)
 
 
-def _compile_command(args: argparse.Namespace) -> int:
+def _emit_target_code(
+    doc: dict,
+    source_path: Path,
+    coreil_path: Path,
+    target: str,
+    check_freshness: bool = False,
+) -> bool:
+    """Emit code for the specified target.
+
+    Args:
+        doc: The Core IL document
+        source_path: Path to the source file (used to derive output paths)
+        coreil_path: Path to the Core IL JSON file
+        target: Target language ("coreil", "python", "javascript", "cpp")
+        check_freshness: If True, skip generation if target is newer than coreil
+
+    Returns:
+        True if successful, False on error (error message already printed)
+    """
+    if target == "coreil":
+        return True
+
     from english_compiler.coreil.emit import emit_python
     from english_compiler.coreil.emit_javascript import emit_javascript
     from english_compiler.coreil.emit_cpp import emit_cpp, get_runtime_header_path, get_json_header_path
+    import shutil
+
+    if target == "python":
+        output_path = source_path.with_suffix(".py")
+        lang_name = "Python"
+        emit_func = emit_python
+    elif target == "javascript":
+        output_path = source_path.with_suffix(".js")
+        lang_name = "JavaScript"
+        emit_func = emit_javascript
+    elif target == "cpp":
+        output_path = source_path.with_suffix(".cpp")
+        lang_name = "C++"
+        emit_func = emit_cpp
+    else:
+        return True
+
+    # Check freshness if requested
+    if check_freshness and output_path.exists():
+        if output_path.stat().st_mtime >= coreil_path.stat().st_mtime:
+            return True
+
+    try:
+        code = emit_func(doc)
+        output_path.write_text(code, encoding="utf-8")
+        print(f"Generated {lang_name} code at {output_path}")
+
+        # For C++, also copy runtime headers
+        if target == "cpp":
+            runtime_dir = output_path.parent
+            shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
+            shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
+
+    except OSError as exc:
+        print(f"{output_path}: {exc}")
+        return False
+    except Exception as exc:
+        print(f"{lang_name} codegen failed: {exc}")
+        return False
+
+    return True
+
+
+def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.coreil.validate import validate_coreil
     from english_compiler.frontend import get_frontend
@@ -173,53 +236,8 @@ def _compile_command(args: argparse.Namespace) -> int:
 
         # Emit code for the specified target (even when using cache)
         target = getattr(args, "target", "coreil")
-        if target == "python":
-            python_path = source_path.with_suffix(".py")
-            # Only regenerate Python if it doesn't exist or is older than Core IL
-            if not python_path.exists() or python_path.stat().st_mtime < coreil_path.stat().st_mtime:
-                try:
-                    python_code = emit_python(doc)
-                    python_path.write_text(python_code, encoding="utf-8")
-                    print(f"Generated Python code at {python_path}")
-                except OSError as exc:
-                    print(f"{python_path}: {exc}")
-                    return 1
-                except Exception as exc:
-                    print(f"Python codegen failed: {exc}")
-                    return 1
-        elif target == "javascript":
-            js_path = source_path.with_suffix(".js")
-            # Only regenerate JavaScript if it doesn't exist or is older than Core IL
-            if not js_path.exists() or js_path.stat().st_mtime < coreil_path.stat().st_mtime:
-                try:
-                    js_code = emit_javascript(doc)
-                    js_path.write_text(js_code, encoding="utf-8")
-                    print(f"Generated JavaScript code at {js_path}")
-                except OSError as exc:
-                    print(f"{js_path}: {exc}")
-                    return 1
-                except Exception as exc:
-                    print(f"JavaScript codegen failed: {exc}")
-                    return 1
-        elif target == "cpp":
-            cpp_path = source_path.with_suffix(".cpp")
-            # Only regenerate C++ if it doesn't exist or is older than Core IL
-            if not cpp_path.exists() or cpp_path.stat().st_mtime < coreil_path.stat().st_mtime:
-                try:
-                    cpp_code = emit_cpp(doc)
-                    cpp_path.write_text(cpp_code, encoding="utf-8")
-                    print(f"Generated C++ code at {cpp_path}")
-                    # Copy runtime headers to same directory
-                    runtime_dir = cpp_path.parent
-                    import shutil
-                    shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
-                    shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
-                except OSError as exc:
-                    print(f"{cpp_path}: {exc}")
-                    return 1
-                except Exception as exc:
-                    print(f"C++ codegen failed: {exc}")
-                    return 1
+        if not _emit_target_code(doc, source_path, coreil_path, target, check_freshness=True):
+            return 1
 
         ambiguities = doc.get("ambiguities", [])
         if isinstance(ambiguities, list) and ambiguities:
@@ -274,47 +292,8 @@ def _compile_command(args: argparse.Namespace) -> int:
 
     # Emit code for the specified target
     target = getattr(args, "target", "coreil")
-    if target == "python":
-        python_path = source_path.with_suffix(".py")
-        try:
-            python_code = emit_python(doc)
-            python_path.write_text(python_code, encoding="utf-8")
-            print(f"Generated Python code at {python_path}")
-        except OSError as exc:
-            print(f"{python_path}: {exc}")
-            return 1
-        except Exception as exc:
-            print(f"Python codegen failed: {exc}")
-            return 1
-    elif target == "javascript":
-        js_path = source_path.with_suffix(".js")
-        try:
-            js_code = emit_javascript(doc)
-            js_path.write_text(js_code, encoding="utf-8")
-            print(f"Generated JavaScript code at {js_path}")
-        except OSError as exc:
-            print(f"{js_path}: {exc}")
-            return 1
-        except Exception as exc:
-            print(f"JavaScript codegen failed: {exc}")
-            return 1
-    elif target == "cpp":
-        cpp_path = source_path.with_suffix(".cpp")
-        try:
-            cpp_code = emit_cpp(doc)
-            cpp_path.write_text(cpp_code, encoding="utf-8")
-            print(f"Generated C++ code at {cpp_path}")
-            # Copy runtime headers to same directory
-            runtime_dir = cpp_path.parent
-            import shutil
-            shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
-            shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
-        except OSError as exc:
-            print(f"{cpp_path}: {exc}")
-            return 1
-        except Exception as exc:
-            print(f"C++ codegen failed: {exc}")
-            return 1
+    if not _emit_target_code(doc, source_path, coreil_path, target, check_freshness=False):
+        return 1
 
     lock_doc = {
         "source_sha256": source_sha256,

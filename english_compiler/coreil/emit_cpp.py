@@ -29,6 +29,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from english_compiler.coreil.emit_utils import escape_string_literal
+
 
 def emit_cpp(doc: dict) -> str:
     """Generate C++ code from Core IL document.
@@ -62,13 +64,7 @@ def emit_cpp(doc: dict) -> str:
         if node_type == "Literal":
             value = node.get("value")
             if isinstance(value, str):
-                # Escape special characters in string literals
-                escaped = (value
-                    .replace("\\", "\\\\")
-                    .replace('"', '\\"')
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t"))
+                escaped = escape_string_literal(value)
                 return f'coreil::Value(std::string("{escaped}"))'
             elif isinstance(value, bool):
                 return "coreil::Value(true)" if value else "coreil::Value(false)"
