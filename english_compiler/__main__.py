@@ -136,7 +136,7 @@ def _emit_target_code(
         doc: The Core IL document
         source_path: Path to the source file (used to derive output paths)
         coreil_path: Path to the Core IL JSON file
-        target: Target language ("coreil", "python", "javascript", "cpp")
+        target: Target language ("coreil", "python", "javascript", "cpp", "wasm")
         check_freshness: If True, skip generation if target is newer than coreil
 
     Returns:
@@ -162,6 +162,9 @@ def _emit_target_code(
         output_path = source_path.with_suffix(".cpp")
         lang_name = "C++"
         emit_func = emit_cpp
+    elif target == "wasm":
+        # WASM target - emit AssemblyScript and optionally compile
+        return _emit_wasm_target(doc, source_path, coreil_path, check_freshness)
     else:
         return True
 
@@ -187,6 +190,75 @@ def _emit_target_code(
     except (ValueError, TypeError, KeyError) as exc:
         print(f"{lang_name} codegen failed: {exc}")
         return False
+
+    return True
+
+
+def _emit_wasm_target(
+    doc: dict,
+    source_path: Path,
+    coreil_path: Path,
+    check_freshness: bool = False,
+) -> bool:
+    """Emit AssemblyScript code and optionally compile to WASM.
+
+    Args:
+        doc: The Core IL document
+        source_path: Path to the source file
+        coreil_path: Path to the Core IL JSON file
+        check_freshness: If True, skip if target is newer than coreil
+
+    Returns:
+        True if successful, False on error
+    """
+    import shutil
+    from english_compiler.coreil.emit_assemblyscript import emit_assemblyscript, get_runtime_path
+    from english_compiler.coreil.wasm_build import ASC_AVAILABLE, compile_to_wasm
+
+    # AssemblyScript output path
+    as_path = source_path.with_suffix(".as.ts")
+
+    # Check freshness
+    if check_freshness and as_path.exists():
+        if as_path.stat().st_mtime >= coreil_path.stat().st_mtime:
+            return True
+
+    try:
+        code = emit_assemblyscript(doc)
+        as_path.write_text(code, encoding="utf-8")
+        print(f"Generated AssemblyScript code at {as_path}")
+
+        # Copy runtime library
+        runtime_dir = as_path.parent
+        runtime_src = get_runtime_path()
+        runtime_dst = runtime_dir / "coreil_runtime.ts"
+        shutil.copy(runtime_src, runtime_dst)
+        print(f"Copied runtime library to {runtime_dst}")
+
+    except OSError as exc:
+        print(f"{as_path}: {exc}")
+        return False
+    except (ValueError, TypeError, KeyError) as exc:
+        print(f"AssemblyScript codegen failed: {exc}")
+        return False
+
+    # Optionally compile to WASM if asc is available
+    if ASC_AVAILABLE:
+        result = compile_to_wasm(
+            code,
+            source_path.parent,
+            source_path.stem,
+            emit_wat=False,
+            optimize=True,
+        )
+        if result.success:
+            print(f"Compiled to WebAssembly at {result.wasm_path}")
+        else:
+            print(f"WASM compilation failed: {result.error}")
+            print("Note: AssemblyScript source was still generated successfully")
+    else:
+        print("Note: asc compiler not found, skipping WASM compilation")
+        print("      Install with: npm install -g assemblyscript")
 
     return True
 
@@ -361,7 +433,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     compile_parser.add_argument(
         "--target",
-        choices=["coreil", "python", "javascript", "cpp"],
+        choices=["coreil", "python", "javascript", "cpp", "wasm"],
         default="coreil",
         help="Compilation target (default: coreil)",
     )
