@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from english_compiler.frontend.base import BaseFrontend
+from english_compiler.frontend.base import BaseFrontend, get_env_int, get_required_env
 
 
 class OpenAIFrontend(BaseFrontend):
@@ -12,9 +12,7 @@ class OpenAIFrontend(BaseFrontend):
 
     def __init__(self) -> None:
         super().__init__()
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is not set")
+        api_key = get_required_env("OPENAI_API_KEY")
 
         try:
             import openai
@@ -25,7 +23,7 @@ class OpenAIFrontend(BaseFrontend):
 
         self.client = openai.OpenAI(api_key=api_key)
         self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
-        self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "4096"))
+        self.max_tokens = get_env_int("OPENAI_MAX_TOKENS", 4096, min_value=1)
 
     def get_model_name(self) -> str:
         return self.model

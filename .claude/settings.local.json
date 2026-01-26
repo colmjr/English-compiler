@@ -8,7 +8,8 @@
       "Bash(python -m tests.run_parity:*)",
       "Bash(python:*)",
       "Bash(git checkout:*)",
-      "Bash(PYTHONPATH=. python:*)"
+      "Bash(PYTHONPATH=. python:*)",
+      "Bash(git push:*)"
     ]
   }
 }
