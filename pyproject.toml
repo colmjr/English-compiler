@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "english-compiler"
+version = "1.6.0"
+description = "Translate English pseudocode into executable code through Core IL"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Colm Rafferty Jr"}
+]
+keywords = ["compiler", "llm", "code-generation", "intermediate-language"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "anthropic>=0.18.0",
+    "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+gemini = [
+    "google-generativeai>=0.3.0",
+]
+
+[project.scripts]
+english-compiler = "english_compiler.__main__:main"
+
+[project.urls]
+"Homepage" = "https://github.com/colmjr/English-compiler"
+"Bug Tracker" = "https://github.com/colmjr/English-compiler/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["english_compiler*"]
