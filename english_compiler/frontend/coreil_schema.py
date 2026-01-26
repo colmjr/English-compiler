@@ -1,10 +1,10 @@
 """Core IL JSON schema for structured output.
 
 This schema defines Core IL v1.5 structure for LLM frontends.
-Core IL v1.5 adds Slice for array/list slicing and Not for logical negation.
+Core IL v1.5 adds Slice, negative indexing, and Not for logical negation.
 
 Version history:
-- v1.5: Added Slice for array/list slicing, Not for logical negation
+- v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.2: Added Math, MathPow, MathConst for portable math operations
@@ -247,9 +247,14 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/stringreplace_expr"},
                 # External call (Tier 2, non-portable)
                 {"$ref": "#/definitions/externalcall_expr"},
+<<<<<<< HEAD
                 # Slice and Not (v1.5)
                 {"$ref": "#/definitions/slice_expr"},
                 {"$ref": "#/definitions/not_expr"},
+=======
+                # Slice (v1.5)
+                {"$ref": "#/definitions/slice_expr"},
+>>>>>>> origin/main
             ]
         },
         "literal_expr": {
@@ -865,6 +870,7 @@ COREIL_JSON_SCHEMA = {
                 "end": {"$ref": "#/definitions/expr"},
             },
         },
+<<<<<<< HEAD
         # Not (v1.5)
         "not_expr": {
             "type": "object",
@@ -875,5 +881,7 @@ COREIL_JSON_SCHEMA = {
                 "value": {"$ref": "#/definitions/expr"},
             },
         },
+=======
+>>>>>>> origin/main
     },
 }

@@ -55,6 +55,7 @@ class JavaScriptEmitter(BaseEmitter):
         self.uses_regex_flags = False
         self.uses_print = False
         self.uses_float = False
+        self.uses_index = False  # Track if we need index helper for negative indexing
         self.external_modules: set[str] = set()
 
     def emit(self) -> str:
@@ -132,6 +133,12 @@ class JavaScriptEmitter(BaseEmitter):
             if header_lines:
                 header_lines.append("")
             header_lines.extend(self._print_helper_lines())
+
+        # Add index helpers for Python-style negative indexing
+        if self.uses_index:
+            if header_lines:
+                header_lines.append("")
+            header_lines.extend(self._index_helper_lines())
 
         # Add warning comment for non-portable programs
         if self.external_modules:
@@ -255,6 +262,22 @@ class JavaScriptEmitter(BaseEmitter):
         ])
         return lines
 
+    def _index_helper_lines(self) -> list[str]:
+        """Return lines for index helper functions (Python-style negative indexing)."""
+        return [
+            "// Index helpers for Python-style negative indexing",
+            "function __idx(arr, i) {",
+            "  if (i < 0) i = arr.length + i;",
+            "  if (i < 0 || i >= arr.length) throw new Error('Index out of range');",
+            "  return arr[i];",
+            "}",
+            "function __setIdx(arr, i, v) {",
+            "  if (i < 0) i = arr.length + i;",
+            "  if (i < 0 || i >= arr.length) throw new Error('Index out of range');",
+            "  arr[i] = v;",
+            "}",
+        ]
+
     # ========== Expression Handlers ==========
 
     def _emit_literal(self, node: dict) -> str:
@@ -294,9 +317,10 @@ class JavaScriptEmitter(BaseEmitter):
         return f"[{', '.join(item_strs)}]"
 
     def _emit_index(self, node: dict) -> str:
+        self.uses_index = True
         base = self.emit_expr(node.get("base"))
         index = self.emit_expr(node.get("index"))
-        return f"{base}[{index}]"
+        return f"__idx({base}, {index})"
 
     def _emit_slice(self, node: dict) -> str:
         base = self.emit_expr(node.get("base"))
@@ -662,10 +686,11 @@ class JavaScriptEmitter(BaseEmitter):
         self.emit_line(f"__print({', '.join(arg_strs)});")
 
     def _emit_set_index(self, node: dict) -> None:
+        self.uses_index = True
         base = self.emit_expr(node.get("base"))
         index = self.emit_expr(node.get("index"))
         value = self.emit_expr(node.get("value"))
-        self.emit_line(f"{base}[{index}] = {value};")
+        self.emit_line(f"__setIdx({base}, {index}, {value});")
 
     def _emit_set_stmt(self, node: dict) -> None:
         base = self.emit_expr(node.get("base"))

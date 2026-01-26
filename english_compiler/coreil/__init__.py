@@ -1,13 +1,14 @@
 """Core IL package.
 
-Core IL v1.5 - Array Slicing and Unary Not
-==========================================
+Core IL v1.5 - List Slicing, Negative Indexing, and Unary Not
+==============================================================
 
 This package implements the Core IL (Core Intermediate Language) v1.5 specification.
 
 Core IL v1.5 adds:
-- Slice: Array/list slicing operations
-- Not: Logical negation
+- Slice: Extract a sublist from start to end index (exclusive)
+- Negative indexing: Python-style negative indices for array access
+- Not: Unary logical negation
 
 Core IL features:
 - Complete: All necessary primitives for algorithmic computation
@@ -16,7 +17,7 @@ Core IL features:
 - Closed specification: No extension mechanism or helper functions
 
 Version History:
-- v1.5: Added Slice for array/list slicing, Not for logical negation
+- v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
 - v1.3: Added JSON operations (JsonParse, JsonStringify) and Regex operations
 - v1.2: Added Math, MathPow, MathConst for portable math operations
