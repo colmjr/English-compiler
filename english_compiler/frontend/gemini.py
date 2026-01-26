@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 
 from english_compiler.frontend.base import BaseFrontend
@@ -44,21 +43,7 @@ class GeminiFrontend(BaseFrontend):
         response = self.model.generate_content(user_message)
 
         raw_text = response.text
-        if not raw_text:
-            raise ValueError("Gemini returned an empty response")
-
-        try:
-            data = json.loads(raw_text)
-        except json.JSONDecodeError as exc:
-            snippet = raw_text[:400]
-            raise ValueError(
-                f"Gemini returned invalid JSON. Response snippet: {snippet}"
-            ) from exc
-
-        if not isinstance(data, dict):
-            raise ValueError("Gemini returned JSON that is not an object")
-
-        return data
+        return self._parse_json_response(raw_text, "Gemini")
 
 
 # Convenience function for direct use

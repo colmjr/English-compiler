@@ -1,0 +1,387 @@
+"""Shared test utilities for Core IL testing.
+
+This module provides reusable test infrastructure to avoid code duplication
+across test files, including:
+- Backend execution helpers
+- Backend parity verification
+- Invalid helper call detection
+"""
+
+from __future__ import annotations
+
+import io
+import shutil
+import subprocess
+import sys
+import tempfile
+from contextlib import redirect_stdout
+from dataclasses import dataclass
+from pathlib import Path
+
+from english_compiler.coreil.emit import emit_python
+from english_compiler.coreil.emit_javascript import emit_javascript
+from english_compiler.coreil.emit_cpp import emit_cpp, get_runtime_header_path, get_json_header_path
+from english_compiler.coreil.interp import run_coreil
+
+
+# Check for available backends
+NODE_AVAILABLE = shutil.which("node") is not None
+
+CPP_COMPILER: str | None = None
+for _cc in ["g++", "clang++"]:
+    if shutil.which(_cc):
+        CPP_COMPILER = _cc
+        break
+CPP_AVAILABLE = CPP_COMPILER is not None
+
+# Helper function names that should not be used in Core IL v0.5+
+INVALID_HELPER_CALLS = {"get_or_default", "append", "keys", "entries"}
+
+
+class TestFailure(Exception):
+    """Raised when a test fails."""
+
+
+@dataclass
+class BackendResult:
+    """Result from running a backend."""
+    output: str
+    exit_code: int
+    success: bool
+    error: str | None = None
+
+
+def run_interpreter(doc: dict) -> BackendResult:
+    """Run Core IL document in the interpreter.
+
+    Args:
+        doc: The Core IL document to execute.
+
+    Returns:
+        BackendResult with output, exit code, and success status.
+    """
+    buffer = io.StringIO()
+    try:
+        with redirect_stdout(buffer):
+            exit_code = run_coreil(doc)
+        return BackendResult(
+            output=buffer.getvalue(),
+            exit_code=exit_code,
+            success=exit_code == 0,
+        )
+    except Exception as exc:
+        return BackendResult(
+            output=buffer.getvalue(),
+            exit_code=1,
+            success=False,
+            error=str(exc),
+        )
+
+
+def run_python_backend(doc: dict, timeout: int = 10) -> BackendResult:
+    """Generate Python code and execute it.
+
+    Args:
+        doc: The Core IL document to transpile and run.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        BackendResult with output, exit code, and success status.
+    """
+    try:
+        python_code = emit_python(doc)
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Python codegen failed: {exc}",
+        )
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as tmp:
+            tmp.write(python_code)
+            tmp_path = tmp.name
+
+        result = subprocess.run(
+            [sys.executable, tmp_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+
+        Path(tmp_path).unlink()
+
+        return BackendResult(
+            output=result.stdout,
+            exit_code=result.returncode,
+            success=result.returncode == 0,
+            error=result.stderr if result.returncode != 0 else None,
+        )
+
+    except subprocess.TimeoutExpired:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Python execution timeout (>{timeout}s)",
+        )
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Python execution error: {exc}",
+        )
+
+
+def run_javascript_backend(doc: dict, timeout: int = 10) -> BackendResult:
+    """Generate JavaScript code and execute it with Node.js.
+
+    Args:
+        doc: The Core IL document to transpile and run.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        BackendResult with output, exit code, and success status.
+        Returns failure if Node.js is not available.
+    """
+    if not NODE_AVAILABLE:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error="Node.js not available",
+        )
+
+    try:
+        js_code = emit_javascript(doc)
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"JavaScript codegen failed: {exc}",
+        )
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".js", delete=False, encoding="utf-8"
+        ) as tmp:
+            tmp.write(js_code)
+            tmp_path = tmp.name
+
+        result = subprocess.run(
+            ["node", tmp_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+
+        Path(tmp_path).unlink()
+
+        return BackendResult(
+            output=result.stdout,
+            exit_code=result.returncode,
+            success=result.returncode == 0,
+            error=result.stderr if result.returncode != 0 else None,
+        )
+
+    except subprocess.TimeoutExpired:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"JavaScript execution timeout (>{timeout}s)",
+        )
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"JavaScript execution error: {exc}",
+        )
+
+
+def run_cpp_backend(doc: dict, timeout: int = 10) -> BackendResult:
+    """Generate C++ code, compile, and execute it.
+
+    Args:
+        doc: The Core IL document to transpile and run.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        BackendResult with output, exit code, and success status.
+        Returns failure if no C++ compiler is available.
+    """
+    if not CPP_AVAILABLE:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error="C++ compiler not available",
+        )
+
+    try:
+        cpp_code = emit_cpp(doc)
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"C++ codegen failed: {exc}",
+        )
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = Path(tmp_dir)
+            cpp_path = tmp_dir_path / "test.cpp"
+            exe_path = tmp_dir_path / "test"
+
+            cpp_path.write_text(cpp_code, encoding="utf-8")
+
+            # Copy runtime headers
+            shutil.copy(get_runtime_header_path(), tmp_dir_path / "coreil_runtime.hpp")
+            shutil.copy(get_json_header_path(), tmp_dir_path / "json.hpp")
+
+            # Compile
+            compile_result = subprocess.run(
+                [CPP_COMPILER, "-std=c++17", "-O2", str(cpp_path), "-o", str(exe_path)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=tmp_dir,
+            )
+
+            if compile_result.returncode != 0:
+                return BackendResult(
+                    output="",
+                    exit_code=1,
+                    success=False,
+                    error=f"C++ compilation failed:\n{compile_result.stderr}",
+                )
+
+            # Execute
+            result = subprocess.run(
+                [str(exe_path)],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+
+            return BackendResult(
+                output=result.stdout,
+                exit_code=result.returncode,
+                success=result.returncode == 0,
+                error=result.stderr if result.returncode != 0 else None,
+            )
+
+    except subprocess.TimeoutExpired:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"C++ execution timeout (>{timeout}s)",
+        )
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"C++ execution error: {exc}",
+        )
+
+
+def check_invalid_calls(doc: dict, test_name: str | None = None) -> list[str]:
+    """Check for invalid helper function calls in a Core IL document.
+
+    Args:
+        doc: The Core IL document to check.
+        test_name: Optional test name for error messages.
+
+    Returns:
+        List of invalid helper function names found.
+    """
+    found: list[str] = []
+
+    def _check_node(node: dict | list | str | int | float | bool | None) -> None:
+        if isinstance(node, dict):
+            if node.get("type") == "Call":
+                name = node.get("name", "")
+                if name in INVALID_HELPER_CALLS:
+                    found.append(name)
+            for value in node.values():
+                _check_node(value)
+        elif isinstance(node, list):
+            for item in node:
+                _check_node(item)
+
+    _check_node(doc)
+    return found
+
+
+def verify_backend_parity(
+    doc: dict,
+    test_name: str,
+    include_javascript: bool = True,
+    include_cpp: bool = True,
+) -> None:
+    """Verify that all backends produce identical output.
+
+    Args:
+        doc: The Core IL document to test.
+        test_name: Name of the test for error messages.
+        include_javascript: Whether to test JavaScript backend.
+        include_cpp: Whether to test C++ backend.
+
+    Raises:
+        TestFailure: If any backend fails or outputs don't match.
+    """
+    # Run interpreter
+    interp_result = run_interpreter(doc)
+    if not interp_result.success:
+        error_msg = interp_result.error or "unknown error"
+        raise TestFailure(f"{test_name}: Interpreter failed: {error_msg}")
+
+    # Run Python backend
+    python_result = run_python_backend(doc)
+    if not python_result.success:
+        error_msg = python_result.error or "unknown error"
+        raise TestFailure(f"{test_name}: Python backend failed: {error_msg}")
+
+    if interp_result.output != python_result.output:
+        raise TestFailure(
+            f"{test_name}: Output mismatch (Python)!\n"
+            f"Interpreter output:\n{interp_result.output}\n"
+            f"Python output:\n{python_result.output}"
+        )
+
+    # Run JavaScript backend
+    if include_javascript and NODE_AVAILABLE:
+        js_result = run_javascript_backend(doc)
+        if not js_result.success:
+            error_msg = js_result.error or "unknown error"
+            raise TestFailure(f"{test_name}: JavaScript backend failed: {error_msg}")
+
+        if interp_result.output != js_result.output:
+            raise TestFailure(
+                f"{test_name}: Output mismatch (JavaScript)!\n"
+                f"Interpreter output:\n{interp_result.output}\n"
+                f"JavaScript output:\n{js_result.output}"
+            )
+
+    # Run C++ backend
+    if include_cpp and CPP_AVAILABLE:
+        cpp_result = run_cpp_backend(doc)
+        if not cpp_result.success:
+            error_msg = cpp_result.error or "unknown error"
+            raise TestFailure(f"{test_name}: C++ backend failed: {error_msg}")
+
+        if interp_result.output != cpp_result.output:
+            raise TestFailure(
+                f"{test_name}: Output mismatch (C++)!\n"
+                f"Interpreter output:\n{interp_result.output}\n"
+                f"C++ output:\n{cpp_result.output}"
+            )

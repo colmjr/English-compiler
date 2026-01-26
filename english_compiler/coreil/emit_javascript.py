@@ -28,6 +28,8 @@ Backward compatibility: Accepts v0.1 through v1.5 programs.
 
 from __future__ import annotations
 
+from english_compiler.coreil.emit_utils import escape_string_literal
+
 
 # Map Core IL external module names to Node.js imports
 _EXTERNAL_MODULE_MAP = {
@@ -74,13 +76,7 @@ def emit_javascript(doc: dict) -> str:
         if node_type == "Literal":
             value = node.get("value")
             if isinstance(value, str):
-                # Escape special characters in string literals
-                escaped = (value
-                    .replace("\\", "\\\\")
-                    .replace('"', '\\"')
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t"))
+                escaped = escape_string_literal(value)
                 return f'"{escaped}"'
             elif isinstance(value, bool):
                 return "true" if value else "false"

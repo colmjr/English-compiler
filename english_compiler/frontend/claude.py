@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 from typing import Any
 
@@ -86,18 +85,7 @@ class ClaudeFrontend(BaseFrontend):
                 },
             )
             raw_text = _extract_text(response)
-            if not raw_text:
-                raise ValueError("Claude returned an empty response")
-            try:
-                data = json.loads(raw_text)
-            except json.JSONDecodeError as exc:
-                snippet = raw_text[:400]
-                raise ValueError(
-                    f"Claude returned invalid JSON. Response snippet: {snippet}"
-                ) from exc
-            if not isinstance(data, dict):
-                raise ValueError("Claude returned JSON that is not an object")
-            return data
+            return self._parse_json_response(raw_text, "Claude")
         except TypeError:
             # Fall back to tool use for older models
             response = self.client.messages.create(

@@ -12,59 +12,20 @@ This test runner enforces:
 
 from __future__ import annotations
 
-import io
-import json
-import shutil
-import subprocess
 import sys
-import tempfile
-from contextlib import redirect_stdout
 from pathlib import Path
 
-from english_compiler.coreil.emit import emit_python
-from english_compiler.coreil.emit_javascript import emit_javascript
-from english_compiler.coreil.emit_cpp import emit_cpp, get_runtime_header_path, get_json_header_path
-from english_compiler.coreil.interp import run_coreil
 from english_compiler.coreil.validate import validate_coreil
 from english_compiler.frontend.mock_llm import generate_coreil_from_text
 
-
-# Check if Node.js is available
-_NODE_AVAILABLE = shutil.which("node") is not None
-
-# Check if C++ compiler is available
-_CPP_COMPILER = None
-for _cc in ["g++", "clang++"]:
-    if shutil.which(_cc):
-        _CPP_COMPILER = _cc
-        break
-_CPP_AVAILABLE = _CPP_COMPILER is not None
-
-
-class TestFailure(Exception):
-    """Raised when a test fails."""
-
-
-def _check_invalid_calls(doc: dict, algo_name: str) -> None:
-    """Check for invalid helper function calls that should not exist in v1.0."""
-    invalid_calls = {"get_or_default", "append", "keys", "entries"}
-
-    def _check_node(node: dict | list | str | int | float | bool | None) -> None:
-        if isinstance(node, dict):
-            if node.get("type") == "Call":
-                name = node.get("name", "")
-                if name in invalid_calls:
-                    raise TestFailure(
-                        f"{algo_name}: Invalid helper call '{name}' found. "
-                        f"Use explicit primitives instead (GetDefault, Keys, Push)."
-                    )
-            for value in node.values():
-                _check_node(value)
-        elif isinstance(node, list):
-            for item in node:
-                _check_node(item)
-
-    _check_node(doc)
+from tests.test_helpers import (
+    NODE_AVAILABLE,
+    CPP_AVAILABLE,
+    CPP_COMPILER,
+    TestFailure,
+    check_invalid_calls,
+    verify_backend_parity,
+)
 
 
 def _run_algorithm_test(txt_path: Path) -> None:
@@ -93,180 +54,15 @@ def _run_algorithm_test(txt_path: Path) -> None:
         )
 
     # Check for invalid helper calls
-    _check_invalid_calls(doc, algo_name)
-
-    # Run interpreter and capture output
-    interpreter_buffer = io.StringIO()
-    try:
-        with redirect_stdout(interpreter_buffer):
-            exit_code = run_coreil(doc)
-        if exit_code != 0:
-            raise TestFailure(
-                f"{algo_name}: Interpreter failed with exit code {exit_code}"
-            )
-        interpreter_output = interpreter_buffer.getvalue()
-    except Exception as exc:
-        raise TestFailure(f"{algo_name}: Interpreter error: {exc}")
-
-    # Generate Python code
-    try:
-        python_code = emit_python(doc)
-    except Exception as exc:
-        raise TestFailure(f"{algo_name}: Python codegen failed: {exc}")
-
-    # Execute Python code in subprocess
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".py", delete=False, encoding="utf-8"
-        ) as tmp:
-            tmp.write(python_code)
-            tmp_path = tmp.name
-
-        result = subprocess.run(
-            [sys.executable, tmp_path],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-
-        # Clean up temp file
-        Path(tmp_path).unlink()
-
-        if result.returncode != 0:
-            raise TestFailure(
-                f"{algo_name}: Python execution failed with exit code {result.returncode}\n"
-                f"stderr: {result.stderr}"
-            )
-
-        python_output = result.stdout
-
-    except subprocess.TimeoutExpired:
-        raise TestFailure(f"{algo_name}: Python execution timeout (>10s)")
-    except Exception as exc:
-        raise TestFailure(f"{algo_name}: Python execution error: {exc}")
-
-    # Compare outputs (backend parity check)
-    if interpreter_output != python_output:
+    invalid_calls = check_invalid_calls(doc)
+    if invalid_calls:
         raise TestFailure(
-            f"{algo_name}: Output mismatch (Python)!\n"
-            f"Interpreter output:\n{interpreter_output}\n"
-            f"Python output:\n{python_output}"
+            f"{algo_name}: Invalid helper calls found: {invalid_calls}. "
+            f"Use explicit primitives instead (GetDefault, Keys, Push)."
         )
 
-    # Test JavaScript backend if Node.js is available
-    if _NODE_AVAILABLE:
-        # Generate JavaScript code
-        try:
-            js_code = emit_javascript(doc)
-        except Exception as exc:
-            raise TestFailure(f"{algo_name}: JavaScript codegen failed: {exc}")
-
-        # Execute JavaScript code in subprocess
-        try:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".js", delete=False, encoding="utf-8"
-            ) as tmp:
-                tmp.write(js_code)
-                tmp_path = tmp.name
-
-            result = subprocess.run(
-                ["node", tmp_path],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-
-            # Clean up temp file
-            Path(tmp_path).unlink()
-
-            if result.returncode != 0:
-                raise TestFailure(
-                    f"{algo_name}: JavaScript execution failed with exit code {result.returncode}\n"
-                    f"stderr: {result.stderr}"
-                )
-
-            js_output = result.stdout
-
-        except subprocess.TimeoutExpired:
-            raise TestFailure(f"{algo_name}: JavaScript execution timeout (>10s)")
-        except Exception as exc:
-            raise TestFailure(f"{algo_name}: JavaScript execution error: {exc}")
-
-        # Compare JavaScript output with interpreter output
-        if interpreter_output != js_output:
-            raise TestFailure(
-                f"{algo_name}: Output mismatch (JavaScript)!\n"
-                f"Interpreter output:\n{interpreter_output}\n"
-                f"JavaScript output:\n{js_output}"
-            )
-
-    # Test C++ backend if compiler is available
-    if _CPP_AVAILABLE:
-        # Generate C++ code
-        try:
-            cpp_code = emit_cpp(doc)
-        except Exception as exc:
-            raise TestFailure(f"{algo_name}: C++ codegen failed: {exc}")
-
-        # Execute C++ code in subprocess
-        try:
-            # Create temp directory for C++ files
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_dir_path = Path(tmp_dir)
-                cpp_path = tmp_dir_path / "test.cpp"
-                exe_path = tmp_dir_path / "test"
-
-                # Write C++ code
-                cpp_path.write_text(cpp_code, encoding="utf-8")
-
-                # Copy runtime headers
-                shutil.copy(get_runtime_header_path(), tmp_dir_path / "coreil_runtime.hpp")
-                shutil.copy(get_json_header_path(), tmp_dir_path / "json.hpp")
-
-                # Compile
-                compile_result = subprocess.run(
-                    [_CPP_COMPILER, "-std=c++17", "-O2", str(cpp_path), "-o", str(exe_path)],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    cwd=tmp_dir,
-                )
-
-                if compile_result.returncode != 0:
-                    raise TestFailure(
-                        f"{algo_name}: C++ compilation failed:\n{compile_result.stderr}"
-                    )
-
-                # Execute
-                result = subprocess.run(
-                    [str(exe_path)],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-
-                if result.returncode != 0:
-                    raise TestFailure(
-                        f"{algo_name}: C++ execution failed with exit code {result.returncode}\n"
-                        f"stderr: {result.stderr}"
-                    )
-
-                cpp_output = result.stdout
-
-        except subprocess.TimeoutExpired:
-            raise TestFailure(f"{algo_name}: C++ execution timeout (>10s)")
-        except TestFailure:
-            raise
-        except Exception as exc:
-            raise TestFailure(f"{algo_name}: C++ execution error: {exc}")
-
-        # Compare C++ output with interpreter output
-        if interpreter_output != cpp_output:
-            raise TestFailure(
-                f"{algo_name}: Output mismatch (C++)!\n"
-                f"Interpreter output:\n{interpreter_output}\n"
-                f"C++ output:\n{cpp_output}"
-            )
+    # Verify backend parity (runs all backends and compares outputs)
+    verify_backend_parity(doc, algo_name)
 
     print("✓")
 
@@ -315,18 +111,18 @@ def main() -> int:
     print("  • Core IL validation passes")
     print("  • Interpreter executes successfully")
     print("  • Python backend executes successfully")
-    if _NODE_AVAILABLE:
+    if NODE_AVAILABLE:
         print("  • JavaScript backend executes successfully")
     else:
         print("  • (JavaScript tests skipped - Node.js not available)")
-    if _CPP_AVAILABLE:
-        print(f"  • C++ backend executes successfully ({_CPP_COMPILER})")
+    if CPP_AVAILABLE:
+        print(f"  • C++ backend executes successfully ({CPP_COMPILER})")
     else:
         print("  • (C++ tests skipped - no g++/clang++ available)")
     backends = ["interpreter", "Python"]
-    if _NODE_AVAILABLE:
+    if NODE_AVAILABLE:
         backends.append("JavaScript")
-    if _CPP_AVAILABLE:
+    if CPP_AVAILABLE:
         backends.append("C++")
     print(f"  • Backend parity ({' == '.join(backends)} output)")
     print("  • No invalid helper calls")

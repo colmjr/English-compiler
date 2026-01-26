@@ -33,12 +33,42 @@ class BaseFrontend(ABC):
     Provides shared logic for:
     - Loading the system prompt
     - Building user messages with error feedback
+    - JSON response parsing
     - Validation and retry flow
     """
 
     def __init__(self) -> None:
         self.system_prompt = _load_system_prompt()
         self.schema = COREIL_JSON_SCHEMA
+
+    def _parse_json_response(self, raw_text: str | None, provider_name: str) -> dict:
+        """Parse JSON from LLM response with standard error handling.
+
+        Args:
+            raw_text: The raw text response from the LLM.
+            provider_name: Name of the provider for error messages (e.g., "Claude", "OpenAI").
+
+        Returns:
+            Parsed JSON as a dict.
+
+        Raises:
+            ValueError: If the response is empty, not valid JSON, or not an object.
+        """
+        if not raw_text:
+            raise ValueError(f"{provider_name} returned an empty response")
+
+        try:
+            data = json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            snippet = raw_text[:400]
+            raise ValueError(
+                f"{provider_name} returned invalid JSON. Response snippet: {snippet}"
+            ) from exc
+
+        if not isinstance(data, dict):
+            raise ValueError(f"{provider_name} returned JSON that is not an object")
+
+        return data
 
     @abstractmethod
     def _call_api(self, user_message: str) -> dict:

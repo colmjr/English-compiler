@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import io
-import json
-from contextlib import redirect_stdout
-from pathlib import Path
-
 from english_compiler.coreil.emit import emit_python
-from english_compiler.coreil.interp import run_coreil
 from english_compiler.coreil.validate import validate_coreil
+
+from tests.test_helpers import (
+    INVALID_HELPER_CALLS,
+    check_invalid_calls,
+    run_interpreter,
+)
 
 
 def test_validation_failure():
@@ -47,19 +47,9 @@ def test_invalid_helper_call():
         ],
     }
 
-    # Check for invalid call
-    invalid_calls = {"get_or_default", "append", "keys", "entries"}
-
-    def check_calls(node):
-        if isinstance(node, dict):
-            if node.get("type") == "Call" and node.get("name") in invalid_calls:
-                return True
-            return any(check_calls(v) for v in node.values())
-        elif isinstance(node, list):
-            return any(check_calls(item) for item in node)
-        return False
-
-    assert check_calls(doc), "Expected to find invalid helper call"
+    # Check for invalid call using shared helper
+    invalid_calls = check_invalid_calls(doc)
+    assert "get_or_default" in invalid_calls, "Expected to find invalid helper call"
     print("✓ Invalid helper call detected correctly")
 
 
@@ -91,14 +81,9 @@ def test_interpreter_error():
     assert not errors, f"Unexpected validation errors: {errors}"
 
     # But interpreter should fail
-    try:
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            exit_code = run_coreil(doc)
-        assert exit_code != 0, "Expected interpreter to fail"
-        print("✓ Interpreter error detected correctly")
-    except Exception:
-        print("✓ Interpreter error detected correctly")
+    result = run_interpreter(doc)
+    assert not result.success, "Expected interpreter to fail"
+    print("✓ Interpreter error detected correctly")
 
 
 def test_backend_parity_same():
@@ -113,18 +98,16 @@ def test_backend_parity_same():
         ],
     }
 
-    # Run interpreter
-    interp_buffer = io.StringIO()
-    with redirect_stdout(interp_buffer):
-        exit_code = run_coreil(doc)
-    assert exit_code == 0
-    interp_output = interp_buffer.getvalue()
+    # Run interpreter using helper
+    result = run_interpreter(doc)
+    assert result.success, f"Interpreter failed: {result.error}"
+    assert result.output == "hello\n"
 
     # Generate and check Python
     python_code = emit_python(doc)
     assert "print(" in python_code, "Expected print statement in Python"
 
-    print(f"✓ Backend parity test ready (interpreter output: {interp_output!r})")
+    print(f"✓ Backend parity test ready (interpreter output: {result.output!r})")
 
 
 def test_short_circuit_parity():
@@ -184,12 +167,9 @@ def test_short_circuit_parity():
     assert not errors, f"Unexpected validation errors: {errors}"
 
     # Interpreter should succeed (short-circuit prevents index access)
-    interp_buffer = io.StringIO()
-    with redirect_stdout(interp_buffer):
-        exit_code = run_coreil(doc)
-    assert exit_code == 0, "Interpreter should succeed with short-circuit"
-    interp_output = interp_buffer.getvalue()
-    assert interp_output == "not found\n", f"Expected 'not found\\n', got {interp_output!r}"
+    result = run_interpreter(doc)
+    assert result.success, f"Interpreter should succeed with short-circuit: {result.error}"
+    assert result.output == "not found\n", f"Expected 'not found\\n', got {result.output!r}"
 
     print("✓ Short-circuit evaluation works correctly in interpreter")
 
