@@ -29,38 +29,55 @@ python -m tests.test_lower            # Lowering pass (For/ForEach to While)
 python -m tests.test_regression_suite # Meta-tests for regression suite
 ```
 
+### Installation
+
+```bash
+# Install from PyPI
+pip install english-compiler
+
+# With LLM provider support
+pip install english-compiler[claude]    # Anthropic Claude
+pip install english-compiler[openai]    # OpenAI GPT
+pip install english-compiler[gemini]    # Google Gemini
+pip install english-compiler[qwen]      # Alibaba Qwen
+pip install english-compiler[all]       # All providers
+```
+
 ### Compilation and Execution
 
 ```bash
+# Show version
+english-compiler --version
+
 # Compile with auto-detected frontend (checks env vars: Claude > OpenAI > Gemini > Qwen > mock)
-python -m english_compiler compile examples/hello.txt
+english-compiler compile examples/hello.txt
 
 # Compile with explicit frontend selection
-python -m english_compiler compile --frontend claude examples/hello.txt
-python -m english_compiler compile --frontend openai examples/hello.txt
-python -m english_compiler compile --frontend gemini examples/hello.txt
-python -m english_compiler compile --frontend qwen examples/hello.txt
-python -m english_compiler compile --frontend mock examples/hello.txt
+english-compiler compile --frontend claude examples/hello.txt
+english-compiler compile --frontend openai examples/hello.txt
+english-compiler compile --frontend gemini examples/hello.txt
+english-compiler compile --frontend qwen examples/hello.txt
+english-compiler compile --frontend mock examples/hello.txt
 
 # Generate Python code (in addition to Core IL)
-python -m english_compiler compile --target python examples/hello.txt
+english-compiler compile --target python examples/hello.txt
+
+# Generate other targets
+english-compiler compile --target javascript examples/hello.txt
+english-compiler compile --target cpp examples/hello.txt
+english-compiler compile --target wasm examples/hello.txt
 
 # Force regeneration (bypass cache)
-python -m english_compiler compile --regen examples/hello.txt
+english-compiler compile --regen examples/hello.txt
 
 # Fail if regeneration required (CI mode)
-python -m english_compiler compile --freeze examples/hello.txt
+english-compiler compile --freeze examples/hello.txt
 
 # Run an existing Core IL file directly (works with any .coreil.json)
-python -m english_compiler run examples/hello.coreil.json
+english-compiler run examples/output/coreil/hello.coreil.json
 ```
 
-### Claude Demo
-
-```bash
-# Test Claude API integration (prints generated Core IL)
-python -m scripts.demo_claude_compile
-```
+Note: `python -m english_compiler` also works as an alternative to `english-compiler`.
 
 ## Architecture
 
