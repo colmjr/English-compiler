@@ -595,13 +595,19 @@ inline Value make_array(std::initializer_list<Value> items) {
 inline Value array_index(const Value& arr, const Value& idx) {
     auto index = as_int(idx);
     if (auto* a = std::get_if<std::shared_ptr<Array>>(&arr)) {
-        if (index < 0 || static_cast<size_t>(index) >= (*a)->items.size()) {
+        auto size = static_cast<int64_t>((*a)->items.size());
+        // Support Python-style negative indexing
+        if (index < 0) index = size + index;
+        if (index < 0 || index >= size) {
             throw std::runtime_error("index out of range");
         }
         return (*a)->items[index];
     }
     if (auto* t = std::get_if<std::shared_ptr<Tuple>>(&arr)) {
-        if (index < 0 || static_cast<size_t>(index) >= (*t)->items.size()) {
+        auto size = static_cast<int64_t>((*t)->items.size());
+        // Support Python-style negative indexing
+        if (index < 0) index = size + index;
+        if (index < 0 || index >= size) {
             throw std::runtime_error("index out of range");
         }
         return (*t)->items[index];
@@ -622,7 +628,10 @@ inline Value array_length(const Value& arr) {
 inline void array_set_index(const Value& arr, const Value& idx, const Value& val) {
     auto index = as_int(idx);
     auto a = as_array(arr);
-    if (index < 0 || static_cast<size_t>(index) >= a->items.size()) {
+    auto size = static_cast<int64_t>(a->items.size());
+    // Support Python-style negative indexing
+    if (index < 0) index = size + index;
+    if (index < 0 || index >= size) {
         throw std::runtime_error("index out of range");
     }
     a->items[index] = val;

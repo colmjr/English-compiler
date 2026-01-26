@@ -184,8 +184,15 @@ Cache reuse is based on matching source hash and Core IL hash.
 ```json
 {"type": "Push", "base": <array>, "value": <value>}
 {"type": "Index", "base": <array>, "index": <expr>}
+{"type": "SetIndex", "base": <array>, "index": <expr>, "value": <value>}
 {"type": "Length", "base": <array>}
 ```
+
+**Negative indexing**: Python-style negative indices are supported for `Index` and `SetIndex`:
+- `arr[-1]` → last element (`arr[len(arr) - 1]`)
+- `arr[-2]` → second-to-last element
+- `arr[-len(arr)]` → first element (`arr[0]`)
+- Out of bounds (e.g., `arr[-(len(arr)+1)]`) raises an error
 
 **Tuple (immutable, hashable)**:
 ```json
