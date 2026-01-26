@@ -184,7 +184,7 @@ def _emit_target_code(
     except OSError as exc:
         print(f"{output_path}: {exc}")
         return False
-    except Exception as exc:
+    except (ValueError, TypeError, KeyError) as exc:
         print(f"{lang_name} codegen failed: {exc}")
         return False
 

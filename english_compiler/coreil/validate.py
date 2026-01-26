@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .versions import SUPPORTED_VERSIONS, get_version_error_message, is_sealed_version
+
 
 _ALLOWED_NODE_TYPES = {
     "Let",
@@ -112,14 +114,7 @@ _ALLOWED_BINARY_OPS = {
     "or",
 }
 
-# Core IL Version Support
-# v1.4 is the current version (consolidates Math + JSON/Regex)
-# v1.3 adds JSON and Regex operations
-# v1.2 adds Math operations
-# v1.1 adds Record support
-# v1.0 is stable and frozen
-# v0.1-v0.5 are accepted for backward compatibility
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5"}
+# Note: Version support is defined in versions.py (single source of truth)
 
 # Helper functions that are disallowed in v0.5+ and v1.0+ (must use explicit primitives)
 # This ensures Core IL remains a closed specification
@@ -186,11 +181,11 @@ def validate_coreil(doc: dict) -> list[dict]:
             if not isinstance(name, str) or not name:
                 add_error(f"{path}.name", "missing or invalid name")
             else:
-                # In v0.5+ and v1.0+, disallow helper function calls
-                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5") and name in _DISALLOWED_HELPER_CALLS:
+                # In sealed versions (v0.5+), disallow helper function calls
+                if is_sealed_version(version) and name in _DISALLOWED_HELPER_CALLS:
                     add_error(
                         f"{path}.name",
-                        f"helper function '{name}' is not allowed in v0.5; "
+                        f"helper function '{name}' is not allowed in sealed versions (v0.5+); "
                         f"use explicit primitives (GetDefault, Keys, Push, Tuple)",
                     )
             args = node.get("args")
@@ -979,8 +974,8 @@ def validate_coreil(doc: dict) -> list[dict]:
         return errors
 
     version = doc.get("version")
-    if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', or 'coreil-1.5'")
+    if version not in SUPPORTED_VERSIONS:
+        add_error("$.version", get_version_error_message())
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:

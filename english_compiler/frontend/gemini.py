@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from english_compiler.frontend.base import BaseFrontend
+from english_compiler.frontend.base import BaseFrontend, get_required_env
 
 
 class GeminiFrontend(BaseFrontend):
@@ -12,9 +12,7 @@ class GeminiFrontend(BaseFrontend):
 
     def __init__(self) -> None:
         super().__init__()
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY is not set")
+        api_key = get_required_env("GEMINI_API_KEY")
 
         try:
             import google.generativeai as genai

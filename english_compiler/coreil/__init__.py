@@ -1,20 +1,13 @@
 """Core IL package.
 
-Core IL v1.4 - Math, JSON, and Regex Operations
-================================================
+Core IL v1.5 - Array Slicing and Unary Not
+==========================================
 
-This package implements the Core IL (Core Intermediate Language) v1.4 specification.
+This package implements the Core IL (Core Intermediate Language) v1.5 specification.
 
-Core IL v1.4 consolidates:
-- Math: Unary math functions (sin, cos, tan, sqrt, floor, ceil, abs, log, exp)
-- MathPow: Power function (base^exponent)
-- MathConst: Math constants (pi, e)
-- JsonParse: Parse JSON string to Core IL value
-- JsonStringify: Convert value to JSON string
-- RegexMatch: Test if string matches pattern
-- RegexFindAll: Find all matches of pattern
-- RegexReplace: Replace pattern matches
-- RegexSplit: Split string by pattern
+Core IL v1.5 adds:
+- Slice: Array/list slicing operations
+- Not: Logical negation
 
 Core IL features:
 - Complete: All necessary primitives for algorithmic computation
@@ -23,6 +16,7 @@ Core IL features:
 - Closed specification: No extension mechanism or helper functions
 
 Version History:
+- v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
 - v1.3: Added JSON operations (JsonParse, JsonStringify) and Regex operations
 - v1.2: Added Math, MathPow, MathConst for portable math operations
@@ -34,32 +28,16 @@ Version History:
 - v0.1: Basic statements and expressions
 
 Backward Compatibility:
-All v0.1-v1.3 programs continue to work in v1.4.
+All v0.1-v1.4 programs continue to work in v1.5.
 """
 
 from .interp import run_coreil
 from .validate import validate_coreil
 from .emit import emit_python
 from .emit_javascript import emit_javascript
+from .versions import COREIL_VERSION, SUPPORTED_VERSIONS, PACKAGE_VERSION
 
-# Current version
-COREIL_VERSION = "coreil-1.4"
-
-# All supported versions (for backward compatibility)
-SUPPORTED_VERSIONS = frozenset([
-    "coreil-0.1",
-    "coreil-0.2",
-    "coreil-0.3",
-    "coreil-0.4",
-    "coreil-0.5",
-    "coreil-1.0",
-    "coreil-1.1",
-    "coreil-1.2",
-    "coreil-1.3",
-    "coreil-1.4",
-])
-
-__version__ = "1.4.0"
+__version__ = PACKAGE_VERSION
 __all__ = [
     "run_coreil",
     "validate_coreil",

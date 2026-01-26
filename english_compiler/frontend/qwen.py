@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import os
 
-from english_compiler.frontend.base import BaseFrontend
+from english_compiler.frontend.base import BaseFrontend, get_env_int, get_required_env
 
 
 class QwenFrontend(BaseFrontend):
@@ -18,12 +17,10 @@ class QwenFrontend(BaseFrontend):
 
     def __init__(self) -> None:
         super().__init__()
-        api_key = os.getenv("QWEN_API_KEY")
-        if not api_key:
-            raise RuntimeError("QWEN_API_KEY is not set")
+        api_key = get_required_env("QWEN_API_KEY")
 
         self.model = os.getenv("QWEN_MODEL", "qwen-turbo")
-        self.max_tokens = int(os.getenv("QWEN_MAX_TOKENS", "4096"))
+        self.max_tokens = get_env_int("QWEN_MAX_TOKENS", 4096, min_value=1)
         self._base_url = os.getenv("QWEN_BASE_URL")
 
         if self._base_url:
@@ -79,10 +76,8 @@ class QwenFrontend(BaseFrontend):
             )
 
         raw_text = response.output.choices[0].message.content
-        if not raw_text:
-            raise ValueError("Qwen returned an empty response")
-
-        return self._parse_json(raw_text)
+        # DashScope may return markdown-wrapped JSON, so strip it
+        return self._parse_json_response(raw_text, "Qwen", strip_markdown=True)
 
     def _call_openai_compatible(self, user_message: str) -> dict:
         """Call Qwen via OpenAI-compatible endpoint."""
@@ -98,35 +93,7 @@ class QwenFrontend(BaseFrontend):
         )
 
         raw_text = response.choices[0].message.content
-        if not raw_text:
-            raise ValueError("Qwen returned an empty response")
-
-        return self._parse_json(raw_text)
-
-    def _parse_json(self, raw_text: str) -> dict:
-        """Parse JSON response, handling common issues."""
-        # Try to extract JSON from markdown code blocks if present
-        text = raw_text.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        elif text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError as exc:
-            snippet = raw_text[:400]
-            raise ValueError(
-                f"Qwen returned invalid JSON. Response snippet: {snippet}"
-            ) from exc
-
-        if not isinstance(data, dict):
-            raise ValueError("Qwen returned JSON that is not an object")
-
-        return data
+        return self._parse_json_response(raw_text, "Qwen")
 
 
 # Convenience function for direct use

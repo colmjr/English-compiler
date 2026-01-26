@@ -5,18 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from english_compiler.frontend.base import BaseFrontend
-
-
-def _get_max_tokens() -> int:
-    raw = os.getenv("ANTHROPIC_MAX_TOKENS", "4096")
-    try:
-        value = int(raw)
-    except ValueError as exc:
-        raise ValueError("ANTHROPIC_MAX_TOKENS must be an integer") from exc
-    if value <= 0:
-        raise ValueError("ANTHROPIC_MAX_TOKENS must be positive")
-    return value
+from english_compiler.frontend.base import BaseFrontend, get_env_int, get_required_env
 
 
 def _extract_text(response: Any) -> str:
@@ -52,9 +41,7 @@ class ClaudeFrontend(BaseFrontend):
 
     def __init__(self) -> None:
         super().__init__()
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise RuntimeError("ANTHROPIC_API_KEY is not set")
+        api_key = get_required_env("ANTHROPIC_API_KEY")
 
         try:
             import anthropic
@@ -65,7 +52,7 @@ class ClaudeFrontend(BaseFrontend):
 
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
-        self.max_tokens = _get_max_tokens()
+        self.max_tokens = get_env_int("ANTHROPIC_MAX_TOKENS", 4096, min_value=1)
 
     def get_model_name(self) -> str:
         return self.model
