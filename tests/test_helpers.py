@@ -34,6 +34,10 @@ for _cc in ["g++", "clang++"]:
         break
 CPP_AVAILABLE = CPP_COMPILER is not None
 
+# WASM backend availability (requires asc compiler)
+ASC_AVAILABLE = shutil.which("asc") is not None
+WASM_AVAILABLE = ASC_AVAILABLE and NODE_AVAILABLE
+
 # Helper function names that should not be used in Core IL v0.5+
 INVALID_HELPER_CALLS = {"get_or_default", "append", "keys", "entries"}
 
@@ -294,6 +298,85 @@ def run_cpp_backend(doc: dict, timeout: int = 10) -> BackendResult:
         )
 
 
+def run_wasm_backend(doc: dict, timeout: int = 30) -> BackendResult:
+    """Generate AssemblyScript code, compile to WASM, and execute with Node.js.
+
+    Args:
+        doc: The Core IL document to transpile and run.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        BackendResult with output, exit code, and success status.
+        Returns failure if asc compiler or Node.js is not available.
+    """
+    if not WASM_AVAILABLE:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error="WASM backend not available (requires asc and node)",
+        )
+
+    from english_compiler.coreil.emit_assemblyscript import emit_assemblyscript, get_runtime_path
+    from english_compiler.coreil.wasm_build import compile_to_wasm
+
+    try:
+        as_code = emit_assemblyscript(doc)
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"AssemblyScript codegen failed: {exc}",
+        )
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = Path(tmp_dir)
+
+            # Compile to WASM
+            result = compile_to_wasm(
+                as_code,
+                tmp_dir_path,
+                "test",
+                emit_wat=False,
+                optimize=False,  # Faster for tests
+            )
+
+            if not result.success:
+                return BackendResult(
+                    output="",
+                    exit_code=1,
+                    success=False,
+                    error=f"WASM compilation failed: {result.error}",
+                )
+
+            # Run WASM with Node.js
+            # Note: Full WASM execution with proper I/O binding is complex
+            # For now, we skip WASM parity tests until runtime I/O is fully implemented
+            return BackendResult(
+                output="",
+                exit_code=1,
+                success=False,
+                error="WASM execution not yet implemented (I/O bindings pending)",
+            )
+
+    except subprocess.TimeoutExpired:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"WASM execution timeout (>{timeout}s)",
+        )
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"WASM execution error: {exc}",
+        )
+
+
 def check_invalid_calls(doc: dict, test_name: str | None = None) -> list[str]:
     """Check for invalid helper function calls in a Core IL document.
 
@@ -327,6 +410,7 @@ def verify_backend_parity(
     test_name: str,
     include_javascript: bool = True,
     include_cpp: bool = True,
+    include_wasm: bool = False,  # Disabled by default until I/O bindings complete
 ) -> None:
     """Verify that all backends produce identical output.
 
@@ -335,6 +419,7 @@ def verify_backend_parity(
         test_name: Name of the test for error messages.
         include_javascript: Whether to test JavaScript backend.
         include_cpp: Whether to test C++ backend.
+        include_wasm: Whether to test WASM backend (disabled by default).
 
     Raises:
         TestFailure: If any backend fails or outputs don't match.
@@ -384,4 +469,18 @@ def verify_backend_parity(
                 f"{test_name}: Output mismatch (C++)!\n"
                 f"Interpreter output:\n{interp_result.output}\n"
                 f"C++ output:\n{cpp_result.output}"
+            )
+
+    # Run WASM backend (disabled by default)
+    if include_wasm and WASM_AVAILABLE:
+        wasm_result = run_wasm_backend(doc)
+        if not wasm_result.success:
+            error_msg = wasm_result.error or "unknown error"
+            raise TestFailure(f"{test_name}: WASM backend failed: {error_msg}")
+
+        if interp_result.output != wasm_result.output:
+            raise TestFailure(
+                f"{test_name}: Output mismatch (WASM)!\n"
+                f"Interpreter output:\n{interp_result.output}\n"
+                f"WASM output:\n{wasm_result.output}"
             )

@@ -18,7 +18,7 @@ Core IL features:
 
 Version History:
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2)
-- v1.5: Added Slice expression for list slicing
+- v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
 - v1.3: Added JSON operations (JsonParse, JsonStringify) and Regex operations
 - v1.2: Added Math, MathPow, MathConst for portable math operations
@@ -37,27 +37,9 @@ from .interp import run_coreil
 from .validate import validate_coreil
 from .emit import emit_python
 from .emit_javascript import emit_javascript
+from .versions import COREIL_VERSION, SUPPORTED_VERSIONS, PACKAGE_VERSION
 
-# Current version
-COREIL_VERSION = "coreil-1.6"
-
-# All supported versions (for backward compatibility)
-SUPPORTED_VERSIONS = frozenset([
-    "coreil-0.1",
-    "coreil-0.2",
-    "coreil-0.3",
-    "coreil-0.4",
-    "coreil-0.5",
-    "coreil-1.0",
-    "coreil-1.1",
-    "coreil-1.2",
-    "coreil-1.3",
-    "coreil-1.4",
-    "coreil-1.5",
-    "coreil-1.6",
-])
-
-__version__ = "1.6.0"
+__version__ = PACKAGE_VERSION
 __all__ = [
     "run_coreil",
     "validate_coreil",

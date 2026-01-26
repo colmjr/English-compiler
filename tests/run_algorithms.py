@@ -22,6 +22,8 @@ from tests.test_helpers import (
     NODE_AVAILABLE,
     CPP_AVAILABLE,
     CPP_COMPILER,
+    WASM_AVAILABLE,
+    ASC_AVAILABLE,
     TestFailure,
     check_invalid_calls,
     verify_backend_parity,
@@ -119,6 +121,10 @@ def main() -> int:
         print(f"  • C++ backend executes successfully ({CPP_COMPILER})")
     else:
         print("  • (C++ tests skipped - no g++/clang++ available)")
+    if WASM_AVAILABLE:
+        print("  • (WASM tests skipped - I/O bindings pending)")
+    elif not ASC_AVAILABLE:
+        print("  • (WASM tests skipped - asc compiler not available)")
     backends = ["interpreter", "Python"]
     if NODE_AVAILABLE:
         backends.append("JavaScript")

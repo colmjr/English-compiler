@@ -29,38 +29,55 @@ python -m tests.test_lower            # Lowering pass (For/ForEach to While)
 python -m tests.test_regression_suite # Meta-tests for regression suite
 ```
 
+### Installation
+
+```bash
+# Install from PyPI
+pip install english-compiler
+
+# With LLM provider support
+pip install english-compiler[claude]    # Anthropic Claude
+pip install english-compiler[openai]    # OpenAI GPT
+pip install english-compiler[gemini]    # Google Gemini
+pip install english-compiler[qwen]      # Alibaba Qwen
+pip install english-compiler[all]       # All providers
+```
+
 ### Compilation and Execution
 
 ```bash
+# Show version
+english-compiler --version
+
 # Compile with auto-detected frontend (checks env vars: Claude > OpenAI > Gemini > Qwen > mock)
-python -m english_compiler compile examples/hello.txt
+english-compiler compile examples/hello.txt
 
 # Compile with explicit frontend selection
-python -m english_compiler compile --frontend claude examples/hello.txt
-python -m english_compiler compile --frontend openai examples/hello.txt
-python -m english_compiler compile --frontend gemini examples/hello.txt
-python -m english_compiler compile --frontend qwen examples/hello.txt
-python -m english_compiler compile --frontend mock examples/hello.txt
+english-compiler compile --frontend claude examples/hello.txt
+english-compiler compile --frontend openai examples/hello.txt
+english-compiler compile --frontend gemini examples/hello.txt
+english-compiler compile --frontend qwen examples/hello.txt
+english-compiler compile --frontend mock examples/hello.txt
 
 # Generate Python code (in addition to Core IL)
-python -m english_compiler compile --target python examples/hello.txt
+english-compiler compile --target python examples/hello.txt
+
+# Generate other targets
+english-compiler compile --target javascript examples/hello.txt
+english-compiler compile --target cpp examples/hello.txt
+english-compiler compile --target wasm examples/hello.txt
 
 # Force regeneration (bypass cache)
-python -m english_compiler compile --regen examples/hello.txt
+english-compiler compile --regen examples/hello.txt
 
 # Fail if regeneration required (CI mode)
-python -m english_compiler compile --freeze examples/hello.txt
+english-compiler compile --freeze examples/hello.txt
 
-# Run an existing Core IL file directly
-python -m english_compiler run examples/hello.coreil.json
+# Run an existing Core IL file directly (works with any .coreil.json)
+english-compiler run examples/output/coreil/hello.coreil.json
 ```
 
-### Claude Demo
-
-```bash
-# Test Claude API integration (prints generated Core IL)
-python -m scripts.demo_claude_compile
-```
+Note: `python -m english_compiler` also works as an alternative to `english-compiler`.
 
 ## Architecture
 
@@ -93,7 +110,6 @@ python -m scripts.demo_claude_compile
   - `test_regression_suite.py` - Meta-tests
 
 - `examples/` - Example Core IL programs and source files
-- `docs/` - Historical Core IL specifications (v0.1-v0.5)
 
 ### Core IL Version Policy
 
@@ -128,10 +144,28 @@ from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
 
 ### Artifacts
 
-When compiling `foo.txt`, three files are generated:
-- `foo.coreil.json` - Core IL program (always)
-- `foo.lock.json` - cache metadata (source hash, Core IL hash, model, timestamp)
-- `foo.py` - executable Python code (only with `--target python`)
+When compiling `examples/foo.txt`, artifacts are organized into subdirectories relative to the source file:
+
+```
+examples/
+├── foo.txt                      (source - unchanged)
+└── output/
+    ├── coreil/
+    │   ├── foo.coreil.json      (Core IL - always generated)
+    │   └── foo.lock.json        (cache metadata)
+    ├── py/
+    │   └── foo.py               (with --target python)
+    ├── js/
+    │   └── foo.js               (with --target javascript)
+    ├── cpp/
+    │   ├── foo.cpp              (with --target cpp)
+    │   ├── coreil_runtime.hpp   (runtime header)
+    │   └── json.hpp             (JSON library)
+    └── wasm/
+        ├── foo.as.ts            (with --target wasm)
+        ├── foo.wasm             (compiled binary)
+        └── coreil_runtime.ts    (runtime library)
+```
 
 Cache reuse is based on matching source hash and Core IL hash.
 

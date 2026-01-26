@@ -1,13 +1,13 @@
 # Core IL Versioning and Code Hygiene
 
-**Date:** 2026-01-10
+**Date:** 2026-01-26
 **Status:** Complete
 
 ---
 
 ## Overview
 
-This document describes the Core IL v1.0 versioning strategy and code hygiene standards implemented throughout the codebase.
+This document describes the Core IL v1.5 versioning strategy and code hygiene standards implemented throughout the codebase.
 
 ---
 
@@ -15,15 +15,15 @@ This document describes the Core IL v1.0 versioning strategy and code hygiene st
 
 ### Current Stable Version
 
-**Core IL v1.0** (`"coreil-1.0"`)
+**Core IL v1.5** (`"coreil-1.5"`)
 
-- Stable and frozen - no breaking changes will be made
+- Latest stable version with all features
 - Production-ready with 100% test coverage
 - Fully documented in [coreil_v1.md](coreil_v1.md)
 
 ### Backward Compatibility
 
-The implementation accepts all versions from v0.1 through v1.0:
+The implementation accepts all versions from v0.1 through v1.5:
 
 ```python
 SUPPORTED_VERSIONS = frozenset([
@@ -32,31 +32,41 @@ SUPPORTED_VERSIONS = frozenset([
     "coreil-0.3",  # Functions and control flow
     "coreil-0.4",  # (reserved/unused)
     "coreil-0.5",  # Sealed primitives
-    "coreil-1.0",  # Stable release (current)
+    "coreil-1.0",  # Stable release (frozen)
+    "coreil-1.1",  # Record, Set, Deque, Heap, String ops
+    "coreil-1.2",  # Math operations
+    "coreil-1.3",  # JSON and Regex operations
+    "coreil-1.4",  # ExternalCall, expanded string ops, JS/C++ backends
+    "coreil-1.5",  # Slice, Not, negative indexing (current)
 ])
 ```
 
-**Policy**: Old versions continue to work indefinitely. New programs should use v1.0.
+**Policy**: Old versions continue to work indefinitely. New programs should use v1.5.
 
 ---
 
 ## Version Markers in Code
 
-All key implementation files now include explicit version markers:
+All key implementation files include explicit version markers:
 
 ### 1. Package Level
 
-[english_compiler/coreil/__init__.py](english_compiler/coreil/__init__.py)
+[english_compiler/coreil/versions.py](english_compiler/coreil/versions.py)
 
 ```python
 # Current stable version
-COREIL_VERSION = "coreil-1.0"
+COREIL_VERSION = "coreil-1.5"
 
 # All supported versions (for backward compatibility)
 SUPPORTED_VERSIONS = frozenset([
     "coreil-0.1", "coreil-0.2", "coreil-0.3",
     "coreil-0.4", "coreil-0.5", "coreil-1.0",
+    "coreil-1.1", "coreil-1.2", "coreil-1.3",
+    "coreil-1.4", "coreil-1.5",
 ])
+
+# Package version
+PACKAGE_VERSION = "1.5.0"
 ```
 
 **Usage**:
@@ -79,19 +89,11 @@ new_doc = {"version": COREIL_VERSION, "body": [...]}
 ```python
 """Core IL validation.
 
-This file implements Core IL v1.0 semantics validation.
+This file implements Core IL v1.5 semantics validation.
 Core IL v1.0 is stable and frozen - no breaking changes will be made.
 
-Backward compatibility: Accepts v0.1 through v1.0 programs.
+Backward compatibility: Accepts v0.1 through v1.5 programs.
 """
-```
-
-**Version constants**:
-```python
-# Core IL Version Support
-# v1.0 is the current stable version (frozen, production-ready)
-# v0.1-v0.5 are accepted for backward compatibility
-_ALLOWED_VERSIONS = {"coreil-0.1", ..., "coreil-1.0"}
 ```
 
 ### 3. Interpreter
@@ -102,108 +104,36 @@ _ALLOWED_VERSIONS = {"coreil-0.1", ..., "coreil-1.0"}
 ```python
 """Core IL interpreter.
 
-This file implements Core IL v1.0 semantics interpreter.
+This file implements Core IL v1.5 semantics interpreter.
 Core IL v1.0 is stable and frozen - no breaking changes will be made.
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
 - Tuple indexing and length support
 - Dictionary insertion order preservation
+- Negative indexing support
 - Recursion limit: 100 calls
 
-Backward compatibility: Accepts v0.1 through v1.0 programs.
+Backward compatibility: Accepts v0.1 through v1.5 programs.
 """
 ```
 
-**Version check**:
-```python
-# Core IL Version Check
-# v1.0 is the current stable version (frozen, production-ready)
-# v0.1-v0.5 are accepted for backward compatibility
-if doc.get("version") not in {"coreil-0.1", ..., "coreil-1.0"}:
-    raise ValueError("version must be 'coreil-0.1', ..., or 'coreil-1.0'")
-```
+### 4. Code Generators
 
-### 4. Python Code Generator
+[english_compiler/coreil/emit.py](english_compiler/coreil/emit.py) - Python
+[english_compiler/coreil/emit_javascript.py](english_compiler/coreil/emit_javascript.py) - JavaScript
+[english_compiler/coreil/emit_cpp.py](english_compiler/coreil/emit_cpp.py) - C++
 
-[english_compiler/coreil/emit.py](english_compiler/coreil/emit.py)
+All code generators include version markers and support the full v1.5 specification.
 
-**Module docstring**:
-```python
-"""Python code generator for Core IL.
+### 5. Frontends
 
-This file implements Core IL v1.0 to Python transpilation.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
+[english_compiler/frontend/claude.py](english_compiler/frontend/claude.py)
+[english_compiler/frontend/openai_provider.py](english_compiler/frontend/openai_provider.py)
+[english_compiler/frontend/gemini.py](english_compiler/frontend/gemini.py)
+[english_compiler/frontend/qwen.py](english_compiler/frontend/qwen.py)
 
-The generated Python code:
-- Matches interpreter semantics exactly
-- Uses standard Python 3.10+ features
-- Preserves dictionary insertion order
-- Implements short-circuit evaluation naturally
-
-Backward compatibility: Accepts v0.1 through v1.0 programs.
-"""
-```
-
-### 5. Lowering Pass
-
-[english_compiler/coreil/lower.py](english_compiler/coreil/lower.py)
-
-**Module docstring**:
-```python
-"""Lower Core IL syntax sugar into core constructs.
-
-This file implements Core IL v1.0 lowering pass.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
-
-Lowering transformations:
-- For loops → While loops with manual counter management
-- ForEach loops → While loops with index-based iteration
-
-All other nodes pass through unchanged.
-
-Backward compatibility: Accepts v0.1 through v1.0 programs.
-"""
-```
-
-### 6. JSON Schema
-
-[english_compiler/frontend/coreil_schema.py](english_compiler/frontend/coreil_schema.py)
-
-**Module docstring**:
-```python
-"""Core IL JSON schema for structured output.
-
-This schema defines Core IL v1.0 structure for LLM frontends.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
-
-Backward compatibility: Schema accepts v0.1 through v1.0 for validation,
-but LLMs should generate v1.0 programs.
-"""
-```
-
-### 7. Mock Frontend
-
-[english_compiler/frontend/mock_llm.py](english_compiler/frontend/mock_llm.py)
-
-**Updated to generate v1.0**:
-```python
-return {
-    "version": "coreil-1.0",  # Changed from "coreil-0.1"
-    "ambiguities": [],
-    "body": [...]
-}
-```
-
-### 8. Claude Frontend Prompt
-
-[english_compiler/frontend/prompt.txt](english_compiler/frontend/prompt.txt)
-
-```
-You are a compiler frontend. Output only Core IL JSON (v1.0) matching the provided schema.
-...
-Version: Use "coreil-1.0" for all programs. This is the stable, production-ready version.
-```
+All frontends generate v1.5 programs by default.
 
 ---
 
@@ -211,13 +141,13 @@ Version: Use "coreil-1.0" for all programs. This is the stable, production-ready
 
 ### For New Code
 
-**Always use v1.0 for new programs**:
+**Always use the current version for new programs**:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION
 
 doc = {
-    "version": COREIL_VERSION,  # "coreil-1.0"
+    "version": COREIL_VERSION,  # "coreil-1.5"
     "ambiguities": [],
     "body": [...]
 }
@@ -236,12 +166,12 @@ if doc["version"] not in SUPPORTED_VERSIONS:
 
 ### For Tests
 
-**Tests should use v1.0 for new test cases**, but continue testing backward compatibility:
+**Tests should use current version for new test cases**, but continue testing backward compatibility:
 
 ```python
-# New test (use v1.0)
+# New test (use current version)
 def test_new_feature():
-    doc = {"version": "coreil-1.0", ...}
+    doc = {"version": "coreil-1.5", ...}
 
 # Backward compat test
 def test_old_version_works():
@@ -255,13 +185,14 @@ def test_old_version_works():
 All version-related errors include the full list of supported versions:
 
 ```
-ValueError: version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3',
-            'coreil-0.4', 'coreil-0.5', or 'coreil-1.0'
+ValueError: version must be one of: 'coreil-0.1', 'coreil-0.2', 'coreil-0.3',
+            'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2',
+            'coreil-1.3', 'coreil-1.4', 'coreil-1.5'
 ```
 
 This makes it clear:
 1. What versions are supported
-2. That v1.0 is the latest
+2. That v1.5 is the latest
 3. That backward compatibility is maintained
 
 ---
@@ -272,9 +203,9 @@ This makes it clear:
 
 Every Core IL implementation file includes:
 
-- **Version marker**: "This file implements Core IL v1.0 semantics"
+- **Version marker**: "This file implements Core IL v1.5 semantics"
 - **Stability guarantee**: "Core IL v1.0 is stable and frozen"
-- **Backward compatibility note**: "Accepts v0.1 through v1.0 programs"
+- **Backward compatibility note**: "Accepts v0.1 through v1.5 programs"
 - **Key features** (where applicable)
 
 ### 2. Version Comments
@@ -283,9 +214,9 @@ Version checks in code include explanatory comments:
 
 ```python
 # Core IL Version Check
-# v1.0 is the current stable version (frozen, production-ready)
-# v0.1-v0.5 are accepted for backward compatibility
-if doc.get("version") not in {...}:
+# v1.5 is the current stable version
+# v0.1-v1.4 are accepted for backward compatibility
+if doc.get("version") not in SUPPORTED_VERSIONS:
     raise ValueError(...)
 ```
 
@@ -299,12 +230,12 @@ from english_compiler.coreil import COREIL_VERSION
 doc = {"version": COREIL_VERSION, ...}
 
 # Avoid
-doc = {"version": "coreil-1.0", ...}
+doc = {"version": "coreil-1.5", ...}
 ```
 
 ### 4. Centralized Version Management
 
-Version constants are defined once in `english_compiler/coreil/__init__.py` and imported everywhere else.
+Version constants are defined once in `english_compiler/coreil/versions.py` and imported everywhere else.
 
 ---
 
@@ -330,9 +261,10 @@ $ python -m english_compiler run examples/bubble_sort.coreil.json
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
 
-assert COREIL_VERSION == "coreil-1.0"
+assert COREIL_VERSION == "coreil-1.5"
 assert "coreil-0.1" in SUPPORTED_VERSIONS
 assert "coreil-1.0" in SUPPORTED_VERSIONS
+assert "coreil-1.5" in SUPPORTED_VERSIONS
 assert "coreil-2.0" not in SUPPORTED_VERSIONS
 ```
 
@@ -342,7 +274,7 @@ assert "coreil-2.0" not in SUPPORTED_VERSIONS
 
 ### Adding New Versions (Future)
 
-If Core IL v1.1 or v2.0 is created:
+If Core IL v1.6 or v2.0 is created:
 
 1. Update `COREIL_VERSION` to the new version
 2. Add new version to `SUPPORTED_VERSIONS`
@@ -362,48 +294,40 @@ If Core IL v1.1 or v2.0 is created:
 
 ---
 
-## Summary of Changes
+## Summary of Versions
 
-### Files Modified
+| Version | Key Features | Status |
+|---------|-------------|--------|
+| v1.5 | Slice, Not, negative indexing | Current |
+| v1.4 | ExternalCall, JS/C++ backends, expanded strings | Stable |
+| v1.3 | JSON, Regex operations | Stable |
+| v1.2 | Math operations | Stable |
+| v1.1 | Record, Set, Deque, Heap, strings | Stable |
+| v1.0 | Short-circuit, Tuple, sealed primitives | Frozen |
+| v0.5 | Sealed primitives | Legacy |
+| v0.3 | Functions, loops | Legacy |
+| v0.2 | Arrays | Legacy |
+| v0.1 | Basic | Legacy |
 
-1. ✅ `english_compiler/coreil/__init__.py` - Added version constants and comprehensive docstring
-2. ✅ `english_compiler/coreil/validate.py` - Added version marker and comments
-3. ✅ `english_compiler/coreil/interp.py` - Added version marker and comments
-4. ✅ `english_compiler/coreil/emit.py` - Added version marker and comments
-5. ✅ `english_compiler/coreil/lower.py` - Added version marker and comments
-6. ✅ `english_compiler/frontend/coreil_schema.py` - Added version marker
-7. ✅ `english_compiler/frontend/mock_llm.py` - Updated to generate v1.0
-8. ✅ `english_compiler/frontend/prompt.txt` - Updated to request v1.0 (already done)
+---
 
-### Backward Compatibility
+## Backward Compatibility
 
-✅ **100% Maintained**
+**100% Maintained**
 
-- All v0.1-v0.5 programs continue to work
+- All v0.1-v1.4 programs continue to work in v1.5
 - No breaking changes introduced
 - All tests pass
-
-### Test Results
-
-```bash
-$ python -m tests.run
-All tests passed.
-
-$ python -m tests.test_short_circuit
-✓ test_and_short_circuit passed
-✓ test_or_short_circuit passed
-All short-circuit tests passed!
-```
 
 ---
 
 ## Conclusion
 
-Core IL v1.0 is now clearly marked throughout the codebase as:
+Core IL v1.5 is now clearly marked throughout the codebase as:
 
-1. **Stable**: Semantics are frozen
-2. **Current**: v1.0 is the production version
-3. **Backward Compatible**: v0.1-v0.5 programs still work
+1. **Current**: v1.5 is the latest stable version
+2. **Feature-Rich**: Includes all v1.1-v1.5 enhancements
+3. **Backward Compatible**: v0.1-v1.4 programs still work
 4. **Well-Documented**: Every file explains version policy
 
 The codebase now has:
@@ -412,4 +336,4 @@ The codebase now has:
 - Clear stability guarantees
 - Comprehensive documentation
 
-**Core IL v1.0 versioning is complete and production-ready.**
+**Core IL v1.5 versioning is complete and production-ready.**

@@ -5,7 +5,7 @@ Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 Version history:
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
-- v1.5: Added Slice expression for list slicing
+- v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.2: Added Math, MathPow, MathConst for portable math operations
@@ -16,12 +16,20 @@ Backward compatibility: Schema accepts v0.1 through v1.6 for validation,
 but LLMs should generate v1.6 programs.
 """
 
+from english_compiler.coreil.versions import SUPPORTED_VERSIONS
+
+# Build version enum from single source of truth
+_VERSION_ENUM = sorted(
+    SUPPORTED_VERSIONS,
+    key=lambda v: [int(x) for x in v.replace("coreil-", "").split(".")]
+)
+
 COREIL_JSON_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5", "coreil-1.6"]},
+        "version": {"enum": _VERSION_ENUM},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -240,8 +248,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/stringreplace_expr"},
                 # External call (Tier 2, non-portable)
                 {"$ref": "#/definitions/externalcall_expr"},
-                # Slice (v1.5)
+                # Slice and Not (v1.5)
                 {"$ref": "#/definitions/slice_expr"},
+                {"$ref": "#/definitions/not_expr"},
                 # MethodCall and PropertyGet (Tier 2, v1.6)
                 {"$ref": "#/definitions/methodcall_expr"},
                 {"$ref": "#/definitions/propertyget_expr"},
@@ -881,6 +890,16 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "PropertyGet"},
                 "object": {"$ref": "#/definitions/expr"},
                 "property": {"type": "string"},
+            },
+        },
+        # Not (v1.5)
+        "not_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "arg"],
+            "properties": {
+                "type": {"const": "Not"},
+                "arg": {"$ref": "#/definitions/expr"},
             },
         },
     },

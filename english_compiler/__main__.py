@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+
+from english_compiler import __version__
 import datetime
 import hashlib
 import json
@@ -42,6 +44,22 @@ def _write_json(path: Path, data: dict) -> bool:
         print(f"{path}: {exc}")
         return False
     return True
+
+
+def _get_output_path(source_path: Path, subdir: str, suffix: str) -> Path:
+    """Get output path in organized directory structure.
+
+    Args:
+        source_path: Path to source file (e.g., examples/hello.txt)
+        subdir: Subdirectory name (e.g., "coreil", "py", "cpp")
+        suffix: File suffix including dot (e.g., ".coreil.json", ".py")
+
+    Returns:
+        Path like examples/output/py/hello.py
+    """
+    output_dir = source_path.parent / "output" / subdir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir / (source_path.stem + suffix)
 
 
 def _print_ambiguities(ambiguities: list[dict]) -> None:
@@ -136,7 +154,7 @@ def _emit_target_code(
         doc: The Core IL document
         source_path: Path to the source file (used to derive output paths)
         coreil_path: Path to the Core IL JSON file
-        target: Target language ("coreil", "python", "javascript", "cpp")
+        target: Target language ("coreil", "python", "javascript", "cpp", "wasm")
         check_freshness: If True, skip generation if target is newer than coreil
 
     Returns:
@@ -151,17 +169,20 @@ def _emit_target_code(
     import shutil
 
     if target == "python":
-        output_path = source_path.with_suffix(".py")
+        output_path = _get_output_path(source_path, "py", ".py")
         lang_name = "Python"
         emit_func = emit_python
     elif target == "javascript":
-        output_path = source_path.with_suffix(".js")
+        output_path = _get_output_path(source_path, "js", ".js")
         lang_name = "JavaScript"
         emit_func = emit_javascript
     elif target == "cpp":
-        output_path = source_path.with_suffix(".cpp")
+        output_path = _get_output_path(source_path, "cpp", ".cpp")
         lang_name = "C++"
         emit_func = emit_cpp
+    elif target == "wasm":
+        # WASM target - emit AssemblyScript and optionally compile
+        return _emit_wasm_target(doc, source_path, coreil_path, check_freshness)
     else:
         return True
 
@@ -184,9 +205,78 @@ def _emit_target_code(
     except OSError as exc:
         print(f"{output_path}: {exc}")
         return False
-    except Exception as exc:
+    except (ValueError, TypeError, KeyError) as exc:
         print(f"{lang_name} codegen failed: {exc}")
         return False
+
+    return True
+
+
+def _emit_wasm_target(
+    doc: dict,
+    source_path: Path,
+    coreil_path: Path,
+    check_freshness: bool = False,
+) -> bool:
+    """Emit AssemblyScript code and optionally compile to WASM.
+
+    Args:
+        doc: The Core IL document
+        source_path: Path to the source file
+        coreil_path: Path to the Core IL JSON file
+        check_freshness: If True, skip if target is newer than coreil
+
+    Returns:
+        True if successful, False on error
+    """
+    import shutil
+    from english_compiler.coreil.emit_assemblyscript import emit_assemblyscript, get_runtime_path
+    from english_compiler.coreil.wasm_build import ASC_AVAILABLE, compile_to_wasm
+
+    # AssemblyScript output path
+    as_path = _get_output_path(source_path, "wasm", ".as.ts")
+
+    # Check freshness
+    if check_freshness and as_path.exists():
+        if as_path.stat().st_mtime >= coreil_path.stat().st_mtime:
+            return True
+
+    try:
+        code = emit_assemblyscript(doc)
+        as_path.write_text(code, encoding="utf-8")
+        print(f"Generated AssemblyScript code at {as_path}")
+
+        # Copy runtime library
+        runtime_dir = as_path.parent
+        runtime_src = get_runtime_path()
+        runtime_dst = runtime_dir / "coreil_runtime.ts"
+        shutil.copy(runtime_src, runtime_dst)
+        print(f"Copied runtime library to {runtime_dst}")
+
+    except OSError as exc:
+        print(f"{as_path}: {exc}")
+        return False
+    except (ValueError, TypeError, KeyError) as exc:
+        print(f"AssemblyScript codegen failed: {exc}")
+        return False
+
+    # Optionally compile to WASM if asc is available
+    if ASC_AVAILABLE:
+        result = compile_to_wasm(
+            code,
+            as_path.parent,  # output/wasm/
+            source_path.stem,
+            emit_wat=False,
+            optimize=True,
+        )
+        if result.success:
+            print(f"Compiled to WebAssembly at {result.wasm_path}")
+        else:
+            print(f"WASM compilation failed: {result.error}")
+            print("Note: AssemblyScript source was still generated successfully")
+    else:
+        print("Note: asc compiler not found, skipping WASM compilation")
+        print("      Install with: npm install -g assemblyscript")
 
     return True
 
@@ -201,8 +291,8 @@ def _compile_command(args: argparse.Namespace) -> int:
         return 1
 
     source_path = Path(args.file)
-    coreil_path = source_path.with_suffix(".coreil.json")
-    lock_path = source_path.with_suffix(".lock.json")
+    coreil_path = _get_output_path(source_path, "coreil", ".coreil.json")
+    lock_path = _get_output_path(source_path, "coreil", ".lock.json")
 
     try:
         source_text = source_path.read_text(encoding="utf-8")
@@ -250,15 +340,15 @@ def _compile_command(args: argparse.Namespace) -> int:
         except ValueError as exc:
             if "ExternalCall" in str(exc):
                 if target == "python":
-                    python_path = source_path.with_suffix(".py")
+                    python_path = _get_output_path(source_path, "py", ".py")
                     print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
                     return _run_python_file(python_path)
                 elif target == "javascript":
-                    js_path = source_path.with_suffix(".js")
+                    js_path = _get_output_path(source_path, "js", ".js")
                     print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
                     return _run_javascript_file(js_path)
                 elif target == "cpp":
-                    cpp_path = source_path.with_suffix(".cpp")
+                    cpp_path = _get_output_path(source_path, "cpp", ".cpp")
                     print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
                     return _run_cpp_file(cpp_path)
             raise
@@ -316,15 +406,15 @@ def _compile_command(args: argparse.Namespace) -> int:
     except ValueError as exc:
         if "ExternalCall" in str(exc):
             if target == "python":
-                python_path = source_path.with_suffix(".py")
+                python_path = _get_output_path(source_path, "py", ".py")
                 print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
                 return _run_python_file(python_path)
             elif target == "javascript":
-                js_path = source_path.with_suffix(".js")
+                js_path = _get_output_path(source_path, "js", ".js")
                 print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
                 return _run_javascript_file(js_path)
             elif target == "cpp":
-                cpp_path = source_path.with_suffix(".cpp")
+                cpp_path = _get_output_path(source_path, "cpp", ".cpp")
                 print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
                 return _run_cpp_file(cpp_path)
         raise
@@ -349,6 +439,11 @@ def _run_command(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="english-compiler")
+    parser.add_argument(
+        "--version", "-V",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     compile_parser = subparsers.add_parser("compile", help="Compile a source file")
@@ -361,7 +456,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     compile_parser.add_argument(
         "--target",
-        choices=["coreil", "python", "javascript", "cpp"],
+        choices=["coreil", "python", "javascript", "cpp", "wasm"],
         default="coreil",
         help="Compilation target (default: coreil)",
     )
