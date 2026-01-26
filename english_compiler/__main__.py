@@ -46,6 +46,22 @@ def _write_json(path: Path, data: dict) -> bool:
     return True
 
 
+def _get_output_path(source_path: Path, subdir: str, suffix: str) -> Path:
+    """Get output path in organized directory structure.
+
+    Args:
+        source_path: Path to source file (e.g., examples/hello.txt)
+        subdir: Subdirectory name (e.g., "coreil", "py", "cpp")
+        suffix: File suffix including dot (e.g., ".coreil.json", ".py")
+
+    Returns:
+        Path like examples/output/py/hello.py
+    """
+    output_dir = source_path.parent / "output" / subdir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir / (source_path.stem + suffix)
+
+
 def _print_ambiguities(ambiguities: list[dict]) -> None:
     print("Ambiguities detected:")
     for i, item in enumerate(ambiguities, start=1):
@@ -153,15 +169,15 @@ def _emit_target_code(
     import shutil
 
     if target == "python":
-        output_path = source_path.with_suffix(".py")
+        output_path = _get_output_path(source_path, "py", ".py")
         lang_name = "Python"
         emit_func = emit_python
     elif target == "javascript":
-        output_path = source_path.with_suffix(".js")
+        output_path = _get_output_path(source_path, "js", ".js")
         lang_name = "JavaScript"
         emit_func = emit_javascript
     elif target == "cpp":
-        output_path = source_path.with_suffix(".cpp")
+        output_path = _get_output_path(source_path, "cpp", ".cpp")
         lang_name = "C++"
         emit_func = emit_cpp
     elif target == "wasm":
@@ -218,7 +234,7 @@ def _emit_wasm_target(
     from english_compiler.coreil.wasm_build import ASC_AVAILABLE, compile_to_wasm
 
     # AssemblyScript output path
-    as_path = source_path.with_suffix(".as.ts")
+    as_path = _get_output_path(source_path, "wasm", ".as.ts")
 
     # Check freshness
     if check_freshness and as_path.exists():
@@ -248,7 +264,7 @@ def _emit_wasm_target(
     if ASC_AVAILABLE:
         result = compile_to_wasm(
             code,
-            source_path.parent,
+            as_path.parent,  # output/wasm/
             source_path.stem,
             emit_wat=False,
             optimize=True,
@@ -275,8 +291,8 @@ def _compile_command(args: argparse.Namespace) -> int:
         return 1
 
     source_path = Path(args.file)
-    coreil_path = source_path.with_suffix(".coreil.json")
-    lock_path = source_path.with_suffix(".lock.json")
+    coreil_path = _get_output_path(source_path, "coreil", ".coreil.json")
+    lock_path = _get_output_path(source_path, "coreil", ".lock.json")
 
     try:
         source_text = source_path.read_text(encoding="utf-8")
@@ -324,15 +340,15 @@ def _compile_command(args: argparse.Namespace) -> int:
         except ValueError as exc:
             if "ExternalCall" in str(exc):
                 if target == "python":
-                    python_path = source_path.with_suffix(".py")
+                    python_path = _get_output_path(source_path, "py", ".py")
                     print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
                     return _run_python_file(python_path)
                 elif target == "javascript":
-                    js_path = source_path.with_suffix(".js")
+                    js_path = _get_output_path(source_path, "js", ".js")
                     print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
                     return _run_javascript_file(js_path)
                 elif target == "cpp":
-                    cpp_path = source_path.with_suffix(".cpp")
+                    cpp_path = _get_output_path(source_path, "cpp", ".cpp")
                     print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
                     return _run_cpp_file(cpp_path)
             raise
@@ -390,15 +406,15 @@ def _compile_command(args: argparse.Namespace) -> int:
     except ValueError as exc:
         if "ExternalCall" in str(exc):
             if target == "python":
-                python_path = source_path.with_suffix(".py")
+                python_path = _get_output_path(source_path, "py", ".py")
                 print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
                 return _run_python_file(python_path)
             elif target == "javascript":
-                js_path = source_path.with_suffix(".js")
+                js_path = _get_output_path(source_path, "js", ".js")
                 print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
                 return _run_javascript_file(js_path)
             elif target == "cpp":
-                cpp_path = source_path.with_suffix(".cpp")
+                cpp_path = _get_output_path(source_path, "cpp", ".cpp")
                 print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
                 return _run_cpp_file(cpp_path)
         raise

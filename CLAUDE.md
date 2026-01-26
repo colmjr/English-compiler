@@ -51,7 +51,7 @@ python -m english_compiler compile --regen examples/hello.txt
 # Fail if regeneration required (CI mode)
 python -m english_compiler compile --freeze examples/hello.txt
 
-# Run an existing Core IL file directly
+# Run an existing Core IL file directly (works with any .coreil.json)
 python -m english_compiler run examples/hello.coreil.json
 ```
 
@@ -127,10 +127,28 @@ from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
 
 ### Artifacts
 
-When compiling `foo.txt`, three files are generated:
-- `foo.coreil.json` - Core IL program (always)
-- `foo.lock.json` - cache metadata (source hash, Core IL hash, model, timestamp)
-- `foo.py` - executable Python code (only with `--target python`)
+When compiling `examples/foo.txt`, artifacts are organized into subdirectories relative to the source file:
+
+```
+examples/
+├── foo.txt                      (source - unchanged)
+└── output/
+    ├── coreil/
+    │   ├── foo.coreil.json      (Core IL - always generated)
+    │   └── foo.lock.json        (cache metadata)
+    ├── py/
+    │   └── foo.py               (with --target python)
+    ├── js/
+    │   └── foo.js               (with --target javascript)
+    ├── cpp/
+    │   ├── foo.cpp              (with --target cpp)
+    │   ├── coreil_runtime.hpp   (runtime header)
+    │   └── json.hpp             (JSON library)
+    └── wasm/
+        ├── foo.as.ts            (with --target wasm)
+        ├── foo.wasm             (compiled binary)
+        └── coreil_runtime.ts    (runtime library)
+```
 
 Cache reuse is based on matching source hash and Core IL hash.
 
