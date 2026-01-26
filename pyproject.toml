@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "english-compiler"
+dynamic = ["version"]
+description = "Compile English pseudocode to executable code via Core IL"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{name = "Colm Rafferty", email = "colmjr@outlook.com"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Compilers",
+]
+keywords = ["compiler", "llm", "code-generation", "pseudocode", "english", "natural-language"]
+
+[project.optional-dependencies]
+claude = ["anthropic>=0.18.0"]
+openai = ["openai>=1.0.0"]
+gemini = ["google-generativeai>=0.3.0"]
+qwen = ["dashscope>=1.14.0"]
+all = [
+    "anthropic>=0.18.0",
+    "openai>=1.0.0",
+    "google-generativeai>=0.3.0",
+    "dashscope>=1.14.0",
+]
+
+[project.scripts]
+english-compiler = "english_compiler.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/colmraffertyjr/english-compiler"
+Repository = "https://github.com/colmraffertyjr/english-compiler"
+Documentation = "https://github.com/colmraffertyjr/english-compiler#readme"
+Issues = "https://github.com/colmraffertyjr/english-compiler/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "english_compiler.coreil.versions.PACKAGE_VERSION"}
+
+[tool.setuptools.packages.find]
+include = ["english_compiler*"]
+
+[tool.setuptools.package-data]
+"english_compiler.frontend" = ["prompt.txt"]
+"english_compiler.coreil.cpp_runtime" = ["*.hpp"]
+"english_compiler.coreil.wasm_runtime" = ["*.ts"]

@@ -1,0 +1,5 @@
+include README.md
+include LICENSE
+recursive-include english_compiler/frontend *.txt
+recursive-include english_compiler/coreil/cpp_runtime *.hpp
+recursive-include english_compiler/coreil/wasm_runtime *.ts
