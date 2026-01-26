@@ -58,6 +58,7 @@ def emit_javascript(doc: dict) -> str:
     uses_regex_flags = False  # Track if we need regex flag helper
     uses_print = False  # Track if we need print helper (for Python-compatible output)
     uses_float = False  # Track if we need float wrapper for Math results
+    uses_index = False  # Track if we need index helper for negative indexing
     external_modules: set[str] = set()
 
     def emit_line(text: str) -> None:
@@ -66,7 +67,7 @@ def emit_javascript(doc: dict) -> str:
 
     def emit_expr(node: dict) -> str:
         """Generate JavaScript expression code."""
-        nonlocal uses_heap, uses_tuple_set, uses_regex_flags, uses_float, external_modules
+        nonlocal uses_heap, uses_tuple_set, uses_regex_flags, uses_float, uses_index, external_modules
 
         if not isinstance(node, dict):
             raise ValueError("expected expression node")
@@ -116,9 +117,10 @@ def emit_javascript(doc: dict) -> str:
             return f"[{', '.join(item_strs)}]"
 
         if node_type == "Index":
+            uses_index = True
             base = emit_expr(node.get("base"))
             index = emit_expr(node.get("index"))
-            return f"{base}[{index}]"
+            return f"__idx({base}, {index})"
 
         if node_type == "Slice":
             base = emit_expr(node.get("base"))
@@ -514,10 +516,11 @@ def emit_javascript(doc: dict) -> str:
             return
 
         if node_type == "SetIndex":
+            uses_index = True
             base = emit_expr(node.get("base"))
             index = emit_expr(node.get("index"))
             value = emit_expr(node.get("value"))
-            emit_line(f"{base}[{index}] = {value};")
+            emit_line(f"__setIdx({base}, {index}, {value});")
             return
 
         if node_type == "Set":
@@ -789,6 +792,22 @@ def emit_javascript(doc: dict) -> str:
         header_lines.append("  }")
         header_lines.append("}")
         header_lines.append("function __float(v) { return new __Float(v); }")
+
+    # Add index helpers for Python-style negative indexing
+    if uses_index:
+        if header_lines:
+            header_lines.append("")
+        header_lines.append("// Index helpers for Python-style negative indexing")
+        header_lines.append("function __idx(arr, i) {")
+        header_lines.append("  if (i < 0) i = arr.length + i;")
+        header_lines.append("  if (i < 0 || i >= arr.length) throw new Error('Index out of range');")
+        header_lines.append("  return arr[i];")
+        header_lines.append("}")
+        header_lines.append("function __setIdx(arr, i, v) {")
+        header_lines.append("  if (i < 0) i = arr.length + i;")
+        header_lines.append("  if (i < 0 || i >= arr.length) throw new Error('Index out of range');")
+        header_lines.append("  arr[i] = v;")
+        header_lines.append("}")
 
     # Add print helper for Python-compatible output format
     if uses_print:

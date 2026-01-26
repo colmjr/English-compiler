@@ -167,12 +167,13 @@ def run_coreil(doc: dict) -> int:
         if node_type == "Index":
             base = eval_expr(node.get("base"), local_env, call_depth)
             index = eval_expr(node.get("index"), local_env, call_depth)
-            if not isinstance(index, int) or index < 0:
-                raise ValueError("Index must be a non-negative integer")
+            if not isinstance(index, int):
+                raise ValueError("Index must be an integer")
             # Allow indexing into both arrays (lists) and tuples
             if not isinstance(base, (list, tuple)):
                 raise ValueError("Index base must be an array or tuple")
-            if index >= len(base):
+            # Support negative indexing (Python-style: -1 = last element)
+            if index < -len(base) or index >= len(base):
                 raise ValueError("Index out of range")
             return base[index]
 
@@ -739,11 +740,12 @@ def run_coreil(doc: dict) -> int:
             base = eval_expr(node.get("base"), local_env, call_depth)
             index = eval_expr(node.get("index"), local_env, call_depth)
             value = eval_expr(node.get("value"), local_env, call_depth)
-            if not isinstance(index, int) or index < 0:
-                raise ValueError("SetIndex index must be a non-negative integer")
+            if not isinstance(index, int):
+                raise ValueError("SetIndex index must be an integer")
             if not isinstance(base, list):
                 raise ValueError("SetIndex base must be an array")
-            if index >= len(base):
+            # Support negative indexing (Python-style: -1 = last element)
+            if index < -len(base) or index >= len(base):
                 raise ValueError("SetIndex index out of range")
             base[index] = value
             return
