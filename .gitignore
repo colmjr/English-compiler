@@ -210,7 +210,16 @@ __marimo__/
 # Compiled output directories (new structure)
 **/output/
 
-# Legacy flat output patterns (for backward compatibility)
+# Core IL JSON files (generated from .txt source)
+*.coreil.json
+
+# Lock files (cache metadata)
 *.lock.json
+
+# Generated Python from examples/tests
 examples/*.py
 tests/algorithms/*.py
+
+# Temporary test files
+test.txt
+test.py
