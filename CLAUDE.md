@@ -81,7 +81,7 @@ python -m scripts.demo_claude_compile
     - `qwen.py` - Alibaba Qwen API integration (DashScope or OpenAI-compatible)
     - `mock_llm.py` - Mock generator (deterministic, for testing)
     - `prompt.txt` - System prompt for Core IL generation (shared)
-    - `coreil_schema.py` - JSON schema for Core IL v1.4 (shared)
+    - `coreil_schema.py` - JSON schema for Core IL v1.5 (shared)
   - `__main__.py` - CLI entry point
 
 - `tests/` - Test suite
@@ -97,11 +97,11 @@ python -m scripts.demo_claude_compile
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.4 (`"coreil-1.4"`)
+**Current stable version**: Core IL v1.5 (`"coreil-1.5"`)
 
-Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. All versions maintain full backward compatibility.
+Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. Core IL v1.5 adds list slicing (Slice expression). All versions maintain full backward compatibility.
 
-All versions from v0.1 through v1.4 are supported for backward compatibility. The codebase uses version constants:
+All versions from v0.1 through v1.5 are supported for backward compatibility. The codebase uses version constants:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
@@ -141,7 +141,7 @@ Cache reuse is based on matching source hash and Core IL hash.
 
 **Expressions** (evaluate to values):
 - Literal, Var, Binary, Array, Tuple, Map, Record, Set
-- Index, Length, Get, GetDefault, Keys, GetField, SetHas, SetSize
+- Index, Length, Slice, Get, GetDefault, Keys, GetField, SetHas, SetSize
 - StringLength, Substring, CharAt, Join
 - DequeNew, DequeSize
 - HeapNew, HeapSize, HeapPeek
@@ -184,8 +184,18 @@ Cache reuse is based on matching source hash and Core IL hash.
 ```json
 {"type": "Push", "base": <array>, "value": <value>}
 {"type": "Index", "base": <array>, "index": <expr>}
+{"type": "SetIndex", "base": <array>, "index": <expr>, "value": <value>}
 {"type": "Length", "base": <array>}
+{"type": "Slice", "base": <array>, "start": <int>, "end": <int>}
 ```
+
+Slice extracts elements from index `start` to `end` (exclusive), returning a new list.
+
+**Negative indexing**: Python-style negative indices are supported for `Index` and `SetIndex`:
+- `arr[-1]` → last element (`arr[len(arr) - 1]`)
+- `arr[-2]` → second-to-last element
+- `arr[-len(arr)]` → first element (`arr[0]`)
+- Out of bounds (e.g., `arr[-(len(arr)+1)]`) raises an error
 
 **Tuple (immutable, hashable)**:
 ```json
