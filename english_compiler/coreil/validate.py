@@ -1,9 +1,10 @@
 """Core IL validation.
 
-This file implements Core IL v1.5 semantics validation.
-Core IL v1.5 adds array/list slicing and unary not operations.
+This file implements Core IL v1.6 semantics validation.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
@@ -11,7 +12,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.6 programs.
 """
 
 from __future__ import annotations
@@ -96,6 +97,9 @@ _ALLOWED_NODE_TYPES = {
     "Slice",
     # Unary not (v1.5)
     "Not",
+    # OOP-style method call and property access (Tier 2, v1.6)
+    "MethodCall",
+    "PropertyGet",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -643,6 +647,34 @@ def validate_coreil(doc: dict) -> list[dict]:
             else:
                 for i, arg in enumerate(args):
                     validate_expr(arg, f"{path}.args[{i}]", defined)
+            return
+
+        # MethodCall (Tier 2, v1.6)
+        if node_type == "MethodCall":
+            if "object" not in node:
+                add_error(f"{path}.object", "missing object")
+            else:
+                validate_expr(node["object"], f"{path}.object", defined)
+            method = node.get("method")
+            if not isinstance(method, str) or not method:
+                add_error(f"{path}.method", "missing or invalid method name")
+            args = node.get("args")
+            if not isinstance(args, list):
+                add_error(f"{path}.args", "missing or invalid args")
+            else:
+                for i, arg in enumerate(args):
+                    validate_expr(arg, f"{path}.args[{i}]", defined)
+            return
+
+        # PropertyGet (Tier 2, v1.6)
+        if node_type == "PropertyGet":
+            if "object" not in node:
+                add_error(f"{path}.object", "missing object")
+            else:
+                validate_expr(node["object"], f"{path}.object", defined)
+            prop = node.get("property")
+            if not isinstance(prop, str) or not prop:
+                add_error(f"{path}.property", "missing or invalid property name")
             return
 
         # Array slicing (v1.5)

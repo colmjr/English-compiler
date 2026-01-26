@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.5 semantics interpreter.
-Core IL v1.5 adds array/list slicing and unary not operations.
+This file implements Core IL v1.6 semantics interpreter.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -19,6 +19,7 @@ Key features:
 - Recursion limit: 100 calls
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
@@ -26,7 +27,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.6 programs.
 """
 
 from __future__ import annotations
@@ -609,6 +610,26 @@ def run_coreil(doc: dict) -> int:
                 f"External calls are platform-specific and require a compatible backend."
             )
 
+        # MethodCall (Tier 2, non-portable, v1.6)
+        if node_type == "MethodCall":
+            _ = eval_expr(node.get("object"), local_env, call_depth)
+            method = node.get("method")
+            args = node.get("args", [])
+            _ = [eval_expr(arg, local_env, call_depth) for arg in args]
+            raise ValueError(
+                f"runtime error: MethodCall to {method} is not supported in interpreter. "
+                f"Method calls are platform-specific and require a compatible backend."
+            )
+
+        # PropertyGet (Tier 2, non-portable, v1.6)
+        if node_type == "PropertyGet":
+            _ = eval_expr(node.get("object"), local_env, call_depth)
+            prop = node.get("property")
+            raise ValueError(
+                f"runtime error: PropertyGet for {prop} is not supported in interpreter. "
+                f"Property access is platform-specific and requires a compatible backend."
+            )
+
         raise ValueError(f"unexpected expression type '{node_type}'")
 
     def call_builtin(name: str, args: list[Any]) -> Any:
@@ -918,15 +939,15 @@ def run_coreil(doc: dict) -> int:
         # v1.1 adds Record support
         # v1.0 is stable and frozen
         # v0.1-v0.5 are accepted for backward compatibility
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', or 'coreil-1.5'")
+        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5", "coreil-1.6"}:
+            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', 'coreil-1.5', or 'coreil-1.6'")
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")
         exec_block(body, None, False, 0)
     except ValueError as exc:
-        # Re-raise ExternalCall errors so caller can handle them
-        if "ExternalCall" in str(exc):
+        # Re-raise Tier 2 (non-portable) errors so caller can handle them
+        if "ExternalCall" in str(exc) or "MethodCall" in str(exc) or "PropertyGet" in str(exc):
             raise
         print(f"runtime error: {exc}")
         return 1

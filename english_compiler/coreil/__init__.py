@@ -1,14 +1,14 @@
 """Core IL package.
 
-Core IL v1.5 - List Slicing, Negative Indexing, and Unary Not
-==============================================================
+Core IL v1.6 - OOP-Style Method Calls and Property Access
+=========================================================
 
-This package implements the Core IL (Core Intermediate Language) v1.5 specification.
+This package implements the Core IL (Core Intermediate Language) v1.6 specification.
 
-Core IL v1.5 adds:
-- Slice: Extract a sublist from start to end index (exclusive)
-- Negative indexing: Python-style negative indices for array access
-- Not: Unary logical negation
+Core IL v1.6 adds:
+- MethodCall: Call a method on an object (obj.method(args))
+- PropertyGet: Access a property on an object (obj.property)
+These are Tier 2 (non-portable) operations for OOP-style library APIs.
 
 Core IL features:
 - Complete: All necessary primitives for algorithmic computation
@@ -17,6 +17,7 @@ Core IL features:
 - Closed specification: No extension mechanism or helper functions
 
 Version History:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2)
 - v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
 - v1.3: Added JSON operations (JsonParse, JsonStringify) and Regex operations
@@ -29,7 +30,7 @@ Version History:
 - v0.1: Basic statements and expressions
 
 Backward Compatibility:
-All v0.1-v1.4 programs continue to work in v1.5.
+All v0.1-v1.5 programs continue to work in v1.6.
 """
 
 from .interp import run_coreil

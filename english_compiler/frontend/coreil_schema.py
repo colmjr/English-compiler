@@ -1,9 +1,10 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.5 structure for LLM frontends.
-Core IL v1.5 adds Slice, negative indexing, and Not for logical negation.
+This schema defines Core IL v1.6 structure for LLM frontends.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
@@ -11,8 +12,8 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.5 for validation,
-but LLMs should generate v1.5 programs.
+Backward compatibility: Schema accepts v0.1 through v1.6 for validation,
+but LLMs should generate v1.6 programs.
 """
 
 from english_compiler.coreil.versions import SUPPORTED_VERSIONS
@@ -247,14 +248,12 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/stringreplace_expr"},
                 # External call (Tier 2, non-portable)
                 {"$ref": "#/definitions/externalcall_expr"},
-<<<<<<< HEAD
                 # Slice and Not (v1.5)
                 {"$ref": "#/definitions/slice_expr"},
                 {"$ref": "#/definitions/not_expr"},
-=======
-                # Slice (v1.5)
-                {"$ref": "#/definitions/slice_expr"},
->>>>>>> origin/main
+                # MethodCall and PropertyGet (Tier 2, v1.6)
+                {"$ref": "#/definitions/methodcall_expr"},
+                {"$ref": "#/definitions/propertyget_expr"},
             ]
         },
         "literal_expr": {
@@ -870,18 +869,38 @@ COREIL_JSON_SCHEMA = {
                 "end": {"$ref": "#/definitions/expr"},
             },
         },
-<<<<<<< HEAD
+        # MethodCall (Tier 2, v1.6)
+        "methodcall_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "object", "method", "args"],
+            "properties": {
+                "type": {"const": "MethodCall"},
+                "object": {"$ref": "#/definitions/expr"},
+                "method": {"type": "string"},
+                "args": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
+            },
+        },
+        # PropertyGet (Tier 2, v1.6)
+        "propertyget_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "object", "property"],
+            "properties": {
+                "type": {"const": "PropertyGet"},
+                "object": {"$ref": "#/definitions/expr"},
+                "property": {"type": "string"},
+            },
+        },
         # Not (v1.5)
         "not_expr": {
             "type": "object",
             "additionalProperties": False,
-            "required": ["type", "value"],
+            "required": ["type", "arg"],
             "properties": {
                 "type": {"const": "Not"},
-                "value": {"$ref": "#/definitions/expr"},
+                "arg": {"$ref": "#/definitions/expr"},
             },
         },
-=======
->>>>>>> origin/main
     },
 }

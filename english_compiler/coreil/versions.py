@@ -4,6 +4,8 @@ This module is the single source of truth for all Core IL version information.
 All other modules should import version constants from here.
 
 Version History:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2)
+- v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
 - v1.3: Added JSON operations (JsonParse, JsonStringify) and Regex operations
 - v1.2: Added Math, MathPow, MathConst for portable math operations
@@ -18,7 +20,7 @@ Version History:
 from __future__ import annotations
 
 # Current stable version
-COREIL_VERSION = "coreil-1.5"
+COREIL_VERSION = "coreil-1.6"
 
 # All supported versions (for backward compatibility)
 SUPPORTED_VERSIONS = frozenset([
@@ -33,10 +35,11 @@ SUPPORTED_VERSIONS = frozenset([
     "coreil-1.3",
     "coreil-1.4",
     "coreil-1.5",
+    "coreil-1.6",
 ])
 
 # Package version (semantic versioning)
-PACKAGE_VERSION = "1.5.0"
+PACKAGE_VERSION = "1.6.0"
 
 
 def is_version_supported(version: str) -> bool:

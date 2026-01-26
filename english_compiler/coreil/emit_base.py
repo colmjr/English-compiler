@@ -93,6 +93,8 @@ class BaseEmitter(ABC):
             "RegexReplace": self._emit_regex_replace,
             "RegexSplit": self._emit_regex_split,
             "ExternalCall": self._emit_external_call,
+            "MethodCall": self._emit_method_call,
+            "PropertyGet": self._emit_property_get,
         }
 
         self.stmt_handlers: dict[str, Callable[[dict], None]] = {
@@ -382,6 +384,16 @@ class BaseEmitter(ABC):
     @abstractmethod
     def _emit_external_call(self, node: dict) -> str:
         """Emit external call operation."""
+        pass
+
+    @abstractmethod
+    def _emit_method_call(self, node: dict) -> str:
+        """Emit method call operation (Tier 2, v1.6)."""
+        pass
+
+    @abstractmethod
+    def _emit_property_get(self, node: dict) -> str:
+        """Emit property get operation (Tier 2, v1.6)."""
         pass
 
     # ========== Statement Handlers (Abstract) ==========

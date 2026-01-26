@@ -98,7 +98,7 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
     - `qwen.py` - Alibaba Qwen API integration (DashScope or OpenAI-compatible)
     - `mock_llm.py` - Mock generator (deterministic, for testing)
     - `prompt.txt` - System prompt for Core IL generation (shared)
-    - `coreil_schema.py` - JSON schema for Core IL v1.5 (shared)
+    - `coreil_schema.py` - JSON schema for Core IL v1.6 (shared)
   - `__main__.py` - CLI entry point
 
 - `tests/` - Test suite
@@ -113,11 +113,11 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.5 (`"coreil-1.5"`)
+**Current stable version**: Core IL v1.6 (`"coreil-1.6"`)
 
-Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. Core IL v1.5 adds list slicing (Slice expression). All versions maintain full backward compatibility.
+Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. Core IL v1.5 adds list slicing (Slice expression). Core IL v1.6 adds OOP-style method calls (MethodCall, PropertyGet) for Tier 2 non-portable operations. All versions maintain full backward compatibility.
 
-All versions from v0.1 through v1.5 are supported for backward compatibility. The codebase uses version constants:
+All versions from v0.1 through v1.6 are supported for backward compatibility. The codebase uses version constants:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
@@ -184,6 +184,7 @@ Cache reuse is based on matching source hash and Core IL hash.
 - RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace
 - ExternalCall (Tier 2, non-portable)
+- MethodCall, PropertyGet (Tier 2, v1.6)
 - Range, Call
 
 **Statements** (perform actions):
@@ -319,7 +320,7 @@ Optional "flags" parameter: "i" (case-insensitive), "m" (multiline), "s" (dotall
 
 **Tier 1 (Portable)**: All operations above are portable - identical semantics across all platforms.
 
-**Tier 2 (Non-Portable)**: ExternalCall enables platform-specific operations. Programs using ExternalCall cannot run in the interpreter and are marked as non-portable.
+**Tier 2 (Non-Portable)**: ExternalCall, MethodCall, and PropertyGet enable platform-specific operations. Programs using these cannot run in the interpreter and are marked as non-portable.
 
 **ExternalCall (Tier 2, v1.4)**:
 ```json
@@ -328,10 +329,31 @@ Optional "flags" parameter: "i" (case-insensitive), "m" (multiline), "s" (dotall
 
 Available modules: fs (file system), http, os, crypto, time
 
+**MethodCall (Tier 2, v1.6)** - Call a method on an object:
+```json
+{"type": "MethodCall", "object": <expr>, "method": "fit", "args": [<expr>, ...]}
+```
+
+Example: `model.fit(X, y)` becomes:
+```json
+{"type": "MethodCall", "object": {"type": "Var", "name": "model"}, "method": "fit", "args": [{"type": "Var", "name": "X"}, {"type": "Var", "name": "y"}]}
+```
+
+**PropertyGet (Tier 2, v1.6)** - Access a property on an object:
+```json
+{"type": "PropertyGet", "object": <expr>, "property": "coef_"}
+```
+
+Example: `model.coef_` becomes:
+```json
+{"type": "PropertyGet", "object": {"type": "Var", "name": "model"}, "property": "coef_"}
+```
+
 Notes:
-- ExternalCall raises an error in the interpreter
-- Python backend generates appropriate imports
+- Tier 2 operations raise an error in the interpreter
+- Python/JavaScript/C++ backends generate native code
 - Use Tier 1 operations when possible
+- MethodCall and PropertyGet enable OOP-style APIs (sklearn, numpy, pandas, etc.)
 
 ## Testing Strategy
 
@@ -382,7 +404,7 @@ Create `tests/algorithms/new_algorithm.txt` with natural English pseudocode. The
 
 3. **Don't assume static types**: Core IL uses runtime type checking. Operations validate inputs and produce clear error messages.
 
-4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque, Heap), v1.2+ (Math), and v1.3+/v1.4+ (JSON, Regex) with backward compatibility.
+4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque, Heap), v1.2+ (Math), v1.3+/v1.4+ (JSON, Regex), v1.5+ (Slice), and v1.6+ (MethodCall, PropertyGet) with backward compatibility.
 
 5. **Don't skip lowering**: For/ForEach must be lowered before backend execution (happens automatically in `emit_python()`).
 

@@ -1,7 +1,7 @@
 """C++ code generator for Core IL.
 
-This file implements Core IL v1.5 to C++17 transpilation.
-Core IL v1.5 adds array/list slicing and unary not operations.
+This file implements Core IL v1.6 to C++17 transpilation.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 The generated C++ code:
 - Matches interpreter semantics exactly
@@ -18,11 +18,13 @@ The generated C++ code:
 - Regex operations (uses <regex>)
 - Array slicing (Slice)
 - Unary not (Not)
+- OOP-style method calls and property access (Tier 2)
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Initial C++ backend
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.6 programs.
 """
 
 from __future__ import annotations
@@ -434,6 +436,18 @@ class CppEmitter(BaseEmitter):
             f"External calls require platform-specific implementation."
         )
 
+    def _emit_method_call(self, node: dict) -> str:
+        obj = self.emit_expr(node.get("object"))
+        method = node.get("method")
+        args = node.get("args", [])
+        arg_strs = [self.emit_expr(arg) for arg in args]
+        return f"{obj}.{method}({', '.join(arg_strs)})"
+
+    def _emit_property_get(self, node: dict) -> str:
+        obj = self.emit_expr(node.get("object"))
+        prop = node.get("property")
+        return f"{obj}.{prop}"
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:
@@ -599,6 +613,7 @@ def emit_cpp(doc: dict) -> str:
     return emitter.emit()
 
 
+
 def get_runtime_header_path() -> Path:
     """Return the path to the coreil_runtime.hpp header file."""
     return Path(__file__).parent / "cpp_runtime" / "coreil_runtime.hpp"
@@ -607,3 +622,4 @@ def get_runtime_header_path() -> Path:
 def get_json_header_path() -> Path:
     """Return the path to the json.hpp header file."""
     return Path(__file__).parent / "cpp_runtime" / "json.hpp"
+

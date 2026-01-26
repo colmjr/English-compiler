@@ -1,7 +1,7 @@
 """JavaScript code generator for Core IL.
 
-This file implements Core IL v1.5 to JavaScript (ES Modules) transpilation.
-Core IL v1.5 adds array/list slicing and unary not operations.
+This file implements Core IL v1.6 to JavaScript (ES Modules) transpilation.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 The generated JavaScript code:
 - Matches interpreter semantics exactly
@@ -17,13 +17,15 @@ The generated JavaScript code:
 - Regex operations (match, findall, replace, split)
 - Array slicing (Slice)
 - Unary not (Not)
+- OOP-style method calls and property access (Tier 2)
 - Imports Node.js modules only for Tier 2 ExternalCall operations
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Initial JavaScript backend (matching Python emit.py)
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.6 programs.
 """
 
 from __future__ import annotations
@@ -633,6 +635,18 @@ class JavaScriptEmitter(BaseEmitter):
         self.external_modules.add(module)
         return f"__external.{module}.{function}({', '.join(arg_strs)})"
 
+    def _emit_method_call(self, node: dict) -> str:
+        obj = self.emit_expr(node.get("object"))
+        method = node.get("method")
+        args = node.get("args", [])
+        arg_strs = [self.emit_expr(arg) for arg in args]
+        return f"{obj}.{method}({', '.join(arg_strs)})"
+
+    def _emit_property_get(self, node: dict) -> str:
+        obj = self.emit_expr(node.get("object"))
+        prop = node.get("property")
+        return f"{obj}.{prop}"
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:
@@ -817,3 +831,4 @@ def emit_javascript(doc: dict) -> str:
     """
     emitter = JavaScriptEmitter(doc)
     return emitter.emit()
+
