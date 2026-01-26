@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+
+from english_compiler import __version__
 import datetime
 import hashlib
 import json
@@ -421,6 +423,11 @@ def _run_command(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="english-compiler")
+    parser.add_argument(
+        "--version", "-V",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     compile_parser = subparsers.add_parser("compile", help="Compile a source file")
