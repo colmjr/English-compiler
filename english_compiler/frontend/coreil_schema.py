@@ -247,14 +247,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/stringreplace_expr"},
                 # External call (Tier 2, non-portable)
                 {"$ref": "#/definitions/externalcall_expr"},
-<<<<<<< HEAD
                 # Slice and Not (v1.5)
                 {"$ref": "#/definitions/slice_expr"},
                 {"$ref": "#/definitions/not_expr"},
-=======
-                # Slice (v1.5)
-                {"$ref": "#/definitions/slice_expr"},
->>>>>>> origin/main
             ]
         },
         "literal_expr": {
@@ -870,7 +865,6 @@ COREIL_JSON_SCHEMA = {
                 "end": {"$ref": "#/definitions/expr"},
             },
         },
-<<<<<<< HEAD
         # Not (v1.5)
         "not_expr": {
             "type": "object",
@@ -881,7 +875,5 @@ COREIL_JSON_SCHEMA = {
                 "value": {"$ref": "#/definitions/expr"},
             },
         },
-=======
->>>>>>> origin/main
     },
 }
