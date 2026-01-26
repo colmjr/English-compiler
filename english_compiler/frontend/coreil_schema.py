@@ -1,17 +1,18 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.4 structure for LLM frontends.
-Core IL v1.4 consolidates Math operations (v1.2) and JSON/Regex operations (v1.3).
+This schema defines Core IL v1.5 structure for LLM frontends.
+Core IL v1.5 adds list slicing (Slice expression).
 
 Version history:
+- v1.5: Added Slice expression for list slicing
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - v1.2: Added Math, MathPow, MathConst for portable math operations
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.4 for validation,
-but LLMs should generate v1.4 programs.
+Backward compatibility: Schema accepts v0.1 through v1.5 for validation,
+but LLMs should generate v1.5 programs.
 """
 
 COREIL_JSON_SCHEMA = {
@@ -19,7 +20,7 @@ COREIL_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": ["version", "body"],
     "properties": {
-        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4"]},
+        "version": {"enum": ["coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5"]},
         "ambiguities": {
             "type": "array",
             "items": {"$ref": "#/definitions/ambiguity"},
@@ -238,6 +239,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/stringreplace_expr"},
                 # External call (Tier 2, non-portable)
                 {"$ref": "#/definitions/externalcall_expr"},
+                # Slice (v1.5)
+                {"$ref": "#/definitions/slice_expr"},
             ]
         },
         "literal_expr": {
@@ -839,6 +842,18 @@ COREIL_JSON_SCHEMA = {
                 "module": {"type": "string"},
                 "function": {"type": "string"},
                 "args": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
+            },
+        },
+        # Slice (v1.5)
+        "slice_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "base", "start", "end"],
+            "properties": {
+                "type": {"const": "Slice"},
+                "base": {"$ref": "#/definitions/expr"},
+                "start": {"$ref": "#/definitions/expr"},
+                "end": {"$ref": "#/definitions/expr"},
             },
         },
     },

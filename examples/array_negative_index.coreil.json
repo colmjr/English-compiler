@@ -1,0 +1,81 @@
+{
+  "version": "coreil-1.5",
+  "body": [
+    {
+      "type": "Let",
+      "name": "arr",
+      "value": {
+        "type": "Array",
+        "items": [
+          {"type": "Literal", "value": 1},
+          {"type": "Literal", "value": 2},
+          {"type": "Literal", "value": 3},
+          {"type": "Literal", "value": 4},
+          {"type": "Literal", "value": 5}
+        ]
+      }
+    },
+    {
+      "type": "Print",
+      "args": [
+        {
+          "type": "Index",
+          "base": {"type": "Var", "name": "arr"},
+          "index": {"type": "Literal", "value": -1}
+        }
+      ]
+    },
+    {
+      "type": "Print",
+      "args": [
+        {
+          "type": "Index",
+          "base": {"type": "Var", "name": "arr"},
+          "index": {"type": "Literal", "value": -2}
+        }
+      ]
+    },
+    {
+      "type": "Print",
+      "args": [
+        {
+          "type": "Index",
+          "base": {"type": "Var", "name": "arr"},
+          "index": {"type": "Literal", "value": -5}
+        }
+      ]
+    },
+    {
+      "type": "SetIndex",
+      "base": {"type": "Var", "name": "arr"},
+      "index": {"type": "Literal", "value": -1},
+      "value": {"type": "Literal", "value": 99}
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "arr"}]
+    },
+    {
+      "type": "Let",
+      "name": "tup",
+      "value": {
+        "type": "Tuple",
+        "items": [
+          {"type": "Literal", "value": "a"},
+          {"type": "Literal", "value": "b"},
+          {"type": "Literal", "value": "c"}
+        ]
+      }
+    },
+    {
+      "type": "Print",
+      "args": [
+        {
+          "type": "Index",
+          "base": {"type": "Var", "name": "tup"},
+          "index": {"type": "Literal", "value": -1}
+        }
+      ]
+    }
+  ]
+}
