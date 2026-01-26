@@ -2,6 +2,22 @@
 
 A production-ready compiler that translates English pseudocode into executable code through a deterministic intermediate representation (Core IL).
 
+## Installation
+
+```sh
+pip install english-compiler
+```
+
+With LLM provider support:
+
+```sh
+pip install english-compiler[claude]    # Anthropic Claude
+pip install english-compiler[openai]    # OpenAI GPT
+pip install english-compiler[gemini]    # Google Gemini
+pip install english-compiler[qwen]      # Alibaba Qwen
+pip install english-compiler[all]       # All providers
+```
+
 ## Project Status
 
 **Core IL v1.5 is stable and production-ready.**
@@ -12,7 +28,7 @@ The compiler has successfully compiled and executed real-world algorithms includ
 - String processing (bigram frequency)
 - Advanced algorithms (Byte Pair Encoding - 596 lines of Core IL)
 
-All tests pass with 100% parity between interpreter, Python, JavaScript, and C++ code generation.
+All tests pass with 100% parity between interpreter, Python, JavaScript, C++, and WebAssembly code generation.
 
 **Documentation**:
 - [STATUS.md](STATUS.md) - Detailed project status and capabilities
@@ -22,70 +38,89 @@ All tests pass with 100% parity between interpreter, Python, JavaScript, and C++
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Fast reference for Core IL syntax
 - [tests/ALGORITHM_TESTS.md](tests/ALGORITHM_TESTS.md) - Algorithm corpus regression tests
 
-## Requirements
-
-- Python 3.10+
-- Standard library for core functionality
-- Optional LLM provider SDKs:
-  - `pip install anthropic` for Claude
-  - `pip install openai` for OpenAI
-  - `pip install google-generativeai` for Gemini
-  - `pip install dashscope` for Qwen
-
-## Quick start (mock frontend)
+## Quick Start
 
 1) Create a source file:
 
 ```sh
-printf "hello\n" > examples/hello.txt
+echo "Print hello world" > hello.txt
 ```
 
 2) Compile and run:
 
 ```sh
-python -m english_compiler compile --frontend mock examples/hello.txt
+english-compiler compile --frontend mock hello.txt
 ```
 
 Expected output:
 
 ```text
-Regenerating Core IL for examples/hello.txt
-hello
+Regenerating Core IL for hello.txt using mock
+hello world
 ```
 
-## CLI usage
+## CLI Usage
+
+### Version
+
+```sh
+english-compiler --version
+```
 
 ### Compile
 
 ```sh
-python -m english_compiler compile [--frontend mock|claude|openai|gemini|qwen] [--target coreil|python|javascript|cpp] [--regen] [--freeze] <source.txt>
+english-compiler compile [options] <source.txt>
 ```
 
-Behavior:
-- Produces `foo.coreil.json` and `foo.lock.json` next to the source file.
-- When `--target python` is specified, also generates `foo.py` with executable Python code.
-- When `--target javascript` is specified, generates `foo.js` with executable JavaScript code.
-- When `--target cpp` is specified, generates `foo.cpp` with C++ code.
-- Uses cached artifacts if they match the source hash.
-- Exits `2` and prints ambiguity details when `ambiguities` is non-empty.
+**Options:**
+- `--frontend <provider>`: LLM frontend (`mock`, `claude`, `openai`, `gemini`, `qwen`). Auto-detects based on available API keys if not specified.
+- `--target <lang>`: Output target (`coreil`, `python`, `javascript`, `cpp`, `wasm`). Default: `coreil`.
+- `--regen`: Force regeneration even if cache is valid.
+- `--freeze`: Fail if regeneration would be required (useful for CI).
 
-Flags:
-- `--frontend mock`: use the mocked generator (default when no API key).
-- `--frontend claude`: use Anthropic Claude (requires `ANTHROPIC_API_KEY`).
-- `--frontend openai`: use OpenAI GPT (requires `OPENAI_API_KEY`).
-- `--frontend gemini`: use Google Gemini (requires `GOOGLE_API_KEY`).
-- `--frontend qwen`: use Alibaba Qwen (requires `DASHSCOPE_API_KEY`).
-- `--target coreil`: only emit Core IL JSON (default).
-- `--target python`: emit both Core IL JSON and Python code.
-- `--target javascript`: emit both Core IL JSON and JavaScript code.
-- `--target cpp`: emit both Core IL JSON and C++ code.
-- `--regen`: force regeneration even if cache is valid.
-- `--freeze`: fail if regeneration would be required.
+**Output structure:**
+
+When compiling `examples/hello.txt`, artifacts are organized into subdirectories:
+
+```
+examples/
+├── hello.txt                    # Source file (unchanged)
+└── output/
+    ├── coreil/
+    │   ├── hello.coreil.json    # Core IL (always generated)
+    │   └── hello.lock.json      # Cache metadata
+    ├── py/
+    │   └── hello.py             # With --target python
+    ├── js/
+    │   └── hello.js             # With --target javascript
+    ├── cpp/
+    │   ├── hello.cpp            # With --target cpp
+    │   ├── coreil_runtime.hpp   # Runtime header
+    │   └── json.hpp             # JSON library
+    └── wasm/
+        ├── hello.as.ts          # With --target wasm
+        ├── hello.wasm           # Compiled binary (if asc available)
+        └── coreil_runtime.ts    # Runtime library
+```
+
+**Examples:**
+
+```sh
+# Compile with mock frontend (no API key needed)
+english-compiler compile --frontend mock examples/hello.txt
+
+# Compile with Claude and generate Python
+english-compiler compile --frontend claude --target python examples/hello.txt
+
+# Auto-detect frontend, generate JavaScript
+english-compiler compile --target javascript examples/hello.txt
+```
 
 ### Run an existing Core IL file
 
 ```sh
-python -m english_compiler run examples/hello.coreil.json
+english-compiler run examples/output/coreil/hello.coreil.json
 ```
 
 ## Architecture
@@ -168,13 +203,24 @@ Core IL is a complete, closed intermediate representation with explicit primitiv
 
 ## Artifacts
 
-When compiling `foo.txt`, the following files are created:
+When compiling `foo.txt`, artifacts are organized into an `output/` subdirectory:
 
-- `foo.coreil.json`: Core IL program (always generated)
-- `foo.lock.json`: cache metadata (hashes, model, timestamp)
-- `foo.py`: executable Python code (only when `--target python` is used)
-- `foo.js`: executable JavaScript code (only when `--target javascript` is used)
-- `foo.cpp`: C++ code (only when `--target cpp` is used)
+```
+output/
+├── coreil/
+│   ├── foo.coreil.json    # Core IL (always generated)
+│   └── foo.lock.json      # Cache metadata
+├── py/foo.py              # With --target python
+├── js/foo.js              # With --target javascript
+├── cpp/                   # With --target cpp
+│   ├── foo.cpp
+│   ├── coreil_runtime.hpp
+│   └── json.hpp
+└── wasm/                  # With --target wasm
+    ├── foo.as.ts
+    ├── foo.wasm
+    └── coreil_runtime.ts
+```
 
 Cache reuse is based on the source hash and Core IL hash.
 
@@ -183,54 +229,46 @@ Cache reuse is based on the source hash and Core IL hash.
 ### Claude (Anthropic)
 
 ```sh
-python -m pip install anthropic
+pip install english-compiler[claude]
 
 export ANTHROPIC_API_KEY="your_api_key_here"
 export ANTHROPIC_MODEL="claude-sonnet-4-5"  # optional
 export ANTHROPIC_MAX_TOKENS="4096"           # optional
 
-python -m english_compiler compile --frontend claude examples/hello.txt
+english-compiler compile --frontend claude examples/hello.txt
 ```
 
 ### OpenAI
 
 ```sh
-python -m pip install openai
+pip install english-compiler[openai]
 
 export OPENAI_API_KEY="your_api_key_here"
 export OPENAI_MODEL="gpt-4o"  # optional
 
-python -m english_compiler compile --frontend openai examples/hello.txt
+english-compiler compile --frontend openai examples/hello.txt
 ```
 
 ### Gemini (Google)
 
 ```sh
-python -m pip install google-generativeai
+pip install english-compiler[gemini]
 
 export GOOGLE_API_KEY="your_api_key_here"
 export GEMINI_MODEL="gemini-1.5-pro"  # optional
 
-python -m english_compiler compile --frontend gemini examples/hello.txt
+english-compiler compile --frontend gemini examples/hello.txt
 ```
 
 ### Qwen (Alibaba)
 
 ```sh
-python -m pip install dashscope
+pip install english-compiler[qwen]
 
 export DASHSCOPE_API_KEY="your_api_key_here"
 export QWEN_MODEL="qwen-max"  # optional
 
-python -m english_compiler compile --frontend qwen examples/hello.txt
-```
-
-## Demo script
-
-Run the Claude demo (prints a generated Core IL JSON object):
-
-```sh
-python -m scripts.demo_claude_compile
+english-compiler compile --frontend qwen examples/hello.txt
 ```
 
 ## Code Generation
@@ -238,8 +276,8 @@ python -m scripts.demo_claude_compile
 ### Python
 
 ```sh
-python -m english_compiler compile --target python examples/hello.txt
-python examples/hello.py
+english-compiler compile --target python examples/hello.txt
+python examples/output/py/hello.py
 ```
 
 The generated Python code:
@@ -250,8 +288,8 @@ The generated Python code:
 ### JavaScript
 
 ```sh
-python -m english_compiler compile --target javascript examples/hello.txt
-node examples/hello.js
+english-compiler compile --target javascript examples/hello.txt
+node examples/output/js/hello.js
 ```
 
 The generated JavaScript code:
@@ -262,14 +300,26 @@ The generated JavaScript code:
 ### C++
 
 ```sh
-python -m english_compiler compile --target cpp examples/hello.txt
-g++ -std=c++17 -o hello examples/hello.cpp && ./hello
+english-compiler compile --target cpp examples/hello.txt
+g++ -std=c++17 -I examples/output/cpp -o hello examples/output/cpp/hello.cpp && ./hello
 ```
 
 The generated C++ code:
 - Uses C++17 standard
-- Includes all necessary headers
+- Includes runtime headers in the same directory
 - Matches interpreter output exactly
+
+### WebAssembly
+
+```sh
+english-compiler compile --target wasm examples/hello.txt
+# Requires: npm install -g assemblyscript
+```
+
+The generated WebAssembly:
+- Compiles via AssemblyScript (.as.ts)
+- Produces .wasm binary if asc compiler is available
+- Portable across platforms
 
 ## ExternalCall (Tier 2 operations)
 
@@ -303,17 +353,17 @@ Core IL v1.4+ supports ExternalCall for platform-specific operations like file I
 
 ```sh
 # Compile to Python (required for ExternalCall)
-python -m english_compiler compile --target python examples/external_call_demo.coreil.json
+english-compiler compile --target python examples/external_call_demo.txt
 
 # Run the generated Python
-python examples/external_call_demo.py
+python examples/output/py/external_call_demo.py
 ```
 
 **Available modules**: `time`, `os`, `fs`, `http`, `crypto`
 
 See [coreil_v1.md](coreil_v1.md) for full ExternalCall documentation.
 
-### Testing
+## Testing
 
 **Basic tests** (examples in `examples/` directory):
 ```sh
