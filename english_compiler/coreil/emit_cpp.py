@@ -1,7 +1,7 @@
 """C++ code generator for Core IL.
 
-This file implements Core IL v1.5 to C++17 transpilation.
-Core IL v1.5 adds array/list slicing and unary not operations.
+This file implements Core IL v1.6 to C++17 transpilation.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 The generated C++ code:
 - Matches interpreter semantics exactly
@@ -18,11 +18,13 @@ The generated C++ code:
 - Regex operations (uses <regex>)
 - Array slicing (Slice)
 - Unary not (Not)
+- OOP-style method calls and property access (Tier 2)
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Initial C++ backend
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.6 programs.
 """
 
 from __future__ import annotations
@@ -413,6 +415,20 @@ def emit_cpp(doc: dict) -> str:
                 f"ExternalCall to {module}.{function} is not supported in C++ backend. "
                 f"External calls require platform-specific implementation."
             )
+
+        # MethodCall (Tier 2, v1.6)
+        if node_type == "MethodCall":
+            obj = emit_expr(node.get("object"))
+            method = node.get("method")
+            args = node.get("args", [])
+            arg_strs = [emit_expr(arg) for arg in args]
+            return f"{obj}.{method}({', '.join(arg_strs)})"
+
+        # PropertyGet (Tier 2, v1.6)
+        if node_type == "PropertyGet":
+            obj = emit_expr(node.get("object"))
+            prop = node.get("property")
+            return f"{obj}.{prop}"
 
         raise ValueError(f"unknown expression type: {node_type}")
 

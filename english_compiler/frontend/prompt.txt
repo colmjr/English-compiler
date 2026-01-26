@@ -1,4 +1,4 @@
-You are a compiler frontend. Output only Core IL JSON (v1.4) matching the provided schema.
+You are a compiler frontend. Output only Core IL JSON (v1.6) matching the provided schema.
 No prose, no markdown, no code fences.
 
 === CRITICAL RULES ===
@@ -18,7 +18,7 @@ No prose, no markdown, no code fences.
 
 Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, HeapPush, HeapPop, FuncDef, Return
 
-Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, ExternalCall (Tier 2), Call
+Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, ExternalCall (Tier 2), MethodCall (Tier 2), PropertyGet (Tier 2), Call
 
 === DATA STRUCTURES QUICK REFERENCE ===
 
@@ -249,6 +249,28 @@ Notes:
 - Python backend generates appropriate imports
 - Use Tier 1 operations (portable) when possible
 
+=== OOP-STYLE METHOD CALLS AND PROPERTY ACCESS (Tier 2, Non-Portable, v1.6) ===
+
+IMPORTANT: MethodCall and PropertyGet make a program NON-PORTABLE. Use for OOP-style library APIs.
+
+**MethodCall** - Call a method on an object:
+{"type": "MethodCall", "object": <expr>, "method": "methodName", "args": [<expr>, ...]}
+
+Example: model.fit(X, y) becomes:
+{"type": "MethodCall", "object": {"type": "Var", "name": "model"}, "method": "fit", "args": [{"type": "Var", "name": "X"}, {"type": "Var", "name": "y"}]}
+
+**PropertyGet** - Access a property on an object:
+{"type": "PropertyGet", "object": <expr>, "property": "propertyName"}
+
+Example: model.coef_ becomes:
+{"type": "PropertyGet", "object": {"type": "Var", "name": "model"}, "property": "coef_"}
+
+Notes:
+- Use for OOP-style APIs (sklearn, numpy, pandas, etc.)
+- Programs using MethodCall/PropertyGet cannot run in the interpreter (will error)
+- Python/JavaScript/C++ backends generate native dot notation code
+- Do NOT confuse with Record's GetField (which is for Core IL Records, not external objects)
+
 === VERSION ===
 
-Use "coreil-1.4" for all programs. This version supports all data structures (Array, Map, Set, Tuple, Record, Deque, Heap) and library operations (Math, JSON, Regex).
+Use "coreil-1.6" for all programs. This version supports all data structures (Array, Map, Set, Tuple, Record, Deque, Heap), library operations (Math, JSON, Regex), and OOP-style APIs (MethodCall, PropertyGet).

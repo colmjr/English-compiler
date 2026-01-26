@@ -1,12 +1,14 @@
 """Core IL package.
 
-Core IL v1.5 - List Slicing
-===========================
+Core IL v1.6 - OOP-Style Method Calls and Property Access
+=========================================================
 
-This package implements the Core IL (Core Intermediate Language) v1.5 specification.
+This package implements the Core IL (Core Intermediate Language) v1.6 specification.
 
-Core IL v1.5 adds:
-- Slice: Extract a sublist from start to end index (exclusive)
+Core IL v1.6 adds:
+- MethodCall: Call a method on an object (obj.method(args))
+- PropertyGet: Access a property on an object (obj.property)
+These are Tier 2 (non-portable) operations for OOP-style library APIs.
 
 Core IL features:
 - Complete: All necessary primitives for algorithmic computation
@@ -15,6 +17,7 @@ Core IL features:
 - Closed specification: No extension mechanism or helper functions
 
 Version History:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2)
 - v1.5: Added Slice expression for list slicing
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
 - v1.3: Added JSON operations (JsonParse, JsonStringify) and Regex operations
@@ -27,7 +30,7 @@ Version History:
 - v0.1: Basic statements and expressions
 
 Backward Compatibility:
-All v0.1-v1.4 programs continue to work in v1.5.
+All v0.1-v1.5 programs continue to work in v1.6.
 """
 
 from .interp import run_coreil
@@ -36,7 +39,7 @@ from .emit import emit_python
 from .emit_javascript import emit_javascript
 
 # Current version
-COREIL_VERSION = "coreil-1.5"
+COREIL_VERSION = "coreil-1.6"
 
 # All supported versions (for backward compatibility)
 SUPPORTED_VERSIONS = frozenset([
@@ -51,9 +54,10 @@ SUPPORTED_VERSIONS = frozenset([
     "coreil-1.3",
     "coreil-1.4",
     "coreil-1.5",
+    "coreil-1.6",
 ])
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 __all__ = [
     "run_coreil",
     "validate_coreil",

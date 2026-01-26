@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.5 to Python transpilation.
-Core IL v1.5 adds array/list slicing and unary not operations.
+This file implements Core IL v1.6 to Python transpilation.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -17,9 +17,11 @@ The generated Python code:
 - Regex operations (match, findall, replace, split)
 - Array slicing (Slice)
 - Unary not (Not)
+- OOP-style method calls and property access (Tier 2)
 - Imports collections.deque, heapq, math, json, and re only when used
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
@@ -27,7 +29,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.6 programs.
 """
 
 from __future__ import annotations
@@ -438,6 +440,20 @@ def emit_python(doc: dict) -> str:
             python_module = _EXTERNAL_MODULE_MAP.get(module, module)
             python_function = _EXTERNAL_FUNCTION_MAP.get((module, function), function)
             return f"{python_module}.{python_function}({', '.join(arg_strs)})"
+
+        # MethodCall (Tier 2, v1.6)
+        if node_type == "MethodCall":
+            obj = emit_expr(node.get("object"))
+            method = node.get("method")
+            args = node.get("args", [])
+            arg_strs = [emit_expr(arg) for arg in args]
+            return f"{obj}.{method}({', '.join(arg_strs)})"
+
+        # PropertyGet (Tier 2, v1.6)
+        if node_type == "PropertyGet":
+            obj = emit_expr(node.get("object"))
+            prop = node.get("property")
+            return f"{obj}.{prop}"
 
         raise ValueError(f"unknown expression type: {node_type}")
 

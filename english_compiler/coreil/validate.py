@@ -1,9 +1,10 @@
 """Core IL validation.
 
-This file implements Core IL v1.5 semantics validation.
-Core IL v1.5 adds array/list slicing and unary not operations.
+This file implements Core IL v1.6 semantics validation.
+Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
 
 Version history:
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
 - v1.3: Added JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit
@@ -11,7 +12,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.6 programs.
 """
 
 from __future__ import annotations
@@ -94,6 +95,9 @@ _ALLOWED_NODE_TYPES = {
     "Slice",
     # Unary not (v1.5)
     "Not",
+    # OOP-style method call and property access (Tier 2, v1.6)
+    "MethodCall",
+    "PropertyGet",
 }
 
 _ALLOWED_BINARY_OPS = {
@@ -119,7 +123,7 @@ _ALLOWED_BINARY_OPS = {
 # v1.1 adds Record support
 # v1.0 is stable and frozen
 # v0.1-v0.5 are accepted for backward compatibility
-_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5"}
+_ALLOWED_VERSIONS = {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5", "coreil-1.6"}
 
 # Helper functions that are disallowed in v0.5+ and v1.0+ (must use explicit primitives)
 # This ensures Core IL remains a closed specification
@@ -187,7 +191,7 @@ def validate_coreil(doc: dict) -> list[dict]:
                 add_error(f"{path}.name", "missing or invalid name")
             else:
                 # In v0.5+ and v1.0+, disallow helper function calls
-                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5") and name in _DISALLOWED_HELPER_CALLS:
+                if version in ("coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5", "coreil-1.6") and name in _DISALLOWED_HELPER_CALLS:
                     add_error(
                         f"{path}.name",
                         f"helper function '{name}' is not allowed in v0.5; "
@@ -650,6 +654,34 @@ def validate_coreil(doc: dict) -> list[dict]:
                     validate_expr(arg, f"{path}.args[{i}]", defined)
             return
 
+        # MethodCall (Tier 2, v1.6)
+        if node_type == "MethodCall":
+            if "object" not in node:
+                add_error(f"{path}.object", "missing object")
+            else:
+                validate_expr(node["object"], f"{path}.object", defined)
+            method = node.get("method")
+            if not isinstance(method, str) or not method:
+                add_error(f"{path}.method", "missing or invalid method name")
+            args = node.get("args")
+            if not isinstance(args, list):
+                add_error(f"{path}.args", "missing or invalid args")
+            else:
+                for i, arg in enumerate(args):
+                    validate_expr(arg, f"{path}.args[{i}]", defined)
+            return
+
+        # PropertyGet (Tier 2, v1.6)
+        if node_type == "PropertyGet":
+            if "object" not in node:
+                add_error(f"{path}.object", "missing object")
+            else:
+                validate_expr(node["object"], f"{path}.object", defined)
+            prop = node.get("property")
+            if not isinstance(prop, str) or not prop:
+                add_error(f"{path}.property", "missing or invalid property name")
+            return
+
         # Array slicing (v1.5)
         if node_type == "Slice":
             if "base" not in node:
@@ -982,7 +1014,7 @@ def validate_coreil(doc: dict) -> list[dict]:
 
     version = doc.get("version")
     if version not in _ALLOWED_VERSIONS:
-        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', or 'coreil-1.5'")
+        add_error("$.version", "version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', 'coreil-1.5', or 'coreil-1.6'")
 
     ambiguities = doc.get("ambiguities")
     if ambiguities is not None:
