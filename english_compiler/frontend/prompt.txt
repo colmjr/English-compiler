@@ -3,7 +3,7 @@ No prose, no markdown, no code fences.
 
 === CRITICAL RULES ===
 
-1. Core IL v1.4 is a CLOSED specification. Use ONLY the primitives listed below.
+1. Core IL v1.6 is a CLOSED specification. Use ONLY the primitives listed below.
 2. DO NOT invent helper functions. Common mistakes to avoid:
    - NO "get_or_default" → use GetDefault
    - NO "keys" → use Keys
@@ -11,8 +11,12 @@ No prose, no markdown, no code fences.
    - NO "contains"/"has" → use SetHas
    - NO "enqueue"/"dequeue" → use PushBack/PopFront
    - NO "heappush"/"heappop"/"insert"/"extract_min" → use HeapPush/HeapPop
-3. DO NOT use dot notation like "point.x" → use GetField/SetField
+3. DO NOT use dot notation like "point.x" → use GetField/SetField for Core IL Records
 4. PopFront, PopBack, and HeapPop are STATEMENTS with "target" field, not expressions
+5. For OOP-style APIs (sklearn, numpy, pandas, etc.):
+   - Use ExternalCall ONLY for constructors/imports: `LinearRegression()` → ExternalCall
+   - Use MethodCall for method calls: `model.fit(X, y)` → MethodCall (NOT ExternalCall)
+   - Use PropertyGet for property access: `model.coef_` → PropertyGet (NOT ExternalCall)
 
 === AVAILABLE CONSTRUCTS ===
 
@@ -251,7 +255,15 @@ Notes:
 
 === OOP-STYLE METHOD CALLS AND PROPERTY ACCESS (Tier 2, Non-Portable, v1.6) ===
 
-IMPORTANT: MethodCall and PropertyGet make a program NON-PORTABLE. Use for OOP-style library APIs.
+IMPORTANT: For OOP-style library APIs (sklearn, numpy, pandas, torch, etc.), you MUST use:
+- ExternalCall: ONLY for constructors/class instantiation (e.g., `LinearRegression()`)
+- MethodCall: For calling methods on objects (e.g., `model.fit(X, y)`)
+- PropertyGet: For accessing properties on objects (e.g., `model.coef_`)
+
+DO NOT use ExternalCall for method calls or property access!
+
+**ExternalCall** - For constructors/imports only:
+{"type": "ExternalCall", "module": "sklearn.linear_model", "function": "LinearRegression", "args": []}
 
 **MethodCall** - Call a method on an object:
 {"type": "MethodCall", "object": <expr>, "method": "methodName", "args": [<expr>, ...]}
@@ -265,9 +277,29 @@ Example: model.fit(X, y) becomes:
 Example: model.coef_ becomes:
 {"type": "PropertyGet", "object": {"type": "Var", "name": "model"}, "property": "coef_"}
 
+=== COMPLETE SKLEARN EXAMPLE ===
+
+For: "Create a linear regression model, fit it to data, get coefficients"
+
+CORRECT usage:
+  // Create model (ExternalCall for constructor)
+  {"type": "Let", "name": "model", "value": {"type": "ExternalCall", "module": "sklearn.linear_model", "function": "LinearRegression", "args": []}}
+  // Call fit method (MethodCall, NOT ExternalCall)
+  {"type": "Let", "name": "_", "value": {"type": "MethodCall", "object": {"type": "Var", "name": "model"}, "method": "fit", "args": [{"type": "Var", "name": "X"}, {"type": "Var", "name": "y"}]}}
+  // Access coef_ property (PropertyGet, NOT ExternalCall)
+  {"type": "Let", "name": "coef", "value": {"type": "PropertyGet", "object": {"type": "Var", "name": "model"}, "property": "coef_"}}
+  // Call predict method (MethodCall)
+  {"type": "Let", "name": "y_pred", "value": {"type": "MethodCall", "object": {"type": "Var", "name": "model"}, "method": "predict", "args": [{"type": "Var", "name": "X"}]}}
+
+WRONG (do NOT do this):
+  // WRONG: Using ExternalCall for method calls
+  {"type": "ExternalCall", "module": "sklearn.linear_model", "function": "fit", "args": [model, X, y]}
+  // WRONG: Using ExternalCall for property access
+  {"type": "ExternalCall", "module": "sklearn.linear_model", "function": "get_coef", "args": [model]}
+
 Notes:
-- Use for OOP-style APIs (sklearn, numpy, pandas, etc.)
-- Programs using MethodCall/PropertyGet cannot run in the interpreter (will error)
+- Programs using Tier 2 operations cannot run in the interpreter
+- Use `--target python` to generate executable Python code
 - Python/JavaScript/C++ backends generate native dot notation code
 - Do NOT confuse with Record's GetField (which is for Core IL Records, not external objects)
 
