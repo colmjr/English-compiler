@@ -93,7 +93,6 @@ python -m scripts.demo_claude_compile
   - `test_regression_suite.py` - Meta-tests
 
 - `examples/` - Example Core IL programs and source files
-- `docs/` - Historical Core IL specifications (v0.1-v0.5)
 
 ### Core IL Version Policy
 

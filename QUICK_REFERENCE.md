@@ -1,4 +1,4 @@
-# Core IL v1.0 Quick Reference
+# Core IL v1.5 Quick Reference
 
 Fast reference for Core IL node types and common patterns.
 
@@ -8,7 +8,7 @@ Fast reference for Core IL node types and common patterns.
 
 ```json
 {
-  "version": "coreil-1.0",
+  "version": "coreil-1.5",
   "ambiguities": [],
   "body": [<statement>, ...]
 }
@@ -36,10 +36,16 @@ Fast reference for Core IL node types and common patterns.
 {"type": "Binary", "op": "+", "left": <expr>, "right": <expr>}
 
 // Comparison: ==, !=, <, <=, >, >=
-{"type": "Binary", "op": "<", "left": <expr>, "right": <expr>}
+{"type": "Binary", "op": "<", "left": <expr>, "right": <expr|}
 
 // Logical: and, or (short-circuit!)
 {"type": "Binary", "op": "and", "left": <expr>, "right": <expr>}
+```
+
+### Unary Not (v1.5)
+
+```json
+{"type": "Not", "value": <expr>}
 ```
 
 ### Collections
@@ -53,13 +59,22 @@ Fast reference for Core IL node types and common patterns.
 
 // Map/Dictionary
 {"type": "Map", "items": []}
+
+// Record (v1.1) - mutable named fields
+{"type": "Record", "fields": {"x": <expr>, "y": <expr>}}
+
+// Set (v1.1) - unique elements
+{"type": "Set", "items": [<expr>, <expr>, ...]}
 ```
 
 ### Collection Operations
 
 ```json
-// Index: arr[i]
+// Index: arr[i] (supports negative indices in v1.5)
 {"type": "Index", "base": <array_or_tuple>, "index": <int_expr>}
+
+// Slice: arr[start:end] (v1.5)
+{"type": "Slice", "base": <array>, "start": <expr>, "end": <expr>}
 
 // Length: len(arr)
 {"type": "Length", "base": <array_or_tuple>}
@@ -74,10 +89,131 @@ Fast reference for Core IL node types and common patterns.
 {"type": "Keys", "base": <map>}
 ```
 
+### Record Operations (v1.1)
+
+```json
+// Create record
+{"type": "Record", "fields": {"name": <expr>, "age": <expr>}}
+
+// Get field
+{"type": "GetField", "base": <record>, "field": "name"}
+```
+
+### Set Operations (v1.1)
+
+```json
+// Create set
+{"type": "Set", "items": [<expr>, ...]}
+
+// Check membership
+{"type": "SetHas", "base": <set>, "item": <expr>}
+
+// Get size
+{"type": "SetSize", "base": <set>}
+```
+
+### Deque Operations (v1.1)
+
+```json
+// Create empty deque
+{"type": "DequeNew"}
+
+// Get size
+{"type": "DequeSize", "base": <deque>}
+```
+
+### Heap Operations (v1.1)
+
+```json
+// Create empty min-heap
+{"type": "HeapNew"}
+
+// Get size
+{"type": "HeapSize", "base": <heap>}
+
+// View top element (doesn't remove)
+{"type": "HeapPeek", "base": <heap>}
+```
+
+### String Operations (v1.1+)
+
+```json
+// String length (v1.1)
+{"type": "StringLength", "base": <string>}
+
+// Substring (v1.1)
+{"type": "Substring", "base": <string>, "start": <expr>, "end": <expr|}
+
+// Character at index (v1.1)
+{"type": "CharAt", "base": <string>, "index": <expr>}
+
+// Join array to string (v1.1)
+{"type": "Join", "items": <array>, "separator": <string>}
+
+// Split string (v1.4)
+{"type": "StringSplit", "base": <string>, "separator": <string>}
+
+// Trim whitespace (v1.4)
+{"type": "StringTrim", "base": <string>}
+
+// Convert case (v1.4)
+{"type": "StringUpper", "base": <string>}
+{"type": "StringLower", "base": <string>}
+
+// Replace substring (v1.4)
+{"type": "StringReplace", "base": <string>, "old": <string>, "new": <string>}
+
+// Check contains (v1.4)
+{"type": "StringContains", "base": <string>, "substring": <string>}
+
+// Check prefix/suffix (v1.4)
+{"type": "StringStartsWith", "base": <string>, "prefix": <string>}
+{"type": "StringEndsWith", "base": <string>, "suffix": <string>}
+```
+
+### Math Operations (v1.2)
+
+```json
+// Unary math: sin, cos, tan, sqrt, floor, ceil, abs, log, exp
+{"type": "Math", "op": "sqrt", "value": <expr>}
+
+// Power
+{"type": "MathPow", "base": <expr>, "exponent": <expr>}
+
+// Constants: pi, e
+{"type": "MathConst", "name": "pi"}
+```
+
+### JSON Operations (v1.3)
+
+```json
+// Parse JSON string
+{"type": "JsonParse", "value": <string_expr>}
+
+// Convert to JSON string
+{"type": "JsonStringify", "value": <expr>}
+```
+
+### Regex Operations (v1.3)
+
+```json
+// Test if matches
+{"type": "RegexMatch", "pattern": <string>, "text": <string>}
+
+// Find all matches
+{"type": "RegexFindAll", "pattern": <string>, "text": <string>}
+```
+
 ### Function Calls
 
 ```json
 {"type": "Call", "name": "function_name", "args": [<expr>, ...]}
+```
+
+### External Calls (v1.4, Tier 2)
+
+```json
+{"type": "ExternalCall", "module": "time", "function": "time", "args": []}
 ```
 
 ### Range (for loops only)
@@ -116,6 +252,51 @@ Fast reference for Core IL node types and common patterns.
 
 // Array: arr.append(value)
 {"type": "Push", "base": <array>, "value": <expr>}
+
+// Record field: record.field = value (v1.1)
+{"type": "SetField", "base": <record>, "field": "name", "value": <expr>}
+
+// Set: add item (v1.1)
+{"type": "SetAdd", "base": <set>, "item": <expr>}
+
+// Set: remove item (v1.1)
+{"type": "SetRemove", "base": <set>, "item": <expr>}
+```
+
+### Deque Mutation (v1.1)
+
+```json
+// Add to back
+{"type": "PushBack", "base": <deque>, "value": <expr>}
+
+// Add to front
+{"type": "PushFront", "base": <deque>, "value": <expr>}
+
+// Remove from front (assigns to target variable)
+{"type": "PopFront", "base": <deque>, "target": "varName"}
+
+// Remove from back (assigns to target variable)
+{"type": "PopBack", "base": <deque>, "target": "varName"}
+```
+
+### Heap Mutation (v1.1)
+
+```json
+// Push to heap
+{"type": "HeapPush", "base": <heap>, "value": <expr>}
+
+// Pop minimum (assigns to target variable)
+{"type": "HeapPop", "base": <heap>, "target": "varName"}
+```
+
+### Regex Mutation (v1.3)
+
+```json
+// Replace matches
+{"type": "RegexReplace", "pattern": <string>, "text": <string>, "replacement": <string>, "target": "varName"}
+
+// Split by pattern
+{"type": "RegexSplit", "pattern": <string>, "text": <string>, "target": "varName"}
 ```
 
 ### Control Flow
@@ -229,15 +410,36 @@ Fast reference for Core IL node types and common patterns.
 }
 ```
 
-### Iterate Dictionary Keys
+### Set Deduplication (v1.1)
 
 ```json
 {
+  "type": "Let", "name": "seen", "value": {"type": "Set", "items": []}
+},
+{
   "type": "ForEach",
-  "var": "key",
-  "iter": {"type": "Keys", "base": {"type": "Var", "name": "counts"}},
+  "var": "item",
+  "iter": {"type": "Var", "name": "arr"},
   "body": [
-    {"type": "Print", "args": [{"type": "Var", "name": "key"}]}
+    {"type": "SetAdd", "base": {"type": "Var", "name": "seen"}, "item": {"type": "Var", "name": "item"}}
+  ]
+}
+```
+
+### BFS with Deque (v1.1)
+
+```json
+{
+  "type": "Let", "name": "queue", "value": {"type": "DequeNew"}
+},
+{
+  "type": "PushBack", "base": {"type": "Var", "name": "queue"}, "value": {"type": "Var", "name": "start"}
+},
+{
+  "type": "While",
+  "test": {"type": "Binary", "op": ">", "left": {"type": "DequeSize", "base": {"type": "Var", "name": "queue"}}, "right": {"type": "Literal", "value": 0}},
+  "body": [
+    {"type": "PopFront", "base": {"type": "Var", "name": "queue"}, "target": "current"}
   ]
 }
 ```
@@ -271,93 +473,24 @@ Fast reference for Core IL node types and common patterns.
 
 Note: This works because `and` short-circuits - `arr[i]` is only accessed if `i < len(arr)`.
 
-### Array Swap
+### Negative Indexing (v1.5)
 
 ```json
-{
-  "type": "Let",
-  "name": "temp",
-  "value": {"type": "Index", "base": {"type": "Var", "name": "arr"}, "index": {"type": "Var", "name": "i"}}
-},
-{
-  "type": "SetIndex",
-  "base": {"type": "Var", "name": "arr"},
-  "index": {"type": "Var", "name": "i"},
-  "value": {"type": "Index", "base": {"type": "Var", "name": "arr"}, "index": {"type": "Var", "name": "j"}}
-},
-{
-  "type": "SetIndex",
-  "base": {"type": "Var", "name": "arr"},
-  "index": {"type": "Var", "name": "j"},
-  "value": {"type": "Var", "name": "temp"}
-}
+// Get last element
+{"type": "Index", "base": {"type": "Var", "name": "arr"}, "index": {"type": "Literal", "value": -1}}
+
+// Get second to last
+{"type": "Index", "base": {"type": "Var", "name": "arr"}, "index": {"type": "Literal", "value": -2}}
 ```
 
-### Tuple as Dictionary Key
+### Slicing (v1.5)
 
 ```json
-{
-  "type": "Let",
-  "name": "pair",
-  "value": {
-    "type": "Tuple",
-    "items": [
-      {"type": "Literal", "value": 1},
-      {"type": "Literal", "value": 2}
-    ]
-  }
-},
-{
-  "type": "Set",
-  "base": {"type": "Var", "name": "counts"},
-  "key": {"type": "Var", "name": "pair"},
-  "value": {"type": "Literal", "value": 100}
-}
-```
+// Get first 3 elements
+{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": 0}, "end": {"type": "Literal", "value": 3}}
 
-### Fibonacci (Recursion)
-
-```json
-{
-  "type": "FuncDef",
-  "name": "fib",
-  "params": ["n"],
-  "body": [
-    {
-      "type": "If",
-      "test": {
-        "type": "Binary",
-        "op": "<=",
-        "left": {"type": "Var", "name": "n"},
-        "right": {"type": "Literal", "value": 1}
-      },
-      "then": [
-        {"type": "Return", "value": {"type": "Var", "name": "n"}}
-      ]
-    },
-    {
-      "type": "Return",
-      "value": {
-        "type": "Binary",
-        "op": "+",
-        "left": {
-          "type": "Call",
-          "name": "fib",
-          "args": [
-            {"type": "Binary", "op": "-", "left": {"type": "Var", "name": "n"}, "right": {"type": "Literal", "value": 1}}
-          ]
-        },
-        "right": {
-          "type": "Call",
-          "name": "fib",
-          "args": [
-            {"type": "Binary", "op": "-", "left": {"type": "Var", "name": "n"}, "right": {"type": "Literal", "value": 2}}
-          ]
-        }
-      }
-    }
-  ]
-}
+// Get elements from index 2 to end
+{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": 2}, "end": {"type": "Length", "base": {"type": "Var", "name": "arr"}}}
 ```
 
 ---
@@ -378,7 +511,7 @@ Critical for guard patterns!
 
 ### Mutability
 
-- **Mutable**: Arrays (list), Dictionaries (dict)
+- **Mutable**: Arrays (list), Dictionaries (dict), Records, Sets, Deques, Heaps
 - **Immutable**: Tuples, Literals
 
 ### Dictionary Keys
@@ -387,16 +520,10 @@ Critical for guard patterns!
 - Keys are **not sorted**
 - Supports **mixed-type keys** (e.g., tuples with integers and strings)
 
-### Scoping
-
-- **Global**: Variables declared at top level or inside functions (functions are global)
-- **Local**: Function parameters and variables declared with Let inside functions
-- **Loop**: Loop variables are scoped to the loop body
-
 ### Type Checking
 
 All type checks happen at **runtime**:
-- Index requires array/tuple and non-negative integer
+- Index requires array/tuple and integer (can be negative in v1.5)
 - Binary operators require compatible types
 - Dictionary operations require dictionaries
 
@@ -411,15 +538,18 @@ python -m english_compiler run program.coreil.json
 # Compile to Python
 python -m english_compiler compile --target python --frontend mock program.txt
 
-# Generate with Claude (requires ANTHROPIC_API_KEY)
-python -m english_compiler compile --frontend claude program.txt
+# Compile to JavaScript
+python -m english_compiler compile --target javascript --frontend claude program.txt
+
+# Compile to C++
+python -m english_compiler compile --target cpp --frontend openai program.txt
 
 # Force regeneration
 python -m english_compiler compile --regen program.txt
 
 # Run tests
 python -m tests.run
-python -m tests.test_short_circuit
+python -m tests.run_algorithms
 ```
 
 ---
@@ -429,8 +559,8 @@ python -m tests.test_short_circuit
 - **[coreil_v1.md](coreil_v1.md)** - Complete specification
 - **[examples/](examples/)** - Working programs
 - **[STATUS.md](STATUS.md)** - Project status
-- **[MIGRATION.md](MIGRATION.md)** - v0.5 → v1.0 upgrade guide
+- **[MIGRATION.md](MIGRATION.md)** - Upgrade guide
 
 ---
 
-**Core IL v1.0 - Stable and Production Ready**
+**Core IL v1.5 - Stable and Production Ready**
