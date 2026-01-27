@@ -191,8 +191,8 @@ The compiler follows a three-stage pipeline:
                           │   v1.5      │  (Deterministic JSON)
                           └──────┬──────┘
                                  │
-         ┌───────────┬───────────┼───────────┬───────────┐
-         ▼           ▼           ▼           ▼           ▼
+         ┌───────────┬───────────┼───────────┐
+         ▼           ▼           ▼           ▼
     ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
     │Interpret│ │ Python  │ │  Java   │ │   C++   │
     │   er    │ │ Codegen │ │ Script  │ │ Codegen │
