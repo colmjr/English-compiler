@@ -78,6 +78,7 @@ english-compiler compile [options] <source.txt>
 - `--target <lang>`: Output target (`coreil`, `python`, `javascript`, `cpp`, `wasm`). Default: `coreil`.
 - `--regen`: Force regeneration even if cache is valid.
 - `--freeze`: Fail if regeneration would be required (useful for CI).
+- `--explain-errors`: Use LLM to explain runtime errors in user-friendly terms.
 
 **Output structure:**
 
@@ -122,6 +123,51 @@ english-compiler compile --target javascript examples/hello.txt
 ```sh
 english-compiler run examples/output/coreil/hello.coreil.json
 ```
+
+### Configuration
+
+Persistent settings can be stored in a config file so you don't need to specify flags on every command.
+
+```sh
+# Set default frontend
+english-compiler config set frontend claude
+
+# Set default compilation target
+english-compiler config set target python
+
+# Enable error explanations by default
+english-compiler config set explain-errors true
+
+# Always force regeneration
+english-compiler config set regen true
+
+# Always fail if regeneration required (CI mode)
+english-compiler config set freeze true
+
+# View all settings
+english-compiler config list
+
+# Show config file path
+english-compiler config path
+
+# Reset to defaults
+english-compiler config reset
+```
+
+**Available settings:**
+| Setting | Values | Description |
+|---------|--------|-------------|
+| `frontend` | `mock`, `claude`, `openai`, `gemini`, `qwen` | Default LLM frontend |
+| `target` | `coreil`, `python`, `javascript`, `cpp`, `wasm` | Default compilation target |
+| `explain-errors` | `true`, `false` | Enable LLM-powered error explanations |
+| `regen` | `true`, `false` | Always force regeneration |
+| `freeze` | `true`, `false` | Always fail if regeneration required |
+
+**Config file location:**
+- Linux/macOS: `~/.config/english-compiler/config.toml`
+- Windows: `~/english-compiler/config.toml`
+
+**Priority:** CLI arguments override config file settings.
 
 ## Architecture
 
