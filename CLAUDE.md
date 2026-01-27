@@ -106,14 +106,23 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
 
 ### Configuration
 
-Persistent settings can be stored in a config file so you don't need to specify `--frontend` and `--explain-errors` on every command.
+Persistent settings can be stored in a config file so you don't need to specify flags on every command.
 
 ```bash
 # Set default frontend
 english-compiler config set frontend claude
 
+# Set default compilation target
+english-compiler config set target python
+
 # Enable error explanations by default
 english-compiler config set explain-errors true
+
+# Always force regeneration
+english-compiler config set regen true
+
+# Always fail if regeneration required (CI mode)
+english-compiler config set freeze true
 
 # Get a config value
 english-compiler config get frontend
@@ -128,6 +137,13 @@ english-compiler config path
 english-compiler config reset
 ```
 
+**Available settings:**
+- `frontend` - Default LLM frontend (mock, claude, openai, gemini, qwen)
+- `target` - Default compilation target (coreil, python, javascript, cpp, wasm)
+- `explain-errors` - Enable LLM-powered error explanations (true/false)
+- `regen` - Always force regeneration (true/false)
+- `freeze` - Always fail if regeneration required (true/false)
+
 **Config file location:**
 - Linux/macOS: `~/.config/english-compiler/config.toml`
 - Windows: `~/english-compiler/config.toml` (or via platformdirs if installed)
@@ -136,7 +152,10 @@ english-compiler config reset
 ```toml
 [defaults]
 frontend = "claude"
+target = "python"
 explain_errors = true
+regen = false
+freeze = false
 ```
 
 **Priority order:** defaults < config file < CLI arguments (CLI always wins)
