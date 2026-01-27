@@ -77,6 +77,24 @@ english-compiler compile --freeze examples/hello.txt
 english-compiler run examples/output/coreil/hello.coreil.json
 ```
 
+### Experimental Mode (Direct Compilation)
+
+```bash
+# EXPERIMENTAL: Compile directly to target without Core IL (non-deterministic)
+english-compiler compile --experimental --target python examples/hello.txt
+english-compiler compile --experimental --target javascript examples/hello.txt
+english-compiler compile --experimental --target cpp examples/hello.txt
+
+# Experimental with explicit frontend selection
+english-compiler compile --experimental --frontend claude --target python examples/hello.txt
+english-compiler compile --experimental --frontend openai --target javascript examples/hello.txt
+
+# Force regeneration in experimental mode
+english-compiler compile --experimental --regen --target python examples/hello.txt
+```
+
+**Warning**: Experimental mode bypasses Core IL validation. Output is non-deterministic and may contain bugs. Do not use in production.
+
 Note: `python -m english_compiler` also works as an alternative to `english-compiler`.
 
 ## Architecture
@@ -98,6 +116,12 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
     - `qwen.py` - Alibaba Qwen API integration (DashScope or OpenAI-compatible)
     - `mock_llm.py` - Mock generator (deterministic, for testing)
     - `prompt.txt` - System prompt for Core IL generation (shared)
+    - `experimental/` - Experimental direct compilation mode
+      - `prompts.py` - Prompt loading for direct code generation
+      - `validate.py` - Syntax validation (Python only)
+      - `prompt_python.txt` - Python generation prompt
+      - `prompt_javascript.txt` - JavaScript generation prompt
+      - `prompt_cpp.txt` - C++ generation prompt
     - `coreil_schema.py` - JSON schema for Core IL v1.6 (shared)
   - `__main__.py` - CLI entry point
 
@@ -142,6 +166,23 @@ from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
    - Python codegen: transpiles to executable Python
    - Both backends must produce identical output (verified by tests)
 
+### Experimental Mode (Direct Compilation)
+
+Experimental mode (`--experimental`) bypasses Core IL entirely:
+
+```
+Standard:     English → LLM → Core IL → Validate → Deterministic Backends → .py/.js/.cpp
+Experimental: English → LLM → Target Code directly → (syntax check) → .py/.js/.cpp
+```
+
+**Key differences:**
+- No Core IL intermediate representation
+- No semantic validation
+- Non-deterministic output (same input may produce different code)
+- Only Python syntax is validated (via `ast.parse`); JS/C++ are not validated
+- Output goes to `output/experimental/{target}/` with `.exp.lock.json` cache files
+- Generated files include warning headers
+
 ### Artifacts
 
 When compiling `examples/foo.txt`, artifacts are organized into subdirectories relative to the source file:
@@ -153,6 +194,14 @@ examples/
     ├── coreil/
     │   ├── foo.coreil.json      (Core IL - always generated)
     │   └── foo.lock.json        (cache metadata)
+    ├── experimental/            (--experimental mode only)
+    │   ├── py/
+    │   │   ├── foo.py           (direct LLM output)
+    │   │   └── foo.exp.lock.json
+    │   ├── js/
+    │   │   └── foo.js
+    │   └── cpp/
+    │       └── foo.cpp
     ├── py/
     │   └── foo.py               (with --target python)
     ├── js/
