@@ -84,6 +84,25 @@ english-compiler run --explain-errors --frontend claude examples/output/coreil/h
 english-compiler compile --explain-errors examples/hello.txt
 ```
 
+### Interactive REPL
+
+```bash
+# Start interactive REPL (auto-detect frontend)
+english-compiler repl
+
+# REPL with specific frontend
+english-compiler repl --frontend claude
+english-compiler repl --frontend mock
+
+# REPL with error explanations enabled
+english-compiler repl --explain-errors
+```
+
+**Exit commands:**
+- Built-in: `exit`, `quit`, `:q`, `:quit`, `:exit`
+- Signals: `Ctrl+C` (interrupt), `Ctrl+D` (EOF)
+- Natural language (LLM-based): "bye", "goodbye", "I'm done", "thanks", etc.
+
 ### Experimental Mode (Direct Compilation)
 
 ```bash
