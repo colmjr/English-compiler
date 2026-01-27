@@ -460,10 +460,40 @@ def _compile_experimental(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_watch_mode(args: argparse.Namespace) -> int:
+    """Handle watch mode for automatic recompilation."""
+    from english_compiler.watch import is_watchfiles_available, watch_and_compile
+
+    if not is_watchfiles_available():
+        print("Error: watchfiles is not installed.")
+        print("Install it with: pip install english-compiler[watch]")
+        return 1
+
+    if args.freeze:
+        print("--watch and --freeze cannot be used together")
+        return 1
+
+    source_path = Path(args.file)
+
+    def compile_single_file(file_path: Path) -> int:
+        """Wrapper that compiles a single file."""
+        # Create a modified args with the specific file
+        modified_args = argparse.Namespace(**vars(args))
+        modified_args.file = str(file_path)
+        modified_args.watch = False  # Prevent recursion
+        return _compile_command(modified_args)
+
+    return watch_and_compile(source_path, compile_single_file)
+
+
 def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.coreil.validate import validate_coreil
     from english_compiler.frontend import get_frontend
+
+    # Handle watch mode first
+    if getattr(args, "watch", False):
+        return _handle_watch_mode(args)
 
     if args.regen and args.freeze:
         print("--regen and --freeze cannot be used together")
@@ -972,6 +1002,11 @@ def main(argv: list[str] | None = None) -> int:
         "--explain-errors",
         action="store_true",
         help="Use LLM to explain runtime errors in user-friendly terms",
+    )
+    compile_parser.add_argument(
+        "--watch", "-w",
+        action="store_true",
+        help="Watch file/directory for changes and recompile automatically",
     )
     compile_parser.set_defaults(func=_compile_command)
 

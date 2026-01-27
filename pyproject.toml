@@ -28,12 +28,14 @@ openai = ["openai>=1.0.0"]
 gemini = ["google-generativeai>=0.3.0"]
 qwen = ["dashscope>=1.14.0"]
 platformdirs = ["platformdirs>=3.0.0"]
+watch = ["watchfiles>=1.0.0"]
 all = [
     "anthropic>=0.18.0",
     "openai>=1.0.0",
     "google-generativeai>=0.3.0",
     "dashscope>=1.14.0",
     "platformdirs>=3.0.0",
+    "watchfiles>=1.0.0",
 ]
 
 [project.scripts]

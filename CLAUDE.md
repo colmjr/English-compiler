@@ -40,7 +40,8 @@ pip install english-compiler[claude]    # Anthropic Claude
 pip install english-compiler[openai]    # OpenAI GPT
 pip install english-compiler[gemini]    # Google Gemini
 pip install english-compiler[qwen]      # Alibaba Qwen
-pip install english-compiler[all]       # All providers
+pip install english-compiler[watch]     # File watching support
+pip install english-compiler[all]       # All providers + watch
 ```
 
 ### Compilation and Execution
@@ -82,6 +83,12 @@ english-compiler run --explain-errors --frontend claude examples/output/coreil/h
 
 # Compile with error explanations
 english-compiler compile --explain-errors examples/hello.txt
+
+# Watch mode (auto-recompile on save)
+english-compiler compile --watch examples/hello.txt
+english-compiler compile --watch examples/              # watch directory for *.txt files
+english-compiler compile --watch --target python examples/hello.txt
+english-compiler compile --watch --frontend claude examples/hello.txt
 ```
 
 ### Interactive REPL
