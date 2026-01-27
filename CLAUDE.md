@@ -104,6 +104,43 @@ english-compiler compile --experimental --regen --target python examples/hello.t
 
 Note: `python -m english_compiler` also works as an alternative to `english-compiler`.
 
+### Configuration
+
+Persistent settings can be stored in a config file so you don't need to specify `--frontend` and `--explain-errors` on every command.
+
+```bash
+# Set default frontend
+english-compiler config set frontend claude
+
+# Enable error explanations by default
+english-compiler config set explain-errors true
+
+# Get a config value
+english-compiler config get frontend
+
+# List all settings
+english-compiler config list
+
+# Show config file location
+english-compiler config path
+
+# Delete config file (reset to defaults)
+english-compiler config reset
+```
+
+**Config file location:**
+- Linux/macOS: `~/.config/english-compiler/config.toml`
+- Windows: `~/english-compiler/config.toml` (or via platformdirs if installed)
+
+**Config file format (TOML):**
+```toml
+[defaults]
+frontend = "claude"
+explain_errors = true
+```
+
+**Priority order:** defaults < config file < CLI arguments (CLI always wins)
+
 ## Architecture
 
 ### Directory Structure

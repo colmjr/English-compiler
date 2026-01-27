@@ -5,6 +5,14 @@ from __future__ import annotations
 import argparse
 
 from english_compiler import __version__
+from english_compiler.settings import (
+    Settings,
+    get_config_path,
+    load_settings,
+    save_settings,
+    delete_settings,
+    VALID_FRONTENDS,
+)
 import datetime
 import hashlib
 import json
@@ -457,6 +465,20 @@ def _compile_command(args: argparse.Namespace) -> int:
         print("--regen and --freeze cannot be used together")
         return 1
 
+    # Load settings and apply defaults
+    settings = load_settings()
+
+    # Apply settings as defaults when CLI args not provided
+    # Note: args.frontend is None when not specified on CLI
+    # args.target is None when not specified (we use sentinel None instead of default "coreil")
+    if args.frontend is None:
+        args.frontend = settings.frontend
+    if not args.explain_errors:
+        args.explain_errors = settings.explain_errors
+    # Default target to "coreil" if not specified anywhere
+    if args.target is None:
+        args.target = "coreil"
+
     # Handle experimental mode
     if args.experimental:
         valid_experimental_targets = ("python", "javascript", "cpp")
@@ -635,6 +657,11 @@ def _make_error_callback(frontend, source_text: str | None = None):
 def _run_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.interp import run_coreil
 
+    # Load settings and apply defaults
+    settings = load_settings()
+    frontend_name = args.frontend if args.frontend is not None else settings.frontend
+    explain_errors = args.explain_errors or settings.explain_errors
+
     path = Path(args.file)
     try:
         with path.open("r", encoding="utf-8") as handle:
@@ -647,10 +674,9 @@ def _run_command(args: argparse.Namespace) -> int:
         return 1
 
     error_callback = None
-    if getattr(args, "explain_errors", False):
+    if explain_errors:
         from english_compiler.frontend import get_frontend
 
-        frontend_name = getattr(args, "frontend", None)
         try:
             frontend = get_frontend(frontend_name)
         except RuntimeError as exc:
@@ -659,6 +685,120 @@ def _run_command(args: argparse.Namespace) -> int:
         error_callback = _make_error_callback(frontend)
 
     return run_coreil(doc, error_callback=error_callback)
+
+
+def _config_command(args: argparse.Namespace) -> int:
+    """Handle the config subcommand."""
+    config_action = getattr(args, "config_action", None)
+
+    if config_action == "set":
+        return _config_set(args.key, args.value)
+    elif config_action == "get":
+        return _config_get(args.key)
+    elif config_action == "list":
+        return _config_list()
+    elif config_action == "path":
+        return _config_path()
+    elif config_action == "reset":
+        return _config_reset()
+    else:
+        print("Usage: english-compiler config {set,get,list,path,reset}")
+        return 1
+
+
+def _config_set(key: str, value: str) -> int:
+    """Set a config value."""
+    settings = load_settings()
+
+    # Normalize key (support both hyphen and underscore)
+    key_normalized = key.replace("-", "_")
+
+    if key_normalized == "frontend":
+        if value not in VALID_FRONTENDS:
+            print(f"Invalid frontend: {value}")
+            print(f"Valid options: {', '.join(VALID_FRONTENDS)}")
+            return 1
+        settings.frontend = value
+    elif key_normalized == "explain_errors":
+        if value.lower() in ("true", "1", "yes", "on"):
+            settings.explain_errors = True
+        elif value.lower() in ("false", "0", "no", "off"):
+            settings.explain_errors = False
+        else:
+            print(f"Invalid boolean value: {value}")
+            print("Use: true, false, 1, 0, yes, no, on, off")
+            return 1
+    else:
+        print(f"Unknown setting: {key}")
+        print("Valid settings: frontend, explain-errors")
+        return 1
+
+    if not save_settings(settings):
+        print(f"Failed to write config file: {get_config_path()}")
+        return 1
+
+    print(f"Set {key} = {value}")
+    return 0
+
+
+def _config_get(key: str) -> int:
+    """Get a config value."""
+    settings = load_settings()
+
+    # Normalize key
+    key_normalized = key.replace("-", "_")
+
+    if key_normalized == "frontend":
+        value = settings.frontend if settings.frontend else "(not set)"
+    elif key_normalized == "explain_errors":
+        value = str(settings.explain_errors).lower()
+    else:
+        print(f"Unknown setting: {key}")
+        print("Valid settings: frontend, explain-errors")
+        return 1
+
+    print(f"{key}: {value}")
+    return 0
+
+
+def _config_list() -> int:
+    """List all config values."""
+    settings = load_settings()
+
+    print("Current settings:")
+    print(f"  frontend: {settings.frontend if settings.frontend else '(not set)'}")
+    print(f"  explain-errors: {str(settings.explain_errors).lower()}")
+
+    config_path = get_config_path()
+    if config_path.exists():
+        print(f"\nConfig file: {config_path}")
+    else:
+        print(f"\nConfig file: {config_path} (not created yet)")
+
+    return 0
+
+
+def _config_path() -> int:
+    """Show config file path."""
+    config_path = get_config_path()
+    print(config_path)
+    return 0
+
+
+def _config_reset() -> int:
+    """Delete config file."""
+    config_path = get_config_path()
+
+    if not config_path.exists():
+        print(f"Config file does not exist: {config_path}")
+        return 0
+
+    if not delete_settings():
+        print(f"Failed to delete config file: {config_path}")
+        return 1
+
+    print(f"Deleted config file: {config_path}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -681,7 +821,7 @@ def main(argv: list[str] | None = None) -> int:
     compile_parser.add_argument(
         "--target",
         choices=["coreil", "python", "javascript", "cpp", "wasm"],
-        default="coreil",
+        default=None,
         help="Compilation target (default: coreil)",
     )
     compile_parser.add_argument("--regen", action="store_true", help="Force regeneration")
@@ -716,6 +856,43 @@ def main(argv: list[str] | None = None) -> int:
         help="Frontend to use for error explanation (default: auto-detect)",
     )
     run_parser.set_defaults(func=_run_command)
+
+    # Config subcommand
+    config_parser = subparsers.add_parser("config", help="Manage configuration settings")
+    config_subparsers = config_parser.add_subparsers(dest="config_action")
+
+    # config set
+    config_set_parser = config_subparsers.add_parser(
+        "set", help="Set a configuration value"
+    )
+    config_set_parser.add_argument(
+        "key",
+        help="Setting name (frontend, explain-errors)",
+    )
+    config_set_parser.add_argument(
+        "value",
+        help="Value to set",
+    )
+
+    # config get
+    config_get_parser = config_subparsers.add_parser(
+        "get", help="Get a configuration value"
+    )
+    config_get_parser.add_argument(
+        "key",
+        help="Setting name (frontend, explain-errors)",
+    )
+
+    # config list
+    config_subparsers.add_parser("list", help="List all configuration values")
+
+    # config path
+    config_subparsers.add_parser("path", help="Show configuration file path")
+
+    # config reset
+    config_subparsers.add_parser("reset", help="Delete configuration file")
+
+    config_parser.set_defaults(func=_config_command)
 
     args = parser.parse_args(argv)
     return args.func(args)
