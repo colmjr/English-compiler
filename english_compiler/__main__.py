@@ -77,6 +77,66 @@ def _print_ambiguities(ambiguities: list[dict]) -> None:
         print(f"   default: {default}")
 
 
+def _print_experimental_warning() -> None:
+    """Print warning banner for experimental mode."""
+    print("=" * 70)
+    print("WARNING: EXPERIMENTAL MODE - Direct LLM Compilation")
+    print("=" * 70)
+    print("This mode bypasses Core IL and generates code directly.")
+    print()
+    print("Implications:")
+    print("  - NON-DETERMINISTIC: Same input may produce different outputs")
+    print("  - NO SEMANTIC VALIDATION: Generated code is not verified")
+    print("  - POTENTIAL BUGS: LLM may generate incorrect or unsafe code")
+    print()
+    print("DO NOT use in production systems.")
+    print("=" * 70)
+    print()
+
+
+def _get_experimental_output_path(source_path: Path, target: str, suffix: str) -> Path:
+    """Get output path for experimental mode.
+
+    Args:
+        source_path: Path to source file
+        target: Target language ("python", "javascript", "cpp")
+        suffix: File suffix including dot
+
+    Returns:
+        Path like examples/output/experimental/py/hello.py
+    """
+    # Map target to subdirectory
+    subdir_map = {"python": "py", "javascript": "js", "cpp": "cpp"}
+    subdir = subdir_map.get(target, target)
+    output_dir = source_path.parent / "output" / "experimental" / subdir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir / (source_path.stem + suffix)
+
+
+def _generate_code_header(model_name: str, target: str) -> str:
+    """Generate warning header for experimental code.
+
+    Args:
+        model_name: The model used for generation
+        target: Target language
+
+    Returns:
+        Warning header as a string
+    """
+    timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    comment_chars = {"python": "#", "javascript": "//", "cpp": "//"}
+    c = comment_chars.get(target, "#")
+
+    return f"""{c} ============================================================================
+{c} EXPERIMENTAL: Generated directly by LLM without Core IL validation
+{c} Model: {model_name}
+{c} Generated: {timestamp}
+{c} WARNING: This code is NON-DETERMINISTIC and may contain bugs
+{c} ============================================================================
+
+"""
+
+
 def _run_python_file(python_path: Path) -> int:
     """Run a Python file and return exit code."""
     import subprocess
@@ -281,6 +341,113 @@ def _emit_wasm_target(
     return True
 
 
+def _compile_experimental(args: argparse.Namespace) -> int:
+    """Handle experimental mode compilation (direct LLM to target code)."""
+    from english_compiler.frontend import get_frontend
+    from english_compiler.frontend.experimental import validate_syntax
+
+    target = args.target
+    source_path = Path(args.file)
+
+    # Determine file suffix
+    suffix_map = {"python": ".py", "javascript": ".js", "cpp": ".cpp"}
+    suffix = suffix_map[target]
+
+    output_path = _get_experimental_output_path(source_path, target, suffix)
+    lock_path = _get_experimental_output_path(source_path, target, ".exp.lock.json")
+
+    try:
+        source_text = source_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"{source_path}: {exc}")
+        return 1
+
+    source_sha256 = _sha256_bytes(source_text.encode("utf-8"))
+
+    # Check cache
+    lock_doc = _load_json(lock_path)
+    reuse_cache = False
+    if not args.regen and lock_doc is not None:
+        lock_source_sha256 = lock_doc.get("source_sha256")
+        lock_target = lock_doc.get("target")
+        if (
+            isinstance(lock_source_sha256, str)
+            and lock_source_sha256 == source_sha256
+            and lock_target == target
+            and output_path.exists()
+        ):
+            reuse_cache = True
+
+    if reuse_cache:
+        print(f"Using cached experimental output from {output_path}")
+    else:
+        if args.freeze:
+            print(f"freeze enabled: regeneration required for {source_path}")
+            return 1
+
+        # Print warning
+        _print_experimental_warning()
+
+        # Get frontend
+        frontend_name = args.frontend
+        try:
+            frontend = get_frontend(frontend_name)
+        except RuntimeError as exc:
+            print(str(exc))
+            return 1
+
+        print(f"Generating {target} code for {source_path} using {frontend.get_model_name()}")
+
+        try:
+            code = frontend.generate_code_direct(source_text, target)
+        except RuntimeError as exc:
+            print(f"Frontend error: {exc}")
+            return 1
+
+        # Validate syntax (Python only)
+        errors = validate_syntax(code, target)
+        if errors:
+            print("Syntax validation errors:")
+            for error in errors:
+                print(f"  {error}")
+            print("Note: Code was still generated but may not be executable")
+
+        # Add warning header
+        header = _generate_code_header(frontend.get_model_name(), target)
+        full_code = header + code
+
+        # Write output
+        try:
+            output_path.write_text(full_code, encoding="utf-8")
+            print(f"Generated {target} code at {output_path}")
+        except OSError as exc:
+            print(f"{output_path}: {exc}")
+            return 1
+
+        # Write lock file
+        lock_doc = {
+            "source_sha256": source_sha256,
+            "model": frontend.get_model_name(),
+            "target": target,
+            "experimental": True,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        if not _write_json(lock_path, lock_doc):
+            return 1
+
+    # Run the generated code
+    print()
+    print("Running generated code:")
+    print("-" * 40)
+    if target == "python":
+        return _run_python_file(output_path)
+    elif target == "javascript":
+        return _run_javascript_file(output_path)
+    elif target == "cpp":
+        return _run_cpp_file(output_path)
+    return 0
+
+
 def _compile_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.interp import run_coreil
     from english_compiler.coreil.validate import validate_coreil
@@ -289,6 +456,18 @@ def _compile_command(args: argparse.Namespace) -> int:
     if args.regen and args.freeze:
         print("--regen and --freeze cannot be used together")
         return 1
+
+    # Handle experimental mode
+    if args.experimental:
+        valid_experimental_targets = ("python", "javascript", "cpp")
+        if args.target not in valid_experimental_targets:
+            print(
+                f"--experimental requires --target to be one of: "
+                f"{', '.join(valid_experimental_targets)}"
+            )
+            print(f"Got: --target {args.target}")
+            return 1
+        return _compile_experimental(args)
 
     source_path = Path(args.file)
     coreil_path = _get_output_path(source_path, "coreil", ".coreil.json")
@@ -465,6 +644,11 @@ def main(argv: list[str] | None = None) -> int:
         "--freeze",
         action="store_true",
         help="Fail if regeneration would be required",
+    )
+    compile_parser.add_argument(
+        "--experimental",
+        action="store_true",
+        help="EXPERIMENTAL: Compile directly to target without Core IL (non-deterministic)",
     )
     compile_parser.set_defaults(func=_compile_command)
 

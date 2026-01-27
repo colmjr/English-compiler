@@ -36,6 +36,19 @@ def _extract_tool_input(response: Any, tool_name: str) -> tuple[dict | None, str
     return None, raw_text
 
 
+def _strip_markdown_code_block(text: str) -> str:
+    """Strip markdown code block markers from text."""
+    text = text.strip()
+    # Handle ```python, ```javascript, ```cpp, etc.
+    if text.startswith("```"):
+        first_newline = text.find("\n")
+        if first_newline != -1:
+            text = text[first_newline + 1:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
+
+
 class ClaudeFrontend(BaseFrontend):
     """Claude API frontend using Anthropic SDK."""
 
@@ -97,3 +110,15 @@ class ClaudeFrontend(BaseFrontend):
                     f"Claude did not return tool output. Response snippet: {snippet}"
                 )
             return tool_input
+
+    def _call_api_text(self, user_message: str, system_prompt: str) -> str:
+        """Call Claude API for plain text response (experimental mode)."""
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            temperature=0,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        text = _extract_text(response)
+        return _strip_markdown_code_block(text)

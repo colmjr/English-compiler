@@ -7,6 +7,23 @@ It provides a deterministic alternative to the Claude frontend.
 from __future__ import annotations
 
 
+# Static example code for experimental mode
+_MOCK_PYTHON = '''if __name__ == "__main__":
+    print("hello (mock)")
+'''
+
+_MOCK_JAVASCRIPT = '''console.log("hello (mock)");
+'''
+
+_MOCK_CPP = '''#include <iostream>
+
+int main() {
+    std::cout << "hello (mock)" << std::endl;
+    return 0;
+}
+'''
+
+
 class MockFrontend:
     """Mock frontend for testing without an LLM.
 
@@ -19,6 +36,20 @@ class MockFrontend:
 
     def get_model_name(self) -> str:
         return "mock"
+
+    def generate_code_direct(self, source_text: str, target: str) -> str:
+        """Generate mock code for experimental mode.
+
+        Returns static example code for each target language.
+        """
+        if target == "python":
+            return _MOCK_PYTHON
+        elif target == "javascript":
+            return _MOCK_JAVASCRIPT
+        elif target == "cpp":
+            return _MOCK_CPP
+        else:
+            raise ValueError(f"Unsupported experimental target: {target}")
 
     def generate_coreil_from_text(self, source_text: str) -> dict:
         """Generate a mock Core IL v1.2 program from source text.

@@ -43,3 +43,29 @@ class OpenAIFrontend(BaseFrontend):
 
         raw_text = response.choices[0].message.content
         return self._parse_json_response(raw_text, "OpenAI")
+
+    def _call_api_text(self, user_message: str, system_prompt: str) -> str:
+        """Call OpenAI API for plain text response (experimental mode)."""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            temperature=0,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+        )
+        text = response.choices[0].message.content or ""
+        return _strip_markdown_code_block(text)
+
+
+def _strip_markdown_code_block(text: str) -> str:
+    """Strip markdown code block markers from text."""
+    text = text.strip()
+    if text.startswith("```"):
+        first_newline = text.find("\n")
+        if first_newline != -1:
+            text = text[first_newline + 1:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()

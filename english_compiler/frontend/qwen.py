@@ -7,6 +7,18 @@ import os
 from english_compiler.frontend.base import BaseFrontend, get_env_int, get_required_env
 
 
+def _strip_markdown_code_block(text: str) -> str:
+    """Strip markdown code block markers from text."""
+    text = text.strip()
+    if text.startswith("```"):
+        first_newline = text.find("\n")
+        if first_newline != -1:
+            text = text[first_newline + 1:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
+
+
 class QwenFrontend(BaseFrontend):
     """Qwen API frontend using DashScope or OpenAI-compatible endpoint.
 
@@ -94,3 +106,48 @@ class QwenFrontend(BaseFrontend):
 
         raw_text = response.choices[0].message.content
         return self._parse_json_response(raw_text, "Qwen")
+
+    def _call_api_text(self, user_message: str, system_prompt: str) -> str:
+        """Call Qwen API for plain text response (experimental mode)."""
+        if self._use_dashscope:
+            return self._call_dashscope_text(user_message, system_prompt)
+        else:
+            return self._call_openai_compatible_text(user_message, system_prompt)
+
+    def _call_dashscope_text(self, user_message: str, system_prompt: str) -> str:
+        """Call Qwen via DashScope for plain text."""
+        from dashscope import Generation
+
+        response = Generation.call(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            result_format="message",
+            max_tokens=self.max_tokens,
+            temperature=0,
+        )
+
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"DashScope API error: {response.code} - {response.message}"
+            )
+
+        text = response.output.choices[0].message.content or ""
+        return _strip_markdown_code_block(text)
+
+    def _call_openai_compatible_text(self, user_message: str, system_prompt: str) -> str:
+        """Call Qwen via OpenAI-compatible endpoint for plain text."""
+        response = self._client.chat.completions.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            temperature=0,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+        )
+
+        text = response.choices[0].message.content or ""
+        return _strip_markdown_code_block(text)
