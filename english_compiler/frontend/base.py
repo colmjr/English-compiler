@@ -153,9 +153,47 @@ class BaseFrontend(ABC):
         pass
 
     @abstractmethod
+    def _call_api_text(self, user_message: str, system_prompt: str) -> str:
+        """Call API expecting plain text response (for experimental mode).
+
+        Args:
+            user_message: The user message to send.
+            system_prompt: The system prompt to use.
+
+        Returns:
+            Raw text response from the LLM.
+
+        Raises:
+            RuntimeError: If the API call fails.
+        """
+        pass
+
+    @abstractmethod
     def get_model_name(self) -> str:
         """Return the model identifier for logging."""
         pass
+
+    def generate_code_direct(self, source_text: str, target: str) -> str:
+        """Generate target code directly without Core IL (EXPERIMENTAL).
+
+        This method bypasses Core IL and generates code directly from English.
+        The output is non-deterministic and may contain bugs.
+
+        Args:
+            source_text: The English description to compile.
+            target: Target language ("python", "javascript", "cpp").
+
+        Returns:
+            Generated source code as a string.
+
+        Raises:
+            ValueError: If the target is not supported.
+            RuntimeError: If the API call fails.
+        """
+        from english_compiler.frontend.experimental import get_experimental_prompt
+
+        prompt = get_experimental_prompt(target)
+        return self._call_api_text(source_text, prompt)
 
     def generate_coreil_from_text(self, source_text: str) -> dict:
         """Generate Core IL from source text with validation and retry.
