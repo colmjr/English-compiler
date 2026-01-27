@@ -61,6 +61,20 @@ def watch_and_compile(
     else:
         _run_compile(path, compile_func)
 
+    def should_ignore(p: Path) -> bool:
+        """Check if a path should be ignored."""
+        # Ignore output directory and its contents
+        parts = p.parts
+        if "output" in parts:
+            return True
+        # Ignore hidden files and lock files
+        if p.name.startswith(".") or p.name.endswith(".lock.json"):
+            return True
+        # Ignore non-.txt files
+        if p.suffix != ".txt":
+            return True
+        return False
+
     try:
         for changes in watch(watch_path, debounce=1600, recursive=False):
             for change_type, changed_path in changes:
@@ -68,6 +82,10 @@ def watch_and_compile(
 
                 # Skip if not a modification
                 if change_type != Change.modified:
+                    continue
+
+                # Skip ignored paths
+                if should_ignore(changed_path):
                     continue
 
                 # In file mode, only react to the specific file
