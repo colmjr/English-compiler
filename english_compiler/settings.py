@@ -27,6 +27,9 @@ class Settings:
 
     frontend: str | None = None
     explain_errors: bool = False
+    target: str | None = None
+    regen: bool = False
+    freeze: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert settings to a dictionary for serialization."""
@@ -35,6 +38,12 @@ class Settings:
             result["frontend"] = self.frontend
         if self.explain_errors:
             result["explain_errors"] = self.explain_errors
+        if self.target is not None:
+            result["target"] = self.target
+        if self.regen:
+            result["regen"] = self.regen
+        if self.freeze:
+            result["freeze"] = self.freeze
         return result
 
     @classmethod
@@ -43,6 +52,9 @@ class Settings:
         return cls(
             frontend=data.get("frontend"),
             explain_errors=bool(data.get("explain_errors", False)),
+            target=data.get("target"),
+            regen=bool(data.get("regen", False)),
+            freeze=bool(data.get("freeze", False)),
         )
 
 
@@ -233,3 +245,4 @@ def delete_settings() -> bool:
 
 # Valid values for settings
 VALID_FRONTENDS = ("mock", "claude", "openai", "gemini", "qwen")
+VALID_TARGETS = ("coreil", "python", "javascript", "cpp", "wasm")

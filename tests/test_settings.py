@@ -16,6 +16,7 @@ from english_compiler.settings import (
     delete_settings,
     get_config_path,
     VALID_FRONTENDS,
+    VALID_TARGETS,
 )
 
 
@@ -27,12 +28,18 @@ class TestSettings(unittest.TestCase):
         settings = Settings()
         self.assertIsNone(settings.frontend)
         self.assertFalse(settings.explain_errors)
+        self.assertIsNone(settings.target)
+        self.assertFalse(settings.regen)
+        self.assertFalse(settings.freeze)
 
     def test_custom_values(self):
         """Settings should accept custom values."""
-        settings = Settings(frontend="claude", explain_errors=True)
+        settings = Settings(frontend="claude", explain_errors=True, target="python", regen=True, freeze=False)
         self.assertEqual(settings.frontend, "claude")
         self.assertTrue(settings.explain_errors)
+        self.assertEqual(settings.target, "python")
+        self.assertTrue(settings.regen)
+        self.assertFalse(settings.freeze)
 
     def test_to_dict_empty(self):
         """Default settings should produce empty dict (only non-default values)."""
@@ -41,9 +48,9 @@ class TestSettings(unittest.TestCase):
 
     def test_to_dict_with_values(self):
         """Settings with values should produce correct dict."""
-        settings = Settings(frontend="openai", explain_errors=True)
+        settings = Settings(frontend="openai", explain_errors=True, target="javascript", regen=True)
         data = settings.to_dict()
-        self.assertEqual(data, {"frontend": "openai", "explain_errors": True})
+        self.assertEqual(data, {"frontend": "openai", "explain_errors": True, "target": "javascript", "regen": True})
 
     def test_to_dict_partial(self):
         """Settings with only frontend should not include explain_errors."""
@@ -51,17 +58,29 @@ class TestSettings(unittest.TestCase):
         data = settings.to_dict()
         self.assertEqual(data, {"frontend": "claude"})
 
+    def test_to_dict_with_target(self):
+        """Settings with target should include it."""
+        settings = Settings(target="cpp")
+        data = settings.to_dict()
+        self.assertEqual(data, {"target": "cpp"})
+
     def test_from_dict_empty(self):
         """Empty dict should produce default settings."""
         settings = Settings.from_dict({})
         self.assertIsNone(settings.frontend)
         self.assertFalse(settings.explain_errors)
+        self.assertIsNone(settings.target)
+        self.assertFalse(settings.regen)
+        self.assertFalse(settings.freeze)
 
     def test_from_dict_with_values(self):
         """Dict with values should produce correct settings."""
-        settings = Settings.from_dict({"frontend": "gemini", "explain_errors": True})
+        settings = Settings.from_dict({"frontend": "gemini", "explain_errors": True, "target": "wasm", "freeze": True})
         self.assertEqual(settings.frontend, "gemini")
         self.assertTrue(settings.explain_errors)
+        self.assertEqual(settings.target, "wasm")
+        self.assertFalse(settings.regen)
+        self.assertTrue(settings.freeze)
 
     def test_from_dict_extra_keys(self):
         """Extra keys in dict should be ignored."""
@@ -289,6 +308,15 @@ class TestValidFrontends(unittest.TestCase):
         self.assertEqual(set(VALID_FRONTENDS), expected)
 
 
+class TestValidTargets(unittest.TestCase):
+    """Tests for VALID_TARGETS constant."""
+
+    def test_contains_expected_values(self):
+        """Should contain all expected target names."""
+        expected = {"coreil", "python", "javascript", "cpp", "wasm"}
+        self.assertEqual(set(VALID_TARGETS), expected)
+
+
 def run_tests():
     """Run all tests and report results."""
     loader = unittest.TestLoader()
@@ -302,6 +330,7 @@ def run_tests():
         TestLoadSaveSettings,
         TestGetConfigPath,
         TestValidFrontends,
+        TestValidTargets,
     ]:
         suite.addTests(loader.loadTestsFromTestCase(test_class))
 

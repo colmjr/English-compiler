@@ -12,6 +12,7 @@ from english_compiler.settings import (
     save_settings,
     delete_settings,
     VALID_FRONTENDS,
+    VALID_TARGETS,
 )
 import datetime
 import hashlib
@@ -475,9 +476,12 @@ def _compile_command(args: argparse.Namespace) -> int:
         args.frontend = settings.frontend
     if not args.explain_errors:
         args.explain_errors = settings.explain_errors
-    # Default target to "coreil" if not specified anywhere
     if args.target is None:
-        args.target = "coreil"
+        args.target = settings.target if settings.target else "coreil"
+    if not args.regen:
+        args.regen = settings.regen
+    if not args.freeze:
+        args.freeze = settings.freeze
 
     # Handle experimental mode
     if args.experimental:
@@ -728,9 +732,33 @@ def _config_set(key: str, value: str) -> int:
             print(f"Invalid boolean value: {value}")
             print("Use: true, false, 1, 0, yes, no, on, off")
             return 1
+    elif key_normalized == "target":
+        if value not in VALID_TARGETS:
+            print(f"Invalid target: {value}")
+            print(f"Valid options: {', '.join(VALID_TARGETS)}")
+            return 1
+        settings.target = value
+    elif key_normalized == "regen":
+        if value.lower() in ("true", "1", "yes", "on"):
+            settings.regen = True
+        elif value.lower() in ("false", "0", "no", "off"):
+            settings.regen = False
+        else:
+            print(f"Invalid boolean value: {value}")
+            print("Use: true, false, 1, 0, yes, no, on, off")
+            return 1
+    elif key_normalized == "freeze":
+        if value.lower() in ("true", "1", "yes", "on"):
+            settings.freeze = True
+        elif value.lower() in ("false", "0", "no", "off"):
+            settings.freeze = False
+        else:
+            print(f"Invalid boolean value: {value}")
+            print("Use: true, false, 1, 0, yes, no, on, off")
+            return 1
     else:
         print(f"Unknown setting: {key}")
-        print("Valid settings: frontend, explain-errors")
+        print("Valid settings: frontend, target, explain-errors, regen, freeze")
         return 1
 
     if not save_settings(settings):
@@ -752,9 +780,15 @@ def _config_get(key: str) -> int:
         value = settings.frontend if settings.frontend else "(not set)"
     elif key_normalized == "explain_errors":
         value = str(settings.explain_errors).lower()
+    elif key_normalized == "target":
+        value = settings.target if settings.target else "(not set)"
+    elif key_normalized == "regen":
+        value = str(settings.regen).lower()
+    elif key_normalized == "freeze":
+        value = str(settings.freeze).lower()
     else:
         print(f"Unknown setting: {key}")
-        print("Valid settings: frontend, explain-errors")
+        print("Valid settings: frontend, target, explain-errors, regen, freeze")
         return 1
 
     print(f"{key}: {value}")
@@ -767,7 +801,10 @@ def _config_list() -> int:
 
     print("Current settings:")
     print(f"  frontend: {settings.frontend if settings.frontend else '(not set)'}")
+    print(f"  target: {settings.target if settings.target else '(not set)'}")
     print(f"  explain-errors: {str(settings.explain_errors).lower()}")
+    print(f"  regen: {str(settings.regen).lower()}")
+    print(f"  freeze: {str(settings.freeze).lower()}")
 
     config_path = get_config_path()
     if config_path.exists():
