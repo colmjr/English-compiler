@@ -97,14 +97,3 @@ class ClaudeFrontend(BaseFrontend):
                     f"Claude did not return tool output. Response snippet: {snippet}"
                 )
             return tool_input
-
-
-# Legacy function for backward compatibility
-def generate_coreil_from_text(source_text: str) -> dict:
-    """Generate Core IL from source text using Claude.
-
-    This is a convenience function that creates a ClaudeFrontend instance
-    and calls its generate_coreil_from_text method.
-    """
-    frontend = ClaudeFrontend()
-    return frontend.generate_coreil_from_text(source_text)

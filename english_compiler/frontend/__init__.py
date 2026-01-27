@@ -82,3 +82,21 @@ def list_available_frontends() -> list[str]:
         if os.getenv(env_var):
             available.append(provider)
     return available
+
+
+def generate_coreil_from_text(source_text: str, provider: str | None = None) -> dict:
+    """Generate Core IL from source text.
+
+    This is a convenience function that creates a frontend instance
+    and calls its generate_coreil_from_text method.
+
+    Args:
+        source_text: The English/pseudocode source text to compile.
+        provider: Frontend provider name ("claude", "openai", "gemini", "qwen", "mock")
+                  or None for auto-detection.
+
+    Returns:
+        The generated Core IL as a dictionary.
+    """
+    frontend = get_frontend(provider)
+    return frontend.generate_coreil_from_text(source_text)
