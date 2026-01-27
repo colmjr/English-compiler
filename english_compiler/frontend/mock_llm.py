@@ -37,6 +37,21 @@ class MockFrontend:
     def get_model_name(self) -> str:
         return "mock"
 
+    def _call_api_text(self, user_message: str, system_prompt: str) -> str:
+        """Call API expecting plain text response.
+
+        For mock frontend, returns a simple explanation for errors,
+        or the mock code for experimental mode.
+        """
+        # Check if this is an error explanation request
+        if "Error:" in user_message:
+            return (
+                "The program encountered an error. "
+                "Please check your code for issues and try again."
+            )
+        # Otherwise return generic mock response
+        return "Mock response"
+
     def generate_code_direct(self, source_text: str, target: str) -> str:
         """Generate mock code for experimental mode.
 

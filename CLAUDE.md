@@ -75,6 +75,13 @@ english-compiler compile --freeze examples/hello.txt
 
 # Run an existing Core IL file directly (works with any .coreil.json)
 english-compiler run examples/output/coreil/hello.coreil.json
+
+# Run with LLM-powered error explanations (useful for beginners)
+english-compiler run --explain-errors examples/output/coreil/hello.coreil.json
+english-compiler run --explain-errors --frontend claude examples/output/coreil/hello.coreil.json
+
+# Compile with error explanations
+english-compiler compile --explain-errors examples/hello.txt
 ```
 
 ### Experimental Mode (Direct Compilation)
@@ -116,6 +123,8 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
     - `qwen.py` - Alibaba Qwen API integration (DashScope or OpenAI-compatible)
     - `mock_llm.py` - Mock generator (deterministic, for testing)
     - `prompt.txt` - System prompt for Core IL generation (shared)
+    - `prompt_error.txt` - System prompt for error explanation
+    - `error_explainer.py` - LLM-powered error explanation module
     - `experimental/` - Experimental direct compilation mode
       - `prompts.py` - Prompt loading for direct code generation
       - `validate.py` - Syntax validation (Python only)

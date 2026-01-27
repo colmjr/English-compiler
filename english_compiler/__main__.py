@@ -481,6 +481,17 @@ def _compile_command(args: argparse.Namespace) -> int:
 
     source_sha256 = _sha256_bytes(source_text.encode("utf-8"))
 
+    # Set up error callback if requested
+    error_callback = None
+    explain_frontend = None
+    if getattr(args, "explain_errors", False):
+        try:
+            explain_frontend = get_frontend(args.frontend)
+            error_callback = _make_error_callback(explain_frontend, source_text)
+        except RuntimeError as exc:
+            print(str(exc))
+            return 1
+
     lock_doc = _load_json(lock_path)
     reuse_cache = False
     if not args.regen and lock_doc is not None:
@@ -515,20 +526,20 @@ def _compile_command(args: argparse.Namespace) -> int:
 
         # Try interpreter first, fall back to generated code for ExternalCall
         try:
-            return run_coreil(doc)
+            return run_coreil(doc, error_callback=error_callback)
         except ValueError as exc:
-            if "ExternalCall" in str(exc):
+            if "ExternalCall" in str(exc) or "MethodCall" in str(exc) or "PropertyGet" in str(exc):
                 if target == "python":
                     python_path = _get_output_path(source_path, "py", ".py")
-                    print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
+                    print(f"Note: Tier 2 operation not supported in interpreter, running {python_path}")
                     return _run_python_file(python_path)
                 elif target == "javascript":
                     js_path = _get_output_path(source_path, "js", ".js")
-                    print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
+                    print(f"Note: Tier 2 operation not supported in interpreter, running {js_path}")
                     return _run_javascript_file(js_path)
                 elif target == "cpp":
                     cpp_path = _get_output_path(source_path, "cpp", ".cpp")
-                    print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
+                    print(f"Note: Tier 2 operation not supported in interpreter, running {cpp_path}")
                     return _run_cpp_file(cpp_path)
             raise
 
@@ -536,13 +547,16 @@ def _compile_command(args: argparse.Namespace) -> int:
         print(f"freeze enabled: regeneration required for {source_path}")
         return 1
 
-    # Get frontend (auto-detect if not specified)
-    frontend_name = args.frontend
-    try:
-        frontend = get_frontend(frontend_name)
-    except RuntimeError as exc:
-        print(str(exc))
-        return 1
+    # Get frontend (auto-detect if not specified, reuse if already created for explain_errors)
+    if explain_frontend is not None:
+        frontend = explain_frontend
+    else:
+        frontend_name = args.frontend
+        try:
+            frontend = get_frontend(frontend_name)
+        except RuntimeError as exc:
+            print(str(exc))
+            return 1
 
     print(f"Regenerating Core IL for {source_path} using {frontend.get_model_name()}")
     try:
@@ -579,24 +593,43 @@ def _compile_command(args: argparse.Namespace) -> int:
         _print_ambiguities(ambiguities)
         return 2
 
-    # Try interpreter first, fall back to generated code for ExternalCall
+    # Try interpreter first, fall back to generated code for Tier 2 operations
     try:
-        return run_coreil(doc)
+        return run_coreil(doc, error_callback=error_callback)
     except ValueError as exc:
-        if "ExternalCall" in str(exc):
+        if "ExternalCall" in str(exc) or "MethodCall" in str(exc) or "PropertyGet" in str(exc):
             if target == "python":
                 python_path = _get_output_path(source_path, "py", ".py")
-                print(f"Note: ExternalCall not supported in interpreter, running {python_path}")
+                print(f"Note: Tier 2 operation not supported in interpreter, running {python_path}")
                 return _run_python_file(python_path)
             elif target == "javascript":
                 js_path = _get_output_path(source_path, "js", ".js")
-                print(f"Note: ExternalCall not supported in interpreter, running {js_path}")
+                print(f"Note: Tier 2 operation not supported in interpreter, running {js_path}")
                 return _run_javascript_file(js_path)
             elif target == "cpp":
                 cpp_path = _get_output_path(source_path, "cpp", ".cpp")
-                print(f"Note: ExternalCall not supported in interpreter, running {cpp_path}")
+                print(f"Note: Tier 2 operation not supported in interpreter, running {cpp_path}")
                 return _run_cpp_file(cpp_path)
         raise
+
+
+def _make_error_callback(frontend, source_text: str | None = None):
+    """Create an error callback that uses the LLM to explain errors.
+
+    Args:
+        frontend: The LLM frontend to use.
+        source_text: Optional source text for context.
+
+    Returns:
+        A callback function that prints an LLM-explained error.
+    """
+    from english_compiler.frontend.error_explainer import explain_error
+
+    def callback(error_msg: str) -> None:
+        explanation = explain_error(frontend, error_msg, source_text)
+        print(explanation)
+
+    return callback
 
 
 def _run_command(args: argparse.Namespace) -> int:
@@ -613,7 +646,19 @@ def _run_command(args: argparse.Namespace) -> int:
         print(f"{path}: invalid json: {exc}")
         return 1
 
-    return run_coreil(doc)
+    error_callback = None
+    if getattr(args, "explain_errors", False):
+        from english_compiler.frontend import get_frontend
+
+        frontend_name = getattr(args, "frontend", None)
+        try:
+            frontend = get_frontend(frontend_name)
+        except RuntimeError as exc:
+            print(str(exc))
+            return 1
+        error_callback = _make_error_callback(frontend)
+
+    return run_coreil(doc, error_callback=error_callback)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -650,10 +695,26 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="EXPERIMENTAL: Compile directly to target without Core IL (non-deterministic)",
     )
+    compile_parser.add_argument(
+        "--explain-errors",
+        action="store_true",
+        help="Use LLM to explain runtime errors in user-friendly terms",
+    )
     compile_parser.set_defaults(func=_compile_command)
 
     run_parser = subparsers.add_parser("run", help="Run a Core IL file")
     run_parser.add_argument("file", help="Path to the Core IL JSON file")
+    run_parser.add_argument(
+        "--explain-errors",
+        action="store_true",
+        help="Use LLM to explain runtime errors in user-friendly terms",
+    )
+    run_parser.add_argument(
+        "--frontend",
+        choices=["mock", "claude", "openai", "gemini", "qwen"],
+        default=None,
+        help="Frontend to use for error explanation (default: auto-detect)",
+    )
     run_parser.set_defaults(func=_run_command)
 
     args = parser.parse_args(argv)
