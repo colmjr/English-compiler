@@ -195,6 +195,31 @@ class BaseFrontend(ABC):
         prompt = get_experimental_prompt(target)
         return self._call_api_text(source_text, prompt)
 
+    def classify_exit_intent(self, user_input: str) -> str:
+        """Classify if user input is an exit intent or code.
+
+        Uses the LLM to determine if the user wants to exit the REPL
+        or if they're providing code to compile.
+
+        Args:
+            user_input: The user's input text.
+
+        Returns:
+            "EXIT" if the user wants to exit, "CODE" otherwise.
+        """
+        prompt = (
+            'Classify this user input as either EXIT (user wants to leave/stop/quit '
+            'the session) or CODE (user wants to compile and run something).\n\n'
+            f'User input: "{user_input}"\n\n'
+            'Reply with exactly one word: EXIT or CODE'
+        )
+        try:
+            response = self._call_api_text(user_input, prompt)
+            return response.strip().upper()
+        except Exception:
+            # On error, assume it's code (safe default)
+            return "CODE"
+
     def generate_coreil_from_text(self, source_text: str) -> dict:
         """Generate Core IL from source text with validation and retry.
 

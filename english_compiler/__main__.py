@@ -19,6 +19,9 @@ import hashlib
 import json
 from pathlib import Path
 
+# Built-in exit commands (instant, no API call)
+BUILTIN_EXIT_COMMANDS = {"exit", "quit", ":q", ":quit", ":exit"}
+
 
 def _print_validation_errors(errors: list[dict]) -> None:
     for error in errors:
@@ -838,6 +841,99 @@ def _config_reset() -> int:
     return 0
 
 
+def _is_exit_command(text: str, frontend) -> bool:
+    """Check if input is an exit command.
+
+    Args:
+        text: The user input text.
+        frontend: The LLM frontend for natural language classification.
+
+    Returns:
+        True if the input is an exit command, False otherwise.
+    """
+    normalized = text.lower().strip()
+
+    # Built-in commands (instant check)
+    if normalized in BUILTIN_EXIT_COMMANDS:
+        return True
+
+    # Use LLM to classify natural language
+    try:
+        response = frontend.classify_exit_intent(normalized)
+        return response.strip().upper() == "EXIT"
+    except Exception:
+        # On error, assume it's code (safe default)
+        return False
+
+
+def _repl_command(args: argparse.Namespace) -> int:
+    """Interactive REPL for English pseudocode."""
+    from english_compiler.coreil.interp import run_coreil
+    from english_compiler.coreil.validate import validate_coreil
+    from english_compiler.frontend import get_frontend
+
+    # Load settings and apply defaults
+    settings = load_settings()
+    frontend_name = args.frontend if args.frontend is not None else settings.frontend
+    explain_errors = args.explain_errors or settings.explain_errors
+
+    # Get frontend
+    try:
+        frontend = get_frontend(frontend_name)
+    except RuntimeError as exc:
+        print(str(exc))
+        return 1
+
+    print(f"English Compiler REPL [{frontend.get_model_name()}]")
+    print("Type English pseudocode to compile and run.")
+    print("Exit: 'exit', ':q', or just say goodbye naturally")
+    print()
+
+    while True:
+        try:
+            source_text = input(">>> ").strip()
+
+            if not source_text:
+                continue
+
+            # Check for exit (built-in commands + LLM classification)
+            if _is_exit_command(source_text, frontend):
+                print("Goodbye!")
+                break
+
+            # Compile
+            try:
+                doc = frontend.generate_coreil_from_text(source_text)
+            except RuntimeError as exc:
+                print(f"Compilation error: {exc}")
+                continue
+
+            # Validate
+            errors = validate_coreil(doc)
+            if errors:
+                for e in errors:
+                    print(f"Error: {e['path']}: {e['message']}")
+                continue
+
+            # Execute
+            error_callback = None
+            if explain_errors:
+                error_callback = _make_error_callback(frontend, source_text)
+
+            try:
+                run_coreil(doc, error_callback=error_callback)
+            except Exception as exc:
+                print(f"Runtime error: {exc}")
+
+        except KeyboardInterrupt:
+            print("\nInterrupted. Type 'exit' to quit.")
+        except EOFError:
+            print("\nGoodbye!")
+            break
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="english-compiler")
     parser.add_argument(
@@ -930,6 +1026,21 @@ def main(argv: list[str] | None = None) -> int:
     config_subparsers.add_parser("reset", help="Delete configuration file")
 
     config_parser.set_defaults(func=_config_command)
+
+    # REPL subcommand
+    repl_parser = subparsers.add_parser("repl", help="Interactive REPL mode")
+    repl_parser.add_argument(
+        "--frontend",
+        choices=["mock", "claude", "openai", "gemini", "qwen"],
+        default=None,
+        help="Frontend to use (default: auto-detect based on available API keys)",
+    )
+    repl_parser.add_argument(
+        "--explain-errors",
+        action="store_true",
+        help="Use LLM to explain runtime errors in user-friendly terms",
+    )
+    repl_parser.set_defaults(func=_repl_command)
 
     args = parser.parse_args(argv)
     return args.func(args)

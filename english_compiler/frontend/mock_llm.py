@@ -31,11 +31,47 @@ class MockFrontend:
     the shared validation/retry logic - it generates deterministic output.
     """
 
+    # Common exit phrases for mock classification
+    _EXIT_PATTERNS = {
+        "bye", "goodbye", "good bye", "see ya", "see you", "later",
+        "done", "i'm done", "im done", "that's all", "thats all",
+        "thanks", "thank you", "peace", "peace out", "cya",
+        "stop", "end", "finish", "finished", "gtg", "gotta go",
+        "i'm out", "im out", "leaving", "gn", "goodnight", "good night",
+    }
+
     def __init__(self) -> None:
         pass
 
     def get_model_name(self) -> str:
         return "mock"
+
+    def classify_exit_intent(self, user_input: str) -> str:
+        """Classify if user input is an exit intent or code.
+
+        For mock frontend, uses simple pattern matching since there's
+        no real LLM available.
+
+        Args:
+            user_input: The user's input text.
+
+        Returns:
+            "EXIT" if the input matches known exit patterns, "CODE" otherwise.
+        """
+        normalized = user_input.lower().strip()
+        # Remove punctuation for matching
+        cleaned = "".join(c for c in normalized if c.isalnum() or c.isspace())
+
+        # Check exact matches
+        if cleaned in self._EXIT_PATTERNS:
+            return "EXIT"
+
+        # Check if input starts with common exit phrases
+        for pattern in self._EXIT_PATTERNS:
+            if cleaned.startswith(pattern + " ") or cleaned.startswith(pattern + ","):
+                return "EXIT"
+
+        return "CODE"
 
     def _call_api_text(self, user_message: str, system_prompt: str) -> str:
         """Call API expecting plain text response.
