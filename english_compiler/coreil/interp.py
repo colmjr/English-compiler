@@ -38,7 +38,7 @@ import math
 import re
 from collections import deque
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from .constants import BINARY_OPS, MAX_CALL_DEPTH
 from .emit_utils import parse_regex_flags
@@ -50,7 +50,7 @@ class _ReturnSignal(Exception):
     value: Any
 
 
-def run_coreil(doc: dict) -> int:
+def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -> int:
     from english_compiler.coreil.lower import lower_coreil
 
     # Lower syntax sugar (For/Range) to core constructs (While)
@@ -915,10 +915,18 @@ def run_coreil(doc: dict) -> int:
         # Re-raise Tier 2 (non-portable) errors so caller can handle them
         if "ExternalCall" in str(exc) or "MethodCall" in str(exc) or "PropertyGet" in str(exc):
             raise
-        print(f"runtime error: {exc}")
+        error_msg = f"runtime error: {exc}"
+        if error_callback:
+            error_callback(error_msg)
+        else:
+            print(error_msg)
         return 1
     except Exception as exc:
-        print(f"runtime error: {exc}")
+        error_msg = f"runtime error: {exc}"
+        if error_callback:
+            error_callback(error_msg)
+        else:
+            print(error_msg)
         return 1
 
     return 0
