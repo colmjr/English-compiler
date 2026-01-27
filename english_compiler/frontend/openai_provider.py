@@ -43,14 +43,3 @@ class OpenAIFrontend(BaseFrontend):
 
         raw_text = response.choices[0].message.content
         return self._parse_json_response(raw_text, "OpenAI")
-
-
-# Convenience function for direct use
-def generate_coreil_from_text(source_text: str) -> dict:
-    """Generate Core IL from source text using OpenAI.
-
-    This is a convenience function that creates an OpenAIFrontend instance
-    and calls its generate_coreil_from_text method.
-    """
-    frontend = OpenAIFrontend()
-    return frontend.generate_coreil_from_text(source_text)

@@ -40,37 +40,9 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
-
-def _parse_regex_flags(flags_str: str) -> int:
-    """Convert flags string to Python re flags."""
-    flags = 0
-    if flags_str:
-        if 'i' in flags_str:
-            flags |= re.IGNORECASE
-        if 'm' in flags_str:
-            flags |= re.MULTILINE
-        if 's' in flags_str:
-            flags |= re.DOTALL
-    return flags
-
-
-_BINARY_OPS = {
-    "+",
-    "-",
-    "*",
-    "/",
-    "%",
-    "==",
-    "!=",
-    "<",
-    "<=",
-    ">",
-    ">=",
-    "and",
-    "or",
-}
-
-_MAX_CALL_DEPTH = 1000
+from .constants import BINARY_OPS, MAX_CALL_DEPTH
+from .emit_utils import parse_regex_flags
+from .versions import SUPPORTED_VERSIONS, get_version_error_message
 
 
 @dataclass
@@ -114,7 +86,7 @@ def run_coreil(doc: dict) -> int:
 
         if node_type == "Binary":
             op = node.get("op")
-            if op not in _BINARY_OPS:
+            if op not in BINARY_OPS:
                 raise ValueError("Binary missing or invalid op")
 
             # Implement short-circuit evaluation for 'and' and 'or'
@@ -531,7 +503,7 @@ def run_coreil(doc: dict) -> int:
             flags_str = ""
             if flags_node:
                 flags_str = eval_expr(flags_node, local_env, call_depth) or ""
-            flags = _parse_regex_flags(flags_str)
+            flags = parse_regex_flags(flags_str)
             try:
                 match = re.search(pattern, string, flags)
                 return match is not None
@@ -549,7 +521,7 @@ def run_coreil(doc: dict) -> int:
             flags_str = ""
             if flags_node:
                 flags_str = eval_expr(flags_node, local_env, call_depth) or ""
-            flags = _parse_regex_flags(flags_str)
+            flags = parse_regex_flags(flags_str)
             try:
                 return re.findall(pattern, string, flags)
             except re.error as e:
@@ -569,7 +541,7 @@ def run_coreil(doc: dict) -> int:
             flags_str = ""
             if flags_node:
                 flags_str = eval_expr(flags_node, local_env, call_depth) or ""
-            flags = _parse_regex_flags(flags_str)
+            flags = parse_regex_flags(flags_str)
             try:
                 return re.sub(pattern, replacement, string, flags=flags)
             except re.error as e:
@@ -586,7 +558,7 @@ def run_coreil(doc: dict) -> int:
             flags_str = ""
             if flags_node:
                 flags_str = eval_expr(flags_node, local_env, call_depth) or ""
-            flags = _parse_regex_flags(flags_str)
+            flags = parse_regex_flags(flags_str)
             maxsplit_node = node.get("maxsplit")
             maxsplit = 0  # 0 means no limit in re.split
             if maxsplit_node:
@@ -667,7 +639,7 @@ def run_coreil(doc: dict) -> int:
         raise ValueError(f"unknown builtin '{name}'")
 
     def call_function(name: str, args: list[Any], call_depth: int) -> Any:
-        if call_depth >= _MAX_CALL_DEPTH:
+        if call_depth >= MAX_CALL_DEPTH:
             raise ValueError("maximum call depth exceeded")
         func = functions.get(name)
         if func is None:
@@ -932,15 +904,9 @@ def run_coreil(doc: dict) -> int:
         if not isinstance(doc, dict):
             raise ValueError("document must be an object")
 
-        # Core IL Version Check
-        # v1.4 is the current version (consolidates Math + JSON/Regex)
-        # v1.3 adds JSON and Regex operations
-        # v1.2 adds Math operations
-        # v1.1 adds Record support
-        # v1.0 is stable and frozen
-        # v0.1-v0.5 are accepted for backward compatibility
-        if doc.get("version") not in {"coreil-0.1", "coreil-0.2", "coreil-0.3", "coreil-0.4", "coreil-0.5", "coreil-1.0", "coreil-1.1", "coreil-1.2", "coreil-1.3", "coreil-1.4", "coreil-1.5", "coreil-1.6"}:
-            raise ValueError("version must be 'coreil-0.1', 'coreil-0.2', 'coreil-0.3', 'coreil-0.4', 'coreil-0.5', 'coreil-1.0', 'coreil-1.1', 'coreil-1.2', 'coreil-1.3', 'coreil-1.4', 'coreil-1.5', or 'coreil-1.6'")
+        # Core IL Version Check (uses SUPPORTED_VERSIONS from versions.py as single source of truth)
+        if doc.get("version") not in SUPPORTED_VERSIONS:
+            raise ValueError(get_version_error_message())
         body = doc.get("body")
         if not isinstance(body, list):
             raise ValueError("body must be a list")

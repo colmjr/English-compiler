@@ -42,14 +42,3 @@ class GeminiFrontend(BaseFrontend):
 
         raw_text = response.text
         return self._parse_json_response(raw_text, "Gemini")
-
-
-# Convenience function for direct use
-def generate_coreil_from_text(source_text: str) -> dict:
-    """Generate Core IL from source text using Gemini.
-
-    This is a convenience function that creates a GeminiFrontend instance
-    and calls its generate_coreil_from_text method.
-    """
-    frontend = GeminiFrontend()
-    return frontend.generate_coreil_from_text(source_text)
