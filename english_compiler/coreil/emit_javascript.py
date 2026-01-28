@@ -1,7 +1,7 @@
 """JavaScript code generator for Core IL.
 
-This file implements Core IL v1.6 to JavaScript (ES Modules) transpilation.
-Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
+This file implements Core IL v1.7 to JavaScript (ES Modules) transpilation.
+Core IL v1.7 adds Break and Continue loop control statements.
 
 The generated JavaScript code:
 - Matches interpreter semantics exactly
@@ -17,15 +17,17 @@ The generated JavaScript code:
 - Regex operations (match, findall, replace, split)
 - Array slicing (Slice)
 - Unary not (Not)
+- Break and Continue loop control
 - OOP-style method calls and property access (Tier 2)
 - Imports Node.js modules only for Tier 2 ExternalCall operations
 
 Version history:
+- v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Initial JavaScript backend (matching Python emit.py)
 
-Backward compatibility: Accepts v0.1 through v1.6 programs.
+Backward compatibility: Accepts v0.1 through v1.7 programs.
 """
 
 from __future__ import annotations
@@ -822,6 +824,52 @@ class JavaScriptEmitter(BaseEmitter):
 
         arg_strs = [self.emit_expr(arg) for arg in args]
         self.emit_line(f"{name}({', '.join(arg_strs)});")
+
+    def _emit_break(self, node: dict) -> None:
+        self.emit_line("break;")
+
+    def _emit_continue(self, node: dict) -> None:
+        self.emit_line("continue;")
+
+    def _emit_for(self, node: dict) -> None:
+        var = node.get("var")
+        iter_expr = node.get("iter")
+        body = node.get("body", [])
+
+        # Handle Range iterator
+        if isinstance(iter_expr, dict) and iter_expr.get("type") == "Range":
+            from_val = self.emit_expr(iter_expr.get("from"))
+            to_val = self.emit_expr(iter_expr.get("to"))
+            inclusive = iter_expr.get("inclusive", False)
+            cmp_op = "<=" if inclusive else "<"
+            self.emit_line(f"for (let {var} = {from_val}; {var} {cmp_op} {to_val}; {var}++) {{")
+        else:
+            iter_code = self.emit_expr(iter_expr)
+            self.emit_line(f"for (const {var} of {iter_code}) {{")
+
+        self.indent_level += 1
+        if not body:
+            self.emit_line("// empty")
+        else:
+            for stmt in body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+        self.emit_line("}")
+
+    def _emit_for_each(self, node: dict) -> None:
+        var = node.get("var")
+        iter_code = self.emit_expr(node.get("iter"))
+        body = node.get("body", [])
+
+        self.emit_line(f"for (const {var} of {iter_code}) {{")
+        self.indent_level += 1
+        if not body:
+            self.emit_line("// empty")
+        else:
+            for stmt in body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+        self.emit_line("}")
 
 
 def emit_javascript(doc: dict) -> str:

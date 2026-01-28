@@ -4,6 +4,7 @@ This module is the single source of truth for all Core IL version information.
 All other modules should import version constants from here.
 
 Version History:
+- v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2)
 - v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
@@ -20,7 +21,7 @@ Version History:
 from __future__ import annotations
 
 # Current stable version
-COREIL_VERSION = "coreil-1.6"
+COREIL_VERSION = "coreil-1.7"
 
 # All supported versions (for backward compatibility)
 SUPPORTED_VERSIONS = frozenset([
@@ -36,6 +37,7 @@ SUPPORTED_VERSIONS = frozenset([
     "coreil-1.4",
     "coreil-1.5",
     "coreil-1.6",
+    "coreil-1.7",
 ])
 
 # Package version (semantic versioning)
