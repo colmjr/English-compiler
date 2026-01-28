@@ -1,15 +1,20 @@
 """Lower Core IL syntax sugar into core constructs.
 
-This file implements Core IL v1.0 lowering pass.
-Core IL v1.0 is stable and frozen - no breaking changes will be made.
+This file implements Core IL v1.7 lowering pass.
+Core IL v1.7 adds Break and Continue loop control statements.
 
 Lowering transformations:
-- For loops → While loops with manual counter management
-- ForEach loops → While loops with index-based iteration
+- For/ForEach loops are PRESERVED (not lowered to While) to properly
+  support Break and Continue statements. Expressions inside them are lowered.
+- Range expressions inside For loops are preserved.
 
-All other nodes pass through unchanged.
+All other nodes (including Break, Continue) pass through unchanged.
 
-Backward compatibility: Accepts v0.1 through v1.0 programs.
+Note: Prior to v1.7, For/ForEach were lowered to While loops. This was
+changed to support Continue correctly (Continue in a lowered While loop
+would skip the increment, causing infinite loops).
+
+Backward compatibility: Accepts v0.1 through v1.7 programs.
 """
 
 from __future__ import annotations
@@ -136,10 +141,10 @@ def _lower_statement(stmt: Any, ctx: LoweringContext) -> list[dict]:
 
 
 def _lower_for(stmt: dict, ctx: LoweringContext) -> list[dict]:
-    """Lower For statement.
+    """Preserve For statement but lower expressions inside it.
 
-    If iter is Range: lower to While with counter (existing behavior)
-    If iter is not Range: treat as ForEach and lower to indexed iteration
+    For/ForEach are kept as-is (not lowered to While) to properly support
+    Continue statements. The backends emit native for loops.
     """
     var = stmt.get("var")
     if not isinstance(var, str) or not var:
@@ -151,74 +156,21 @@ def _lower_for(stmt: dict, ctx: LoweringContext) -> list[dict]:
     if not isinstance(body, list):
         raise ValueError("For.body must be a list")
 
-    # If iter is not Range, treat as ForEach
-    if iter_expr.get("type") != "Range":
-        foreach_stmt = {
-            "type": "ForEach",
-            "var": var,
-            "iter": iter_expr,
-            "body": body,
-        }
-        return _lower_foreach(foreach_stmt, ctx)
-
-    # Original For+Range lowering
-    from_expr = iter_expr.get("from")
-    to_expr = iter_expr.get("to")
-    if from_expr is None or to_expr is None:
-        raise ValueError("Range must include from and to")
-
-    inclusive = iter_expr.get("inclusive", False)
-    if inclusive not in {True, False}:
-        raise ValueError("Range.inclusive must be a boolean when provided")
-
-    init_stmt = {
-        "type": "Let",
-        "name": var,
-        "value": _lower_expr(from_expr),
+    # Lower expressions inside the For but keep the For structure
+    lowered = {
+        "type": "For",
+        "var": var,
+        "iter": _lower_expr(iter_expr),
+        "body": _lower_statements(body, ctx),
     }
-
-    compare_op = "<=" if inclusive else "<"
-    while_test = {
-        "type": "Binary",
-        "op": compare_op,
-        "left": {"type": "Var", "name": var},
-        "right": _lower_expr(to_expr),
-    }
-
-    lowered_body = _lower_statements(body, ctx)
-    increment = {
-        "type": "Assign",
-        "name": var,
-        "value": {
-            "type": "Binary",
-            "op": "+",
-            "left": {"type": "Var", "name": var},
-            "right": {"type": "Literal", "value": 1},
-        },
-    }
-
-    while_stmt = {
-        "type": "While",
-        "test": while_test,
-        "body": lowered_body + [increment],
-    }
-
-    return [init_stmt, while_stmt]
+    return [lowered]
 
 
 def _lower_foreach(stmt: dict, ctx: LoweringContext) -> list[dict]:
-    """Lower ForEach to While + Index + Length.
+    """Preserve ForEach statement but lower expressions inside it.
 
-    ForEach var in iter: body
-
-    Becomes:
-
-    Let __iter_N = iter
-    Let __i_N = 0
-    While __i_N < Length(__iter_N):
-        Let var = Index(__iter_N, __i_N)
-        <lowered body>
-        Assign __i_N = __i_N + 1
+    ForEach is kept as-is (not lowered to While) to properly support
+    Continue statements. The backends emit native for loops.
     """
     var = stmt.get("var")
     if not isinstance(var, str) or not var:
@@ -230,67 +182,14 @@ def _lower_foreach(stmt: dict, ctx: LoweringContext) -> list[dict]:
     if not isinstance(body, list):
         raise ValueError("ForEach.body must be a list")
 
-    # Generate unique temp variable names using context
-    temp_suffix = ctx.next_temp_suffix()
-    iter_var = f"__iter_{temp_suffix}"
-    index_var = f"__i_{temp_suffix}"
-
-    # Store the iterable in a temp variable
-    iter_let = {
-        "type": "Let",
-        "name": iter_var,
-        "value": _lower_expr(iter_expr),
+    # Lower expressions inside the ForEach but keep the ForEach structure
+    lowered = {
+        "type": "ForEach",
+        "var": var,
+        "iter": _lower_expr(iter_expr),
+        "body": _lower_statements(body, ctx),
     }
-
-    # Initialize index to 0
-    index_init = {
-        "type": "Let",
-        "name": index_var,
-        "value": {"type": "Literal", "value": 0},
-    }
-
-    # While test: __i_N < Length(__iter_N)
-    while_test = {
-        "type": "Binary",
-        "op": "<",
-        "left": {"type": "Var", "name": index_var},
-        "right": {
-            "type": "Length",
-            "base": {"type": "Var", "name": iter_var},
-        },
-    }
-
-    # Loop body: Let var = Index(__iter_N, __i_N); <body>; Assign __i_N = __i_N + 1
-    var_assignment = {
-        "type": "Let",
-        "name": var,
-        "value": {
-            "type": "Index",
-            "base": {"type": "Var", "name": iter_var},
-            "index": {"type": "Var", "name": index_var},
-        },
-    }
-
-    lowered_body = _lower_statements(body, ctx)
-
-    index_increment = {
-        "type": "Assign",
-        "name": index_var,
-        "value": {
-            "type": "Binary",
-            "op": "+",
-            "left": {"type": "Var", "name": index_var},
-            "right": {"type": "Literal", "value": 1},
-        },
-    }
-
-    while_stmt = {
-        "type": "While",
-        "test": while_test,
-        "body": [var_assignment] + lowered_body + [index_increment],
-    }
-
-    return [iter_let, index_init, while_stmt]
+    return [lowered]
 
 
 def _lower_expr(expr: Any) -> Any:
@@ -298,8 +197,15 @@ def _lower_expr(expr: Any) -> Any:
         return expr
 
     node_type = expr.get("type")
+    # Range expressions are preserved for For loops
     if node_type == "Range":
-        raise ValueError("Range expressions must be used with For")
+        # Lower the from/to expressions inside the Range but keep the Range structure
+        lowered = dict(expr)
+        if "from" in lowered:
+            lowered["from"] = _lower_expr(lowered["from"])
+        if "to" in lowered:
+            lowered["to"] = _lower_expr(lowered["to"])
+        return lowered
 
     if node_type == "Binary":
         return {

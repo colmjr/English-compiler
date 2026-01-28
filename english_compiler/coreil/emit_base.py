@@ -118,6 +118,10 @@ class BaseEmitter(ABC):
             "FuncDef": self._emit_func_def,
             "Return": self._emit_return,
             "Call": self._emit_call_stmt,
+            "Break": self._emit_break,
+            "Continue": self._emit_continue,
+            "For": self._emit_for,
+            "ForEach": self._emit_for_each,
         }
 
     @property
@@ -496,6 +500,26 @@ class BaseEmitter(ABC):
     @abstractmethod
     def _emit_call_stmt(self, node: dict) -> None:
         """Emit function call statement."""
+        pass
+
+    @abstractmethod
+    def _emit_break(self, node: dict) -> None:
+        """Emit break statement."""
+        pass
+
+    @abstractmethod
+    def _emit_continue(self, node: dict) -> None:
+        """Emit continue statement."""
+        pass
+
+    @abstractmethod
+    def _emit_for(self, node: dict) -> None:
+        """Emit for loop statement."""
+        pass
+
+    @abstractmethod
+    def _emit_for_each(self, node: dict) -> None:
+        """Emit foreach loop statement."""
         pass
 
     # ========== Utility Methods ==========

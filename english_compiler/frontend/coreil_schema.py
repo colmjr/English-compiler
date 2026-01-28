@@ -1,9 +1,10 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.6 structure for LLM frontends.
-Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
+This schema defines Core IL v1.7 structure for LLM frontends.
+Core IL v1.7 adds Break and Continue loop control statements.
 
 Version history:
+- v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated Math, JSON, and Regex operations
@@ -12,8 +13,8 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.6 for validation,
-but LLMs should generate v1.6 programs.
+Backward compatibility: Schema accepts v0.1 through v1.7 for validation,
+but LLMs should generate v1.7 programs.
 """
 
 from english_compiler.coreil.versions import SUPPORTED_VERSIONS
@@ -73,6 +74,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/popback_stmt"},
                 {"$ref": "#/definitions/heappush_stmt"},
                 {"$ref": "#/definitions/heappop_stmt"},
+                {"$ref": "#/definitions/break_stmt"},
+                {"$ref": "#/definitions/continue_stmt"},
             ]
         },
         "let_stmt": {
@@ -667,6 +670,23 @@ COREIL_JSON_SCHEMA = {
                 "type": {"const": "HeapPop"},
                 "base": {"$ref": "#/definitions/expr"},
                 "target": {"type": "string"},
+            },
+        },
+        # Break and Continue (v1.7)
+        "break_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type"],
+            "properties": {
+                "type": {"const": "Break"},
+            },
+        },
+        "continue_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type"],
+            "properties": {
+                "type": {"const": "Continue"},
             },
         },
         # Math operations (v1.2)

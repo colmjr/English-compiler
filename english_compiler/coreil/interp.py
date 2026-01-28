@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.6 semantics interpreter.
-Core IL v1.6 adds OOP-style method calls and property access (Tier 2).
+This file implements Core IL v1.7 semantics interpreter.
+Core IL v1.7 adds Break and Continue loop control statements.
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -16,9 +16,11 @@ Key features:
 - Regex operations (match, findall, replace, split)
 - Array slicing (Slice)
 - Unary not (Not)
+- Break and Continue loop control
 - Recursion limit: 100 calls
 
 Version history:
+- v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Consolidated Math, JSON, and Regex operations
@@ -27,7 +29,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.6 programs.
+Backward compatibility: Accepts v0.1 through v1.7 programs.
 """
 
 from __future__ import annotations
@@ -50,11 +52,19 @@ class _ReturnSignal(Exception):
     value: Any
 
 
-def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -> int:
-    from english_compiler.coreil.lower import lower_coreil
+class _BreakSignal(Exception):
+    """Signal to break out of a loop."""
+    pass
 
-    # Lower syntax sugar (For/Range) to core constructs (While)
-    doc = lower_coreil(doc)
+
+class _ContinueSignal(Exception):
+    """Signal to continue to the next iteration of a loop."""
+    pass
+
+
+def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -> int:
+    # Note: For/ForEach are handled natively (no lowering needed)
+    # This ensures Continue works correctly in for loops
 
     global_env: dict[str, Any] = {}
     functions: dict[str, dict] = {}
@@ -714,7 +724,75 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
             if not isinstance(body, list):
                 raise ValueError("While body must be a list")
             while eval_expr(node.get("test"), local_env, call_depth):
-                exec_block(body, local_env, in_func, call_depth)
+                try:
+                    exec_block(body, local_env, in_func, call_depth)
+                except _ContinueSignal:
+                    continue
+                except _BreakSignal:
+                    break
+            return
+
+        if node_type == "For":
+            var = node.get("var")
+            if not isinstance(var, str):
+                raise ValueError("For var must be a string")
+            iter_expr = node.get("iter")
+            body = node.get("body")
+            if not isinstance(body, list):
+                raise ValueError("For body must be a list")
+
+            # Determine where to store loop variable
+            env = local_env if (in_func and local_env is not None) else global_env
+
+            # Evaluate iterator
+            if isinstance(iter_expr, dict) and iter_expr.get("type") == "Range":
+                from_val = eval_expr(iter_expr.get("from"), local_env, call_depth)
+                to_val = eval_expr(iter_expr.get("to"), local_env, call_depth)
+                inclusive = iter_expr.get("inclusive", False)
+                if not isinstance(from_val, int) or not isinstance(to_val, int):
+                    raise ValueError("Range bounds must be integers")
+                end = to_val + 1 if inclusive else to_val
+                iterator = range(from_val, end)
+            else:
+                iterator = eval_expr(iter_expr, local_env, call_depth)
+                if not isinstance(iterator, (list, tuple)):
+                    raise ValueError("For iterator must be an array or tuple")
+
+            for val in iterator:
+                env[var] = val
+                try:
+                    exec_block(body, local_env, in_func, call_depth)
+                except _ContinueSignal:
+                    continue
+                except _BreakSignal:
+                    break
+            return
+
+        if node_type == "ForEach":
+            var = node.get("var")
+            if not isinstance(var, str):
+                raise ValueError("ForEach var must be a string")
+            iter_expr = node.get("iter")
+            body = node.get("body")
+            if not isinstance(body, list):
+                raise ValueError("ForEach body must be a list")
+
+            # Determine where to store loop variable
+            env = local_env if (in_func and local_env is not None) else global_env
+
+            # Evaluate iterator
+            iterator = eval_expr(iter_expr, local_env, call_depth)
+            if not isinstance(iterator, (list, tuple)):
+                raise ValueError("ForEach iterator must be an array or tuple")
+
+            for val in iterator:
+                env[var] = val
+                try:
+                    exec_block(body, local_env, in_func, call_depth)
+                except _ContinueSignal:
+                    continue
+                except _BreakSignal:
+                    break
             return
 
         if node_type == "Call":
@@ -888,6 +966,12 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
             else:
                 value = None
             raise _ReturnSignal(value)
+
+        if node_type == "Break":
+            raise _BreakSignal()
+
+        if node_type == "Continue":
+            raise _ContinueSignal()
 
         raise ValueError(f"unexpected statement type '{node_type}'")
 
