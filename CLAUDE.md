@@ -85,12 +85,15 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
 
 - `english_compiler/` - Main package
   - `coreil/` - Core IL implementation
+    - `constants.py` - Shared constants (BINARY_OPS, MATH_OPS, etc.)
+    - `versions.py` - Version constants and utilities (single source of truth)
     - `validate.py` - Core IL validation (structural and semantic)
     - `interp.py` - Reference interpreter (deterministic execution)
     - `emit.py` - Python code generator (transpilation)
+    - `emit_utils.py` - Shared utilities for code generation backends
     - `lower.py` - Lowering pass (For/ForEach → While)
   - `frontend/` - LLM frontends
-    - `__init__.py` - Factory function `get_frontend()` for provider selection
+    - `__init__.py` - Factory functions: `get_frontend()`, `generate_coreil_from_text()`, `list_available_frontends()`
     - `base.py` - Abstract base class with shared logic
     - `claude.py` - Claude API integration (Anthropic)
     - `openai_provider.py` - OpenAI API integration
@@ -98,7 +101,10 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
     - `qwen.py` - Alibaba Qwen API integration (DashScope or OpenAI-compatible)
     - `mock_llm.py` - Mock generator (deterministic, for testing)
     - `prompt.txt` - System prompt for Core IL generation (shared)
+    - `prompt_error.txt` - System prompt for error explanation
+    - `error_explainer.py` - LLM-powered error explanation module
     - `coreil_schema.py` - JSON schema for Core IL v1.6 (shared)
+    - `experimental/` - Experimental direct compilation mode (bypasses Core IL)
   - `__main__.py` - CLI entry point
 
 - `tests/` - Test suite
