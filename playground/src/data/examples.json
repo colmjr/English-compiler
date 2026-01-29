@@ -1,0 +1,182 @@
+{
+  "generatedAt": "2026-01-29T13:57:32.730Z",
+  "count": 22,
+  "examples": [
+    {
+      "id": "for_sum",
+      "name": "For Loop Sum",
+      "category": "Basics",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\"type\": \"Let\", \"name\": \"sum\", \"value\": {\"type\": \"Literal\", \"value\": 0}},\n    {\n      \"type\": \"For\",\n      \"var\": \"i\",\n      \"iter\": {\"type\": \"Range\", \"from\": {\"type\": \"Literal\", \"value\": 1}, \"to\": {\"type\": \"Literal\", \"value\": 6}},\n      \"body\": [\n        {\"type\": \"Assign\", \"name\": \"sum\", \"value\": {\"type\": \"Binary\", \"op\": \"+\", \"left\": {\"type\": \"Var\", \"name\": \"sum\"}, \"right\": {\"type\": \"Var\", \"name\": \"i\"}}}\n      ]\n    },\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Var\", \"name\": \"sum\"}]}\n  ]\n}\n",
+      "expectedOutput": "15\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "foreach_print",
+      "name": "ForEach Print",
+      "category": "Basics",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"arr\",\n      \"value\": {\"type\": \"Array\", \"items\": [{\"type\": \"Literal\", \"value\": 1}, {\"type\": \"Literal\", \"value\": 2}, {\"type\": \"Literal\", \"value\": 3}]}\n    },\n    {\n      \"type\": \"ForEach\",\n      \"var\": \"x\",\n      \"iter\": {\"type\": \"Var\", \"name\": \"arr\"},\n      \"body\": [\n        {\"type\": \"Print\", \"args\": [{\"type\": \"Var\", \"name\": \"x\"}]}\n      ]\n    }\n  ]\n}\n",
+      "expectedOutput": "1\n2\n3\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "hello",
+      "name": "Hello World",
+      "category": "Basics",
+      "source": "{\n  \"ambiguities\": [],\n  \"body\": [\n    {\n      \"args\": [\n        {\n          \"type\": \"Literal\",\n          \"value\": \"hello\"\n        }\n      ],\n      \"type\": \"Print\"\n    }\n  ],\n  \"version\": \"coreil-1.2\"\n}\n",
+      "expectedOutput": "hello\n",
+      "version": "coreil-1.2"
+    },
+    {
+      "id": "if",
+      "name": "If Statement",
+      "category": "Basics",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"x\",\n      \"value\": {\"type\": \"Literal\", \"value\": 4}\n    },\n    {\n      \"type\": \"If\",\n      \"test\": {\"type\": \"Binary\", \"op\": \"==\", \"left\": {\"type\": \"Binary\", \"op\": \"%\", \"left\": {\"type\": \"Var\", \"name\": \"x\"}, \"right\": {\"type\": \"Literal\", \"value\": 2}}, \"right\": {\"type\": \"Literal\", \"value\": 0}},\n      \"then\": [{\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"even\"}]}],\n      \"else\": [{\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"odd\"}]}]\n    }\n  ]\n}\n",
+      "expectedOutput": "even\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "array_index",
+      "name": "Array Indexing",
+      "category": "Arrays",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"arr\",\n      \"value\": {\"type\": \"Array\", \"items\": [{\"type\": \"Literal\", \"value\": 2}, {\"type\": \"Literal\", \"value\": 4}, {\"type\": \"Literal\", \"value\": 6}]}\n    },\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Index\", \"base\": {\"type\": \"Var\", \"name\": \"arr\"}, \"index\": {\"type\": \"Literal\", \"value\": 1}}]}\n  ]\n}\n",
+      "expectedOutput": "4\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "array_length",
+      "name": "Array Length",
+      "category": "Arrays",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"arr\",\n      \"value\": {\"type\": \"Array\", \"items\": [{\"type\": \"Literal\", \"value\": 1}, {\"type\": \"Literal\", \"value\": 2}, {\"type\": \"Literal\", \"value\": 3}]}\n    },\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Length\", \"base\": {\"type\": \"Var\", \"name\": \"arr\"}}]}\n  ]\n}\n",
+      "expectedOutput": "3\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "array_setindex",
+      "name": "Array Set Index",
+      "category": "Arrays",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"arr\",\n      \"value\": {\"type\": \"Array\", \"items\": [{\"type\": \"Literal\", \"value\": 1}, {\"type\": \"Literal\", \"value\": 2}, {\"type\": \"Literal\", \"value\": 3}]}\n    },\n    {\n      \"type\": \"SetIndex\",\n      \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n      \"index\": {\"type\": \"Literal\", \"value\": 1},\n      \"value\": {\"type\": \"Literal\", \"value\": 99}\n    },\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Index\", \"base\": {\"type\": \"Var\", \"name\": \"arr\"}, \"index\": {\"type\": \"Literal\", \"value\": 1}}]}\n  ]\n}\n",
+      "expectedOutput": "99\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "slice_test",
+      "name": "Array Slicing",
+      "category": "Arrays",
+      "source": "{\n  \"version\": \"coreil-1.5\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"arr\",\n      \"value\": {\n        \"type\": \"Array\",\n        \"items\": [\n          {\"type\": \"Literal\", \"value\": 1},\n          {\"type\": \"Literal\", \"value\": 2},\n          {\"type\": \"Literal\", \"value\": 3},\n          {\"type\": \"Literal\", \"value\": 4},\n          {\"type\": \"Literal\", \"value\": 5}\n        ]\n      }\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"slice1\",\n      \"value\": {\n        \"type\": \"Slice\",\n        \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n        \"start\": {\"type\": \"Literal\", \"value\": 1},\n        \"end\": {\"type\": \"Literal\", \"value\": 4}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"slice1\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"slice2\",\n      \"value\": {\n        \"type\": \"Slice\",\n        \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n        \"start\": {\"type\": \"Literal\", \"value\": 0},\n        \"end\": {\"type\": \"Literal\", \"value\": 2}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"slice2\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"slice3\",\n      \"value\": {\n        \"type\": \"Slice\",\n        \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n        \"start\": {\"type\": \"Literal\", \"value\": 3},\n        \"end\": {\"type\": \"Literal\", \"value\": 5}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"slice3\"}]\n    }\n  ]\n}\n",
+      "expectedOutput": "[2, 3, 4]\n[1, 2]\n[4, 5]\n",
+      "version": "coreil-1.5"
+    },
+    {
+      "id": "array_negative_index",
+      "name": "Negative Indexing",
+      "category": "Arrays",
+      "source": "{\n  \"version\": \"coreil-1.5\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"arr\",\n      \"value\": {\n        \"type\": \"Array\",\n        \"items\": [\n          {\"type\": \"Literal\", \"value\": 1},\n          {\"type\": \"Literal\", \"value\": 2},\n          {\"type\": \"Literal\", \"value\": 3},\n          {\"type\": \"Literal\", \"value\": 4},\n          {\"type\": \"Literal\", \"value\": 5}\n        ]\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\n          \"type\": \"Index\",\n          \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n          \"index\": {\"type\": \"Literal\", \"value\": -1}\n        }\n      ]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\n          \"type\": \"Index\",\n          \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n          \"index\": {\"type\": \"Literal\", \"value\": -2}\n        }\n      ]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\n          \"type\": \"Index\",\n          \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n          \"index\": {\"type\": \"Literal\", \"value\": -5}\n        }\n      ]\n    },\n    {\n      \"type\": \"SetIndex\",\n      \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n      \"index\": {\"type\": \"Literal\", \"value\": -1},\n      \"value\": {\"type\": \"Literal\", \"value\": 99}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"arr\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"tup\",\n      \"value\": {\n        \"type\": \"Tuple\",\n        \"items\": [\n          {\"type\": \"Literal\", \"value\": \"a\"},\n          {\"type\": \"Literal\", \"value\": \"b\"},\n          {\"type\": \"Literal\", \"value\": \"c\"}\n        ]\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\n          \"type\": \"Index\",\n          \"base\": {\"type\": \"Var\", \"name\": \"tup\"},\n          \"index\": {\"type\": \"Literal\", \"value\": -1}\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedOutput": "5\n4\n1\n[1, 2, 3, 4, 99]\nc\n",
+      "version": "coreil-1.5"
+    },
+    {
+      "id": "fn_add",
+      "name": "Function Add",
+      "category": "Functions",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"FuncDef\",\n      \"name\": \"add\",\n      \"params\": [\"a\", \"b\"],\n      \"body\": [\n        {\"type\": \"Return\", \"value\": {\"type\": \"Binary\", \"op\": \"+\", \"left\": {\"type\": \"Var\", \"name\": \"a\"}, \"right\": {\"type\": \"Var\", \"name\": \"b\"}}}\n      ]\n    },\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Call\", \"name\": \"add\", \"args\": [{\"type\": \"Literal\", \"value\": 2}, {\"type\": \"Literal\", \"value\": 3}]}]}\n  ]\n}\n",
+      "expectedOutput": "5\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "queue_demo",
+      "name": "Deque (Queue)",
+      "category": "Data Structures",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"q\",\n      \"value\": {\"type\": \"DequeNew\"}\n    },\n    {\n      \"type\": \"PushBack\",\n      \"base\": {\"type\": \"Var\", \"name\": \"q\"},\n      \"value\": {\"type\": \"Literal\", \"value\": 1}\n    },\n    {\n      \"type\": \"PushBack\",\n      \"base\": {\"type\": \"Var\", \"name\": \"q\"},\n      \"value\": {\"type\": \"Literal\", \"value\": 2}\n    },\n    {\n      \"type\": \"PushBack\",\n      \"base\": {\"type\": \"Var\", \"name\": \"q\"},\n      \"value\": {\"type\": \"Literal\", \"value\": 3}\n    },\n    {\n      \"type\": \"PopFront\",\n      \"base\": {\"type\": \"Var\", \"name\": \"q\"},\n      \"target\": \"x\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"x\"}]\n    },\n    {\n      \"type\": \"PopFront\",\n      \"base\": {\"type\": \"Var\", \"name\": \"q\"},\n      \"target\": \"y\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"y\"}]\n    },\n    {\n      \"type\": \"PopFront\",\n      \"base\": {\"type\": \"Var\", \"name\": \"q\"},\n      \"target\": \"z\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"z\"}]\n    }\n  ]\n}\n",
+      "expectedOutput": "1\n2\n3\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "heap_demo",
+      "name": "Heap (Priority Queue)",
+      "category": "Data Structures",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"ambiguities\": [],\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"h\",\n      \"value\": {\"type\": \"HeapNew\"}\n    },\n    {\n      \"type\": \"HeapPush\",\n      \"base\": {\"type\": \"Var\", \"name\": \"h\"},\n      \"priority\": {\"type\": \"Literal\", \"value\": 5},\n      \"value\": {\"type\": \"Literal\", \"value\": \"five\"}\n    },\n    {\n      \"type\": \"HeapPush\",\n      \"base\": {\"type\": \"Var\", \"name\": \"h\"},\n      \"priority\": {\"type\": \"Literal\", \"value\": 1},\n      \"value\": {\"type\": \"Literal\", \"value\": \"one\"}\n    },\n    {\n      \"type\": \"HeapPush\",\n      \"base\": {\"type\": \"Var\", \"name\": \"h\"},\n      \"priority\": {\"type\": \"Literal\", \"value\": 3},\n      \"value\": {\"type\": \"Literal\", \"value\": \"three\"}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\"type\": \"Literal\", \"value\": \"size:\"},\n        {\"type\": \"HeapSize\", \"base\": {\"type\": \"Var\", \"name\": \"h\"}}\n      ]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\"type\": \"Literal\", \"value\": \"peek:\"},\n        {\"type\": \"HeapPeek\", \"base\": {\"type\": \"Var\", \"name\": \"h\"}}\n      ]\n    },\n    {\n      \"type\": \"HeapPop\",\n      \"base\": {\"type\": \"Var\", \"name\": \"h\"},\n      \"target\": \"val1\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\"type\": \"Literal\", \"value\": \"popped:\"},\n        {\"type\": \"Var\", \"name\": \"val1\"}\n      ]\n    },\n    {\n      \"type\": \"HeapPop\",\n      \"base\": {\"type\": \"Var\", \"name\": \"h\"},\n      \"target\": \"val2\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\"type\": \"Literal\", \"value\": \"popped:\"},\n        {\"type\": \"Var\", \"name\": \"val2\"}\n      ]\n    },\n    {\n      \"type\": \"HeapPop\",\n      \"base\": {\"type\": \"Var\", \"name\": \"h\"},\n      \"target\": \"val3\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\"type\": \"Literal\", \"value\": \"popped:\"},\n        {\"type\": \"Var\", \"name\": \"val3\"}\n      ]\n    }\n  ]\n}\n",
+      "expectedOutput": "size: 3\npeek: one\npopped: one\npopped: three\npopped: five\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "heap_kth_smallest",
+      "name": "Heap: Kth Smallest",
+      "category": "Data Structures",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"ambiguities\": [],\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"nums\",\n      \"value\": {\"type\": \"Array\", \"items\": [\n        {\"type\": \"Literal\", \"value\": 7},\n        {\"type\": \"Literal\", \"value\": 2},\n        {\"type\": \"Literal\", \"value\": 10},\n        {\"type\": \"Literal\", \"value\": 4},\n        {\"type\": \"Literal\", \"value\": 1},\n        {\"type\": \"Literal\", \"value\": 8},\n        {\"type\": \"Literal\", \"value\": 5}\n      ]}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"k\",\n      \"value\": {\"type\": \"Literal\", \"value\": 3}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"heap\",\n      \"value\": {\"type\": \"HeapNew\"}\n    },\n    {\n      \"type\": \"ForEach\",\n      \"var\": \"n\",\n      \"iter\": {\"type\": \"Var\", \"name\": \"nums\"},\n      \"body\": [\n        {\n          \"type\": \"HeapPush\",\n          \"base\": {\"type\": \"Var\", \"name\": \"heap\"},\n          \"priority\": {\"type\": \"Var\", \"name\": \"n\"},\n          \"value\": {\"type\": \"Var\", \"name\": \"n\"}\n        }\n      ]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"i\",\n      \"value\": {\"type\": \"Literal\", \"value\": 1}\n    },\n    {\n      \"type\": \"While\",\n      \"test\": {\"type\": \"Binary\", \"op\": \"<\", \"left\": {\"type\": \"Var\", \"name\": \"i\"}, \"right\": {\"type\": \"Var\", \"name\": \"k\"}},\n      \"body\": [\n        {\"type\": \"HeapPop\", \"base\": {\"type\": \"Var\", \"name\": \"heap\"}, \"target\": \"_discard\"},\n        {\"type\": \"Assign\", \"name\": \"i\", \"value\": {\"type\": \"Binary\", \"op\": \"+\", \"left\": {\"type\": \"Var\", \"name\": \"i\"}, \"right\": {\"type\": \"Literal\", \"value\": 1}}}\n      ]\n    },\n    {\n      \"type\": \"HeapPop\",\n      \"base\": {\"type\": \"Var\", \"name\": \"heap\"},\n      \"target\": \"kth\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Literal\", \"value\": \"3rd smallest:\"}, {\"type\": \"Var\", \"name\": \"kth\"}]\n    }\n  ]\n}\n",
+      "expectedOutput": "3rd smallest: 4\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "map_demo",
+      "name": "Map/Dictionary",
+      "category": "Data Structures",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"m\",\n      \"value\": {\"type\": \"Map\", \"items\": [{\"key\": {\"type\": \"Literal\", \"value\": \"a\"}, \"value\": {\"type\": \"Literal\", \"value\": 1}}, {\"key\": {\"type\": \"Literal\", \"value\": \"b\"}, \"value\": {\"type\": \"Literal\", \"value\": 2}}]}\n    },\n    {\"type\": \"Print\", \"args\": [{\"type\": \"GetDefault\", \"base\": {\"type\": \"Var\", \"name\": \"m\"}, \"key\": {\"type\": \"Literal\", \"value\": \"b\"}, \"default\": {\"type\": \"Literal\", \"value\": 0}}]}\n  ]\n}\n",
+      "expectedOutput": "2\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "record_demo",
+      "name": "Records",
+      "category": "Data Structures",
+      "source": "{\n  \"ambiguities\": [],\n  \"body\": [\n    {\n      \"args\": [\n        {\n          \"type\": \"Literal\",\n          \"value\": \"unimplemented\"\n        }\n      ],\n      \"type\": \"Print\"\n    }\n  ],\n  \"version\": \"coreil-1.2\"\n}\n",
+      "expectedOutput": "unimplemented\n",
+      "version": "coreil-1.2"
+    },
+    {
+      "id": "bubble_sort",
+      "name": "Bubble Sort",
+      "category": "Algorithms",
+      "source": "{\n  \"ambiguities\": [],\n  \"body\": [\n    {\n      \"name\": \"arr\",\n      \"type\": \"Let\",\n      \"value\": {\n        \"items\": [\n          {\"type\": \"Literal\", \"value\": 3},\n          {\"type\": \"Literal\", \"value\": 4},\n          {\"type\": \"Literal\", \"value\": 2},\n          {\"type\": \"Literal\", \"value\": 1},\n          {\"type\": \"Literal\", \"value\": 6},\n          {\"type\": \"Literal\", \"value\": 5},\n          {\"type\": \"Literal\", \"value\": 7}\n        ],\n        \"type\": \"Array\"\n      }\n    },\n    {\n      \"name\": \"n\",\n      \"type\": \"Let\",\n      \"value\": {\n        \"base\": {\"name\": \"arr\", \"type\": \"Var\"},\n        \"type\": \"Length\"\n      }\n    },\n    {\n      \"name\": \"i\",\n      \"type\": \"Let\",\n      \"value\": {\"type\": \"Literal\", \"value\": 0}\n    },\n    {\n      \"type\": \"While\",\n      \"test\": {\n        \"left\": {\"name\": \"i\", \"type\": \"Var\"},\n        \"op\": \"<\",\n        \"right\": {\"name\": \"n\", \"type\": \"Var\"},\n        \"type\": \"Binary\"\n      },\n      \"body\": [\n        {\n          \"name\": \"j\",\n          \"type\": \"Let\",\n          \"value\": {\"type\": \"Literal\", \"value\": 0}\n        },\n        {\n          \"type\": \"While\",\n          \"test\": {\n            \"left\": {\"name\": \"j\", \"type\": \"Var\"},\n            \"op\": \"<\",\n            \"right\": {\n              \"left\": {\n                \"left\": {\"name\": \"n\", \"type\": \"Var\"},\n                \"op\": \"-\",\n                \"right\": {\"name\": \"i\", \"type\": \"Var\"},\n                \"type\": \"Binary\"\n              },\n              \"op\": \"-\",\n              \"right\": {\"type\": \"Literal\", \"value\": 1},\n              \"type\": \"Binary\"\n            },\n            \"type\": \"Binary\"\n          },\n          \"body\": [\n            {\n              \"type\": \"If\",\n              \"test\": {\n                \"left\": {\n                  \"base\": {\"name\": \"arr\", \"type\": \"Var\"},\n                  \"index\": {\"name\": \"j\", \"type\": \"Var\"},\n                  \"type\": \"Index\"\n                },\n                \"op\": \">\",\n                \"right\": {\n                  \"base\": {\"name\": \"arr\", \"type\": \"Var\"},\n                  \"index\": {\n                    \"left\": {\"name\": \"j\", \"type\": \"Var\"},\n                    \"op\": \"+\",\n                    \"right\": {\"type\": \"Literal\", \"value\": 1},\n                    \"type\": \"Binary\"\n                  },\n                  \"type\": \"Index\"\n                },\n                \"type\": \"Binary\"\n              },\n              \"then\": [\n                {\n                  \"name\": \"temp\",\n                  \"type\": \"Let\",\n                  \"value\": {\n                    \"base\": {\"name\": \"arr\", \"type\": \"Var\"},\n                    \"index\": {\"name\": \"j\", \"type\": \"Var\"},\n                    \"type\": \"Index\"\n                  }\n                },\n                {\n                  \"type\": \"SetIndex\",\n                  \"base\": {\"name\": \"arr\", \"type\": \"Var\"},\n                  \"index\": {\"name\": \"j\", \"type\": \"Var\"},\n                  \"value\": {\n                    \"base\": {\"name\": \"arr\", \"type\": \"Var\"},\n                    \"index\": {\n                      \"left\": {\"name\": \"j\", \"type\": \"Var\"},\n                      \"op\": \"+\",\n                      \"right\": {\"type\": \"Literal\", \"value\": 1},\n                      \"type\": \"Binary\"\n                    },\n                    \"type\": \"Index\"\n                  }\n                },\n                {\n                  \"type\": \"SetIndex\",\n                  \"base\": {\"name\": \"arr\", \"type\": \"Var\"},\n                  \"index\": {\n                    \"left\": {\"name\": \"j\", \"type\": \"Var\"},\n                    \"op\": \"+\",\n                    \"right\": {\"type\": \"Literal\", \"value\": 1},\n                    \"type\": \"Binary\"\n                  },\n                  \"value\": {\"name\": \"temp\", \"type\": \"Var\"}\n                }\n              ]\n            },\n            {\n              \"name\": \"j\",\n              \"type\": \"Assign\",\n              \"value\": {\n                \"left\": {\"name\": \"j\", \"type\": \"Var\"},\n                \"op\": \"+\",\n                \"right\": {\"type\": \"Literal\", \"value\": 1},\n                \"type\": \"Binary\"\n              }\n            }\n          ]\n        },\n        {\n          \"name\": \"i\",\n          \"type\": \"Assign\",\n          \"value\": {\n            \"left\": {\"name\": \"i\", \"type\": \"Var\"},\n            \"op\": \"+\",\n            \"right\": {\"type\": \"Literal\", \"value\": 1},\n            \"type\": \"Binary\"\n          }\n        }\n      ]\n    },\n    {\n      \"args\": [\n        {\"name\": \"arr\", \"type\": \"Var\"}\n      ],\n      \"type\": \"Print\"\n    }\n  ],\n  \"version\": \"coreil-0.2\"\n}\n",
+      "expectedOutput": "[1, 2, 3, 4, 5, 6, 7]\n",
+      "version": "coreil-0.2"
+    },
+    {
+      "id": "math_basic",
+      "name": "Basic Math",
+      "category": "Math",
+      "source": "{\n  \"version\": \"coreil-1.2\",\n  \"body\": [\n    {\"type\": \"Let\", \"name\": \"x\", \"value\": {\"type\": \"Literal\", \"value\": 1.0}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"sin\", \"arg\": {\"type\": \"Var\", \"name\": \"x\"}}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"sqrt\", \"arg\": {\"type\": \"Literal\", \"value\": 9}}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"MathConst\", \"name\": \"pi\"}]}\n  ]\n}\n",
+      "expectedOutput": "0.8414709848078965\n3.0\n3.141592653589793\n",
+      "version": "coreil-1.2"
+    },
+    {
+      "id": "math_comprehensive",
+      "name": "Comprehensive Math",
+      "category": "Math",
+      "source": "{\n  \"version\": \"coreil-1.2\",\n  \"body\": [\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing sin(0):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"sin\", \"arg\": {\"type\": \"Literal\", \"value\": 0}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing cos(0):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"cos\", \"arg\": {\"type\": \"Literal\", \"value\": 0}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing tan(0):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"tan\", \"arg\": {\"type\": \"Literal\", \"value\": 0}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing sqrt(16):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"sqrt\", \"arg\": {\"type\": \"Literal\", \"value\": 16}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing floor(3.7):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"floor\", \"arg\": {\"type\": \"Literal\", \"value\": 3.7}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing ceil(3.2):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"ceil\", \"arg\": {\"type\": \"Literal\", \"value\": 3.2}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing abs(-5):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"abs\", \"arg\": {\"type\": \"Literal\", \"value\": -5}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing log(e):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"log\", \"arg\": {\"type\": \"MathConst\", \"name\": \"e\"}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing exp(1):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Math\", \"op\": \"exp\", \"arg\": {\"type\": \"Literal\", \"value\": 1}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing pow(2, 10):\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"MathPow\", \"base\": {\"type\": \"Literal\", \"value\": 2}, \"exponent\": {\"type\": \"Literal\", \"value\": 10}}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing pi:\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"MathConst\", \"name\": \"pi\"}]},\n\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"Testing e:\"}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"MathConst\", \"name\": \"e\"}]}\n  ]\n}\n",
+      "expectedOutput": "Testing sin(0):\n0.0\nTesting cos(0):\n1.0\nTesting tan(0):\n0.0\nTesting sqrt(16):\n4.0\nTesting floor(3.7):\n3\nTesting ceil(3.2):\n4\nTesting abs(-5):\n5\nTesting log(e):\n1.0\nTesting exp(1):\n2.718281828459045\nTesting pow(2, 10):\n1024.0\nTesting pi:\n3.141592653589793\nTesting e:\n2.718281828459045\n",
+      "version": "coreil-1.2"
+    },
+    {
+      "id": "math",
+      "name": "Math Operations",
+      "category": "Math",
+      "source": "{\n  \"version\": \"coreil-1.1\",\n  \"body\": [\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Binary\", \"op\": \"*\", \"left\": {\"type\": \"Literal\", \"value\": 7}, \"right\": {\"type\": \"Literal\", \"value\": 7}}]}\n  ]\n}\n",
+      "expectedOutput": "49\n",
+      "version": "coreil-1.1"
+    },
+    {
+      "id": "string_ops",
+      "name": "String Operations",
+      "category": "Strings",
+      "source": "{\n  \"version\": \"coreil-1.4\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"s\",\n      \"value\": {\"type\": \"Literal\", \"value\": \"  Hello World  \"}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"StringTrim\", \"base\": {\"type\": \"Var\", \"name\": \"s\"}}]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"StringUpper\", \"base\": {\"type\": \"Literal\", \"value\": \"hello\"}}]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"StringLower\", \"base\": {\"type\": \"Literal\", \"value\": \"WORLD\"}}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"parts\",\n      \"value\": {\"type\": \"StringSplit\", \"base\": {\"type\": \"Literal\", \"value\": \"a,b,c\"}, \"delimiter\": {\"type\": \"Literal\", \"value\": \",\"}}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"parts\"}]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\n        \"type\": \"StringStartsWith\",\n        \"base\": {\"type\": \"Literal\", \"value\": \"hello world\"},\n        \"prefix\": {\"type\": \"Literal\", \"value\": \"hello\"}\n      }]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\n        \"type\": \"StringEndsWith\",\n        \"base\": {\"type\": \"Literal\", \"value\": \"hello world\"},\n        \"suffix\": {\"type\": \"Literal\", \"value\": \"world\"}\n      }]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\n        \"type\": \"StringContains\",\n        \"base\": {\"type\": \"Literal\", \"value\": \"hello world\"},\n        \"substring\": {\"type\": \"Literal\", \"value\": \"lo wo\"}\n      }]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\n        \"type\": \"StringReplace\",\n        \"base\": {\"type\": \"Literal\", \"value\": \"foo bar foo\"},\n        \"old\": {\"type\": \"Literal\", \"value\": \"foo\"},\n        \"new\": {\"type\": \"Literal\", \"value\": \"baz\"}\n      }]\n    }\n  ]\n}\n",
+      "expectedOutput": "Hello World\nHELLO\nworld\n['a', 'b', 'c']\nTrue\nTrue\nTrue\nbaz bar baz\n",
+      "version": "coreil-1.4"
+    },
+    {
+      "id": "json_basic",
+      "name": "JSON Parse/Stringify",
+      "category": "JSON & Regex",
+      "source": "{\n  \"version\": \"coreil-1.3\",\n  \"body\": [\n    {\"type\": \"Let\", \"name\": \"jsonStr\", \"value\": {\"type\": \"Literal\", \"value\": \"{\\\"name\\\": \\\"test\\\", \\\"count\\\": 42}\"}},\n    {\"type\": \"Let\", \"name\": \"data\", \"value\": {\"type\": \"JsonParse\", \"source\": {\"type\": \"Var\", \"name\": \"jsonStr\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Get\", \"base\": {\"type\": \"Var\", \"name\": \"data\"}, \"key\": {\"type\": \"Literal\", \"value\": \"name\"}}]},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Get\", \"base\": {\"type\": \"Var\", \"name\": \"data\"}, \"key\": {\"type\": \"Literal\", \"value\": \"count\"}}]},\n    {\"type\": \"Let\", \"name\": \"arr\", \"value\": {\"type\": \"Array\", \"items\": [{\"type\": \"Literal\", \"value\": 1}, {\"type\": \"Literal\", \"value\": 2}, {\"type\": \"Literal\", \"value\": 3}]}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"JsonStringify\", \"value\": {\"type\": \"Var\", \"name\": \"arr\"}}]}\n  ]\n}\n",
+      "expectedOutput": "test\n42\n[1, 2, 3]\n",
+      "version": "coreil-1.3"
+    },
+    {
+      "id": "regex_basic",
+      "name": "Regex Operations",
+      "category": "JSON & Regex",
+      "source": "{\n  \"version\": \"coreil-1.3\",\n  \"body\": [\n    {\"type\": \"Let\", \"name\": \"text\", \"value\": {\"type\": \"Literal\", \"value\": \"Hello 123 World 456\"}},\n    {\"type\": \"Let\", \"name\": \"hasDigits\", \"value\": {\"type\": \"RegexMatch\", \"string\": {\"type\": \"Var\", \"name\": \"text\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \"\\\\d+\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"has digits:\"}, {\"type\": \"Var\", \"name\": \"hasDigits\"}]},\n    {\"type\": \"Let\", \"name\": \"digits\", \"value\": {\"type\": \"RegexFindAll\", \"string\": {\"type\": \"Var\", \"name\": \"text\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \"\\\\d+\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"found digits:\"}, {\"type\": \"Var\", \"name\": \"digits\"}]},\n    {\"type\": \"Let\", \"name\": \"replaced\", \"value\": {\"type\": \"RegexReplace\", \"string\": {\"type\": \"Var\", \"name\": \"text\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \"\\\\d+\"}, \"replacement\": {\"type\": \"Literal\", \"value\": \"NUM\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"replaced:\"}, {\"type\": \"Var\", \"name\": \"replaced\"}]},\n    {\"type\": \"Let\", \"name\": \"csv\", \"value\": {\"type\": \"Literal\", \"value\": \"a,b,c,d\"}},\n    {\"type\": \"Let\", \"name\": \"parts\", \"value\": {\"type\": \"RegexSplit\", \"string\": {\"type\": \"Var\", \"name\": \"csv\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \",\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"split:\"}, {\"type\": \"Var\", \"name\": \"parts\"}]}\n  ]\n}\n",
+      "expectedOutput": "has digits: True\nfound digits: ['123', '456']\nreplaced: Hello NUM World NUM\nsplit: ['a', 'b', 'c', 'd']\n",
+      "version": "coreil-1.3"
+    }
+  ]
+}
