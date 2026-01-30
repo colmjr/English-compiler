@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="10" fill="#0a0a0a"/>
+  <text x="50" y="65" font-family="monospace" font-size="50" fill="#fbbf24" text-anchor="middle">E</text>
+  <path d="M 20 75 L 80 75" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+</svg>
