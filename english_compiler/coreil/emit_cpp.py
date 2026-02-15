@@ -46,7 +46,6 @@ class CppEmitter(BaseEmitter):
     def _setup_state(self) -> None:
         """Initialize C++-specific state."""
         self.uses_json = False
-        self.uses_regex = False
         self.external_modules: set[str] = set()
 
     def emit(self) -> str:
@@ -389,7 +388,7 @@ class CppEmitter(BaseEmitter):
         return f"coreil::json_stringify({value})"
 
     def _emit_regex_match(self, node: dict) -> str:
-        self.uses_regex = True
+
         string = self.emit_expr(node.get("string"))
         pattern = self.emit_expr(node.get("pattern"))
         flags_node = node.get("flags")
@@ -399,7 +398,7 @@ class CppEmitter(BaseEmitter):
         return f"coreil::regex_match({string}, {pattern})"
 
     def _emit_regex_find_all(self, node: dict) -> str:
-        self.uses_regex = True
+
         string = self.emit_expr(node.get("string"))
         pattern = self.emit_expr(node.get("pattern"))
         flags_node = node.get("flags")
@@ -409,7 +408,7 @@ class CppEmitter(BaseEmitter):
         return f"coreil::regex_find_all({string}, {pattern})"
 
     def _emit_regex_replace(self, node: dict) -> str:
-        self.uses_regex = True
+
         string = self.emit_expr(node.get("string"))
         pattern = self.emit_expr(node.get("pattern"))
         replacement = self.emit_expr(node.get("replacement"))
@@ -420,7 +419,7 @@ class CppEmitter(BaseEmitter):
         return f"coreil::regex_replace({string}, {pattern}, {replacement})"
 
     def _emit_regex_split(self, node: dict) -> str:
-        self.uses_regex = True
+
         string = self.emit_expr(node.get("string"))
         pattern = self.emit_expr(node.get("pattern"))
         flags_node = node.get("flags")

@@ -46,11 +46,6 @@ SUPPORTED_VERSIONS = frozenset([
 PACKAGE_VERSION = "1.8.0"
 
 
-def is_version_supported(version: str) -> bool:
-    """Check if a Core IL version string is supported."""
-    return version in SUPPORTED_VERSIONS
-
-
 def is_sealed_version(version: str) -> bool:
     """Check if a version uses sealed primitives (v0.5+).
 

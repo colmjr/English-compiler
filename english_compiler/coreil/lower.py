@@ -20,31 +20,14 @@ Backward compatibility: Accepts v0.1 through v1.8 programs.
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass, field
 from typing import Any
 
 
-@dataclass
-class LoweringContext:
-    """Context object for lowering pass to avoid global mutable state."""
-
-    temp_counter: int = field(default=0)
-
-    def next_temp_suffix(self) -> int:
-        """Get next unique suffix for temp variables."""
-        suffix = self.temp_counter
-        self.temp_counter += 1
-        return suffix
-
-
-def lower_coreil(doc: dict, *, ctx: LoweringContext | None = None) -> dict:
+def lower_coreil(doc: dict) -> dict:
     """Lower Core IL syntax sugar into core constructs.
 
     Args:
         doc: Core IL document to lower.
-        ctx: Optional lowering context. If not provided, a fresh context is created.
-             Pass a shared context when lowering multiple documents to ensure
-             unique temp variable names across all of them.
 
     Returns:
         Lowered Core IL document.
@@ -52,35 +35,32 @@ def lower_coreil(doc: dict, *, ctx: LoweringContext | None = None) -> dict:
     if not isinstance(doc, dict):
         raise ValueError("document must be an object")
 
-    if ctx is None:
-        ctx = LoweringContext()
-
     lowered = deepcopy(doc)
     body = lowered.get("body")
     if not isinstance(body, list):
         raise ValueError("body must be a list")
 
-    lowered["body"] = _lower_statements(body, ctx)
+    lowered["body"] = _lower_statements(body)
     return lowered
 
 
-def _lower_statements(stmts: list[dict], ctx: LoweringContext) -> list[dict]:
+def _lower_statements(stmts: list[dict]) -> list[dict]:
     lowered: list[dict] = []
     for stmt in stmts:
-        lowered.extend(_lower_statement(stmt, ctx))
+        lowered.extend(_lower_statement(stmt))
     return lowered
 
 
-def _lower_statement(stmt: Any, ctx: LoweringContext) -> list[dict]:
+def _lower_statement(stmt: Any) -> list[dict]:
     if not isinstance(stmt, dict):
         raise ValueError("statement must be an object")
 
     node_type = stmt.get("type")
     if node_type == "For":
-        return _lower_for(stmt, ctx)
+        return _lower_for(stmt)
 
     if node_type == "ForEach":
-        return _lower_foreach(stmt, ctx)
+        return _lower_foreach(stmt)
 
     if node_type in {"If", "While"}:
         lowered = dict(stmt)
@@ -89,20 +69,20 @@ def _lower_statement(stmt: Any, ctx: LoweringContext) -> list[dict]:
             lowered["test"] = _lower_expr(test)
         body = lowered.get("body")
         if body is not None:
-            lowered["body"] = _lower_statements(body, ctx)
+            lowered["body"] = _lower_statements(body)
         then_body = lowered.get("then")
         if then_body is not None:
-            lowered["then"] = _lower_statements(then_body, ctx)
+            lowered["then"] = _lower_statements(then_body)
         else_body = lowered.get("else")
         if else_body is not None:
-            lowered["else"] = _lower_statements(else_body, ctx)
+            lowered["else"] = _lower_statements(else_body)
         return [lowered]
 
     if node_type == "FuncDef":
         lowered = dict(stmt)
         body = lowered.get("body")
         if body is not None:
-            lowered["body"] = _lower_statements(body, ctx)
+            lowered["body"] = _lower_statements(body)
         return [lowered]
 
     if node_type == "Return":
@@ -146,19 +126,19 @@ def _lower_statement(stmt: Any, ctx: LoweringContext) -> list[dict]:
         lowered = dict(stmt)
         body = lowered.get("body")
         if body is not None:
-            lowered["body"] = _lower_statements(body, ctx)
+            lowered["body"] = _lower_statements(body)
         catch_body = lowered.get("catch_body")
         if catch_body is not None:
-            lowered["catch_body"] = _lower_statements(catch_body, ctx)
+            lowered["catch_body"] = _lower_statements(catch_body)
         finally_body = lowered.get("finally_body")
         if finally_body is not None:
-            lowered["finally_body"] = _lower_statements(finally_body, ctx)
+            lowered["finally_body"] = _lower_statements(finally_body)
         return [lowered]
 
     return [stmt]
 
 
-def _lower_for(stmt: dict, ctx: LoweringContext) -> list[dict]:
+def _lower_for(stmt: dict) -> list[dict]:
     """Preserve For statement but lower expressions inside it.
 
     For/ForEach are kept as-is (not lowered to While) to properly support
@@ -174,17 +154,16 @@ def _lower_for(stmt: dict, ctx: LoweringContext) -> list[dict]:
     if not isinstance(body, list):
         raise ValueError("For.body must be a list")
 
-    # Lower expressions inside the For but keep the For structure
     lowered = {
         "type": "For",
         "var": var,
         "iter": _lower_expr(iter_expr),
-        "body": _lower_statements(body, ctx),
+        "body": _lower_statements(body),
     }
     return [lowered]
 
 
-def _lower_foreach(stmt: dict, ctx: LoweringContext) -> list[dict]:
+def _lower_foreach(stmt: dict) -> list[dict]:
     """Preserve ForEach statement but lower expressions inside it.
 
     ForEach is kept as-is (not lowered to While) to properly support
@@ -200,12 +179,11 @@ def _lower_foreach(stmt: dict, ctx: LoweringContext) -> list[dict]:
     if not isinstance(body, list):
         raise ValueError("ForEach.body must be a list")
 
-    # Lower expressions inside the ForEach but keep the ForEach structure
     lowered = {
         "type": "ForEach",
         "var": var,
         "iter": _lower_expr(iter_expr),
-        "body": _lower_statements(body, ctx),
+        "body": _lower_statements(body),
     }
     return [lowered]
 
@@ -217,7 +195,6 @@ def _lower_expr(expr: Any) -> Any:
     node_type = expr.get("type")
     # Range expressions are preserved for For loops
     if node_type == "Range":
-        # Lower the from/to expressions inside the Range but keep the Range structure
         lowered = dict(expr)
         if "from" in lowered:
             lowered["from"] = _lower_expr(lowered["from"])

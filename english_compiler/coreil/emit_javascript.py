@@ -55,7 +55,6 @@ class JavaScriptEmitter(BaseEmitter):
     def _setup_state(self) -> None:
         """Initialize JavaScript-specific state."""
         self.uses_heap = False
-        self.uses_tuple_set = False
         self.uses_regex_flags = False
         self.uses_print = False
         self.uses_float = False
@@ -381,12 +380,12 @@ class JavaScriptEmitter(BaseEmitter):
                 key_items = key_node.get("items", [])
                 key_strs = [self.emit_expr(k) for k in key_items]
                 key = f"JSON.stringify([{', '.join(key_strs)}])"
-                self.uses_tuple_set = True
+        
             elif isinstance(key_node, dict) and key_node.get("type") == "Tuple":
                 key_items = key_node.get("items", [])
                 key_strs = [self.emit_expr(k) for k in key_items]
                 key = f"JSON.stringify([{', '.join(key_strs)}])"
-                self.uses_tuple_set = True
+        
             else:
                 key = self.emit_expr(key_node)
 
@@ -401,7 +400,7 @@ class JavaScriptEmitter(BaseEmitter):
             key_items = key_node.get("items", [])
             key_strs = [self.emit_expr(k) for k in key_items]
             key = f"JSON.stringify([{', '.join(key_strs)}])"
-            self.uses_tuple_set = True
+    
         else:
             key = self.emit_expr(key_node)
         return f"{base}.get({key})"
@@ -414,7 +413,7 @@ class JavaScriptEmitter(BaseEmitter):
             key_items = key_node.get("items", [])
             key_strs = [self.emit_expr(k) for k in key_items]
             key = f"JSON.stringify([{', '.join(key_strs)}])"
-            self.uses_tuple_set = True
+    
         else:
             key = self.emit_expr(key_node)
         return f"({base}.get({key}) ?? {default})"
@@ -512,7 +511,7 @@ class JavaScriptEmitter(BaseEmitter):
                 key_items = item.get("items", [])
                 key_strs = [self.emit_expr(k) for k in key_items]
                 item_strs.append(f"JSON.stringify([{', '.join(key_strs)}])")
-                self.uses_tuple_set = True
+        
             else:
                 item_strs.append(self.emit_expr(item))
         return f"new Set([{', '.join(item_strs)}])"
@@ -524,7 +523,7 @@ class JavaScriptEmitter(BaseEmitter):
             key_items = value_node.get("items", [])
             key_strs = [self.emit_expr(k) for k in key_items]
             value = f"JSON.stringify([{', '.join(key_strs)}])"
-            self.uses_tuple_set = True
+    
         else:
             value = self.emit_expr(value_node)
         return f"{base}.has({value})"
@@ -556,9 +555,7 @@ class JavaScriptEmitter(BaseEmitter):
         self.uses_float = True
         op = node.get("op")
         arg = self.emit_expr(node.get("arg"))
-        if op in ("floor", "ceil"):
-            return f"Math.{op}({arg})"
-        elif op == "abs":
+        if op in ("floor", "ceil", "abs"):
             return f"Math.{op}({arg})"
         return f"__float(Math.{op}({arg}))"
 
@@ -716,7 +713,7 @@ class JavaScriptEmitter(BaseEmitter):
             key_items = key_node.get("items", [])
             key_strs = [self.emit_expr(k) for k in key_items]
             key = f"JSON.stringify([{', '.join(key_strs)}])"
-            self.uses_tuple_set = True
+    
         else:
             key = self.emit_expr(key_node)
         self.emit_line(f"{base}.set({key}, {value});")
@@ -739,7 +736,7 @@ class JavaScriptEmitter(BaseEmitter):
             key_items = value_node.get("items", [])
             key_strs = [self.emit_expr(k) for k in key_items]
             value = f"JSON.stringify([{', '.join(key_strs)}])"
-            self.uses_tuple_set = True
+    
         else:
             value = self.emit_expr(value_node)
         self.emit_line(f"{base}.add({value});")
@@ -751,7 +748,7 @@ class JavaScriptEmitter(BaseEmitter):
             key_items = value_node.get("items", [])
             key_strs = [self.emit_expr(k) for k in key_items]
             value = f"JSON.stringify([{', '.join(key_strs)}])"
-            self.uses_tuple_set = True
+    
         else:
             value = self.emit_expr(value_node)
         self.emit_line(f"{base}.delete({value});")
