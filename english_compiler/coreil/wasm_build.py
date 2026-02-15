@@ -136,6 +136,9 @@ def compile_to_wasm(
 def run_wasm(wasm_path: Path, timeout: int = 10) -> tuple[str, int]:
     """Run a WebAssembly file using Node.js.
 
+    Properly decodes AssemblyScript strings from WASM linear memory
+    using the AS string format (length-prefixed UTF-16LE).
+
     Args:
         wasm_path: Path to the .wasm file.
         timeout: Maximum execution time in seconds.
@@ -146,26 +149,40 @@ def run_wasm(wasm_path: Path, timeout: int = 10) -> tuple[str, int]:
     if not shutil.which("node"):
         return ("Node.js not available", 1)
 
-    # Create a simple Node.js wrapper to run WASM
+    # Create a Node.js wrapper that properly reads AS strings from WASM memory.
+    # AssemblyScript strings in memory have this layout:
+    #   ptr - 4 bytes: string byte length (UTF-16LE)
+    #   ptr onwards: UTF-16LE encoded characters
     runner_code = f'''
 const fs = require('fs');
-const path = require('path');
 
-// Capture print output
-let output = [];
+// Read an AssemblyScript string from WASM linear memory.
+// AS strings are stored as: [4-byte byte-length at ptr-4][UTF-16LE data at ptr]
+function readASString(memory, ptr) {{
+    if (ptr === 0) return "";
+    const buffer = new Uint8Array(memory.buffer);
+    // The 4 bytes before the pointer contain the byte length
+    const byteLength = (
+        buffer[ptr - 4] |
+        (buffer[ptr - 3] << 8) |
+        (buffer[ptr - 2] << 16) |
+        (buffer[ptr - 1] << 24)
+    ) >>> 0;
+    if (byteLength === 0) return "";
+    const u16 = new Uint16Array(memory.buffer, ptr, byteLength >> 1);
+    return String.fromCharCode(...u16);
+}}
+
+let memory;
 
 const importObject = {{
     env: {{
-        print: (ptr, len) => {{
-            // This would need proper memory access for real implementation
-            console.log("print called");
+        print: (ptr) => {{
+            console.log(readASString(memory, ptr));
         }},
-        __host_print: (msgPtr) => {{
-            // Simplified - real implementation needs memory handling
-            console.log("print");
-        }},
-        abort: (msg, file, line, col) => {{
-            console.error("abort called");
+        abort: (msgPtr, filePtr, line, col) => {{
+            const msg = msgPtr ? readASString(memory, msgPtr) : "unknown";
+            console.error("abort: " + msg + " at line " + line);
             process.exit(1);
         }},
     }},
@@ -175,14 +192,18 @@ async function run() {{
     const wasmBuffer = fs.readFileSync('{wasm_path}');
     const {{ instance }} = await WebAssembly.instantiate(wasmBuffer, importObject);
 
-    // Call main if exported
-    if (instance.exports.main) {{
+    memory = instance.exports.memory;
+
+    // Call _start or main if exported
+    if (instance.exports._start) {{
+        instance.exports._start();
+    }} else if (instance.exports.main) {{
         instance.exports.main();
     }}
 }}
 
 run().catch(err => {{
-    console.error(err);
+    console.error(err.message || err);
     process.exit(1);
 }});
 '''

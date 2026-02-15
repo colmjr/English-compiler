@@ -37,16 +37,16 @@ The compiler successfully handles real-world algorithms including array operatio
                                  │
          ┌───────────┬───────────┼───────────┬───────────┐
          ▼           ▼           ▼           ▼           ▼
-    ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
-    │Interpret│ │ Python  │ │  Java   │ │   C++   │
-    │   er    │ │ Codegen │ │ Script  │ │ Codegen │
-    └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘
-         │           │           │           │
-         └───────────┴───────────┴───────────┘
-                           │
-                           ▼
-                   Identical Output
-                 (Verified by tests)
+    ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+    │Interpret│ │ Python  │ │  Java   │ │   C++   │ │  Rust   │
+    │   er    │ │ Codegen │ │ Script  │ │ Codegen │ │ Codegen │
+    └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘
+         │           │           │           │           │
+         └───────────┴───────────┴───────────┴───────────┘
+                                 │
+                                 ▼
+                         Identical Output
+                       (Verified by tests)
 ```
 
 ---
@@ -207,7 +207,7 @@ The following real-world algorithms have been successfully compiled and executed
    - Array building and replacement
    - 596 lines of Core IL JSON
 
-All algorithms produce identical output on interpreter, Python, JavaScript, and C++ backends.
+All algorithms produce identical output on interpreter, Python, JavaScript, C++, and Rust backends.
 
 ---
 
@@ -260,6 +260,8 @@ english_compiler/
 │   ├── emit.py          # Python code generator
 │   ├── emit_javascript.py # JavaScript code generator
 │   ├── emit_cpp.py      # C++ code generator
+│   ├── emit_rust.py     # Rust code generator
+│   ├── lint.py          # Static analysis (lint)
 │   ├── emit_base.py     # Shared codegen utilities
 │   ├── emit_utils.py    # Helper functions
 │   ├── validate.py      # Core IL validator
@@ -308,10 +310,11 @@ These are deliberate design choices to keep Core IL simple and deterministic. Fu
 - **Python Codegen**: Performance matches hand-written Python
 - **JavaScript Codegen**: Performance matches hand-written JavaScript
 - **C++ Codegen**: Native performance with C++17
+- **Rust Codegen**: Native performance with Rust 2021 edition
 - **Compilation Time**: Sub-second for most programs
 - **LLM Call**: ~1-3 seconds (cached afterward)
 
-Core IL is optimized for **correctness and simplicity**, not raw performance. For production workloads, use Python, JavaScript, or C++ codegen.
+Core IL is optimized for **correctness and simplicity**, not raw performance. For production workloads, use Python, JavaScript, C++, or Rust codegen.
 
 ---
 
@@ -341,9 +344,8 @@ Programs written in Core IL v1.0 will continue to work indefinitely. Versions v1
 
 Core IL v1.8 is feature-complete. Potential areas for contribution:
 
-1. **New Backends**: Compile Core IL to WASM, Rust, etc.
-2. **Optimization**: Add optimization passes (constant folding, dead code elimination)
-3. **Tooling**: Language server, syntax highlighting, debugger
+1. **Optimization**: Add optimization passes (constant folding, dead code elimination)
+2. **Tooling**: Language server, syntax highlighting, debugger
 4. **Documentation**: More examples, tutorials, blog posts
 5. **Testing**: More test cases, fuzzing, property-based testing
 

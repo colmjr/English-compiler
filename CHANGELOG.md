@@ -1,5 +1,34 @@
 # Changelog
 
+## Post-v1.8 Features - 2026-02-15
+
+### Rust Backend
+
+- **New backend**: `--target rust` transpiles Core IL to Rust
+  - Single-file compilation with `rustc` (no Cargo needed)
+  - Dynamic typing via `Value` enum with `Rc<RefCell<T>>` for mutable containers
+  - Full support for all Core IL v1.8 features (except JSON/Regex which are deferred)
+  - Python-compatible output formatting
+  - Included in backend parity test suite
+
+### Static Analysis (`--lint`)
+
+- **New command**: `english-compiler lint <file>` for static analysis on Core IL programs
+  - `unused-variable` — Variable declared but never referenced
+  - `unreachable-code` — Statements after Return/Break/Continue/Throw
+  - `empty-body` — Control flow with empty body
+  - `variable-shadowing` — Variable re-declared (should be Assign)
+  - `--strict` mode turns warnings into errors (exit code 1)
+  - `--lint` flag on `compile` command runs lint after compilation
+
+### WASM Backend Fixes
+
+- Fixed `__host_print` to properly read AssemblyScript strings from WASM linear memory (UTF-16LE decoding)
+- Updated WASM runtime version marker from v1.5 to v1.8
+- WASM backend now testable end-to-end when `asc` compiler is available
+
+---
+
 ## Core IL v1.8 - 2026-02-15
 
 **Status: Stable and Production Ready**
@@ -19,8 +48,9 @@
 
 ### Backend Support
 
-- All backends (Interpreter, Python, JavaScript, C++, WASM/AssemblyScript) support v1.8 features
+- All backends (Interpreter, Python, JavaScript, C++, Rust, WASM/AssemblyScript) support v1.8 features
 - C++ backend simulates `finally` using `std::exception_ptr`
+- Rust backend uses `std::panic::catch_unwind` for exception handling
 - 100% parity maintained across all backends
 
 ---

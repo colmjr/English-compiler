@@ -11,7 +11,7 @@
  * - Deque (double-ended queue)
  * - Host bindings for I/O
  *
- * Version: Core IL v1.5
+ * Version: Core IL v1.8
  */
 
 // ============================================================================

@@ -22,6 +22,7 @@ from tests.test_helpers import (
     NODE_AVAILABLE,
     CPP_AVAILABLE,
     CPP_COMPILER,
+    RUST_AVAILABLE,
     WASM_AVAILABLE,
     ASC_AVAILABLE,
     TestFailure,
@@ -121,8 +122,12 @@ def main() -> int:
         print(f"  • C++ backend executes successfully ({CPP_COMPILER})")
     else:
         print("  • (C++ tests skipped - no g++/clang++ available)")
+    if RUST_AVAILABLE:
+        print("  • Rust backend executes successfully")
+    else:
+        print("  • (Rust tests skipped - rustc not available)")
     if WASM_AVAILABLE:
-        print("  • (WASM tests skipped - I/O bindings pending)")
+        print("  • WASM backend available (enable with include_wasm=True)")
     elif not ASC_AVAILABLE:
         print("  • (WASM tests skipped - asc compiler not available)")
     backends = ["interpreter", "Python"]
@@ -130,6 +135,8 @@ def main() -> int:
         backends.append("JavaScript")
     if CPP_AVAILABLE:
         backends.append("C++")
+    if RUST_AVAILABLE:
+        backends.append("Rust")
     print(f"  • Backend parity ({' == '.join(backends)} output)")
     print("  • No invalid helper calls")
     return 0

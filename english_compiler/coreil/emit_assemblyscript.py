@@ -1,19 +1,33 @@
 """AssemblyScript code generator for Core IL.
 
-This file implements Core IL v1.5 to AssemblyScript transpilation for
-WebAssembly compilation.
+This file implements Core IL v1.8 to AssemblyScript transpilation for
+WebAssembly compilation. Core IL v1.8 adds TryCatch and Throw for exception handling.
 
 The generated AssemblyScript code:
 - Uses the coreil_runtime.ts library for dynamic typing
 - Matches interpreter semantics exactly
 - Preserves Map insertion order (via OrderedMap)
 - Implements short-circuit evaluation
-- Supports all Core IL v1.5 constructs
+- Record support (mutable named fields)
+- Set operations (membership, add, remove, size)
+- Deque operations (double-ended queue)
+- Heap operations (min-heap priority queue)
+- Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
+- JSON operations (JsonParse, JsonStringify)
+- Regex operations (RegexMatch, RegexFindAll, RegexReplace, RegexSplit)
+- Array slicing (Slice)
+- Unary not (Not)
+- Break and Continue loop control
+- OOP-style method calls and property access (Tier 2)
+- TryCatch and Throw exception handling
 
 Version history:
+- v1.8: Added Throw and TryCatch exception handling
+- v1.7: Added Break and Continue loop control statements
+- v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Initial AssemblyScript backend
 
-Backward compatibility: Accepts v0.1 through v1.5 programs.
+Backward compatibility: Accepts v0.1 through v1.8 programs.
 """
 
 from __future__ import annotations
