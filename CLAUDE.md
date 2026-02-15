@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Environment Setup
+
+This is a Python project. Use the virtual environment at `.venv/` if present. If pip or imports fail, check for alternate Python installations before retrying repeatedly.
+
+## Project Philosophy
+
+When implementing features for english-compiler, respect the project's philosophy: this is an English/natural-language compiler. Prefer LLM-powered approaches over hardcoded logic where the project philosophy calls for it.
+
+## Git Workflow
+
+Always create PRs instead of pushing directly to main. This repo uses branch protection — never attempt `git push origin main` directly.
+
+When resolving merge conflicts, carefully audit ALL features from both branches. Do not silently drop functionality (e.g., unary Not support, increment steps in For loops).
+
+## Documentation
+
+After implementing any feature, always update relevant documentation before committing. Check README.md, docs/, and CLI --help text for anything that needs updating.
+
+## File Editing Rules
+
+When creating new analysis or output files, always create them as separate files — never modify the original source data files unless explicitly asked.
+
 ## Project Overview
 
 The English Compiler translates English pseudocode into executable code through a deterministic intermediate representation (Core IL). The system uses a three-stage pipeline:
@@ -366,10 +388,12 @@ Cache reuse is based on matching source hash and Core IL hash.
 
 Slice extracts elements from index `start` to `end` (exclusive), returning a new list.
 
-**Negative indexing**: Python-style negative indices are supported for `Index` and `SetIndex`:
+**Negative indexing**: Python-style negative indices are supported for `Index`, `SetIndex`, and `Slice`:
 - `arr[-1]` → last element (`arr[len(arr) - 1]`)
 - `arr[-2]` → second-to-last element
 - `arr[-len(arr)]` → first element (`arr[0]`)
+- `Slice` with `start: -2, end: 5` on a 5-element array → last 2 elements
+- `Slice` with `start: 0, end: -1` → all but the last element
 - Out of bounds (e.g., `arr[-(len(arr)+1)]`) raises an error
 
 **Tuple (immutable, hashable)**:

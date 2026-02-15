@@ -223,3 +223,6 @@ tests/algorithms/*.py
 # Temporary test files
 test.txt
 test.py
+
+# Claude Code
+.claude/
