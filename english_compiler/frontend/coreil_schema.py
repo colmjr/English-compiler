@@ -1,9 +1,10 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.7 structure for LLM frontends.
-Core IL v1.7 adds Break and Continue loop control statements.
+This schema defines Core IL v1.8 structure for LLM frontends.
+Core IL v1.8 adds TryCatch and Throw for exception handling.
 
 Version history:
+- v1.8: Added TryCatch and Throw for exception handling
 - v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice, negative indexing, unary Not
@@ -13,8 +14,8 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.7 for validation,
-but LLMs should generate v1.7 programs.
+Backward compatibility: Schema accepts v0.1 through v1.8 for validation,
+but LLMs should generate v1.8 programs.
 """
 
 from english_compiler.coreil.versions import SUPPORTED_VERSIONS
@@ -76,6 +77,8 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/heappop_stmt"},
                 {"$ref": "#/definitions/break_stmt"},
                 {"$ref": "#/definitions/continue_stmt"},
+                {"$ref": "#/definitions/throw_stmt"},
+                {"$ref": "#/definitions/trycatch_stmt"},
             ]
         },
         "let_stmt": {
@@ -687,6 +690,37 @@ COREIL_JSON_SCHEMA = {
             "required": ["type"],
             "properties": {
                 "type": {"const": "Continue"},
+            },
+        },
+        # Exception handling (v1.8)
+        "throw_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "message"],
+            "properties": {
+                "type": {"const": "Throw"},
+                "message": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "trycatch_stmt": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "body", "catch_var", "catch_body"],
+            "properties": {
+                "type": {"const": "TryCatch"},
+                "body": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/statement"},
+                },
+                "catch_var": {"type": "string"},
+                "catch_body": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/statement"},
+                },
+                "finally_body": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/statement"},
+                },
             },
         },
         # Math operations (v1.2)

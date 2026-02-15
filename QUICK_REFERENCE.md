@@ -1,4 +1,4 @@
-# Core IL v1.5 Quick Reference
+# Core IL v1.8 Quick Reference
 
 Fast reference for Core IL node types and common patterns.
 
@@ -8,7 +8,7 @@ Fast reference for Core IL node types and common patterns.
 
 ```json
 {
-  "version": "coreil-1.5",
+  "version": "coreil-1.8",
   "ambiguities": [],
   "body": [<statement>, ...]
 }
@@ -351,6 +351,37 @@ Fast reference for Core IL node types and common patterns.
 {"type": "Return", "value": <expr>}
 ```
 
+### Loop Control (v1.7)
+
+```json
+// Break out of loop
+{"type": "Break"}
+
+// Skip to next iteration
+{"type": "Continue"}
+```
+
+### Exception Handling (v1.8)
+
+```json
+// Throw an error
+{"type": "Throw", "message": <expr>}
+
+// Try/catch/finally
+{
+  "type": "TryCatch",
+  "body": [<statement>, ...],
+  "catch_var": "e",
+  "catch_body": [<statement>, ...],
+  "finally_body": [<statement>, ...]  // optional
+}
+```
+
+- Catches both `Throw` and runtime errors (division by zero, etc.)
+- `catch_var` receives the error message as a string
+- `finally_body` always executes
+- Return/Break/Continue propagate through (NOT caught)
+
 ### Output
 
 ```json
@@ -563,4 +594,4 @@ python -m tests.run_algorithms
 
 ---
 
-**Core IL v1.5 - Stable and Production Ready**
+**Core IL v1.8 - Stable and Production Ready**

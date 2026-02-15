@@ -1,7 +1,7 @@
 """Python code generator for Core IL.
 
-This file implements Core IL v1.7 to Python transpilation.
-Core IL v1.7 adds Break and Continue loop control statements.
+This file implements Core IL v1.8 to Python transpilation.
+Core IL v1.8 adds TryCatch and Throw for exception handling.
 
 The generated Python code:
 - Matches interpreter semantics exactly
@@ -22,6 +22,7 @@ The generated Python code:
 - Imports collections.deque, heapq, math, json, and re only when used
 
 Version history:
+- v1.8: Added TryCatch and Throw for exception handling
 - v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
@@ -31,7 +32,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.7 programs.
+Backward compatibility: Accepts v0.1 through v1.8 programs.
 """
 
 from __future__ import annotations
@@ -682,6 +683,42 @@ class PythonEmitter(BaseEmitter):
             for stmt in body:
                 self.emit_stmt(stmt)
         self.indent_level -= 1
+
+    def _emit_throw(self, node: dict) -> None:
+        message = self.emit_expr(node.get("message"))
+        self.emit_line(f"raise Exception({message})")
+
+    def _emit_try_catch(self, node: dict) -> None:
+        catch_var = node.get("catch_var")
+        body = node.get("body", [])
+        catch_body = node.get("catch_body", [])
+        finally_body = node.get("finally_body")
+
+        self.emit_line("try:")
+        self.indent_level += 1
+        if not body:
+            self.emit_line("pass")
+        else:
+            for stmt in body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+
+        self.emit_line(f"except Exception as {catch_var}:")
+        self.indent_level += 1
+        self.emit_line(f"{catch_var} = str({catch_var})")
+        if not catch_body:
+            self.emit_line("pass")
+        else:
+            for stmt in catch_body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+
+        if finally_body:
+            self.emit_line("finally:")
+            self.indent_level += 1
+            for stmt in finally_body:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
 
 
 def emit_python(doc: dict) -> str:

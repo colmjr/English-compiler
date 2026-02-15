@@ -1,7 +1,7 @@
 """JavaScript code generator for Core IL.
 
-This file implements Core IL v1.7 to JavaScript (ES Modules) transpilation.
-Core IL v1.7 adds Break and Continue loop control statements.
+This file implements Core IL v1.8 to JavaScript (ES Modules) transpilation.
+Core IL v1.8 adds TryCatch and Throw for exception handling.
 
 The generated JavaScript code:
 - Matches interpreter semantics exactly
@@ -27,7 +27,7 @@ Version history:
 - v1.5: Added Slice for array/list slicing, Not for logical negation
 - v1.4: Initial JavaScript backend (matching Python emit.py)
 
-Backward compatibility: Accepts v0.1 through v1.7 programs.
+Backward compatibility: Accepts v0.1 through v1.8 programs.
 """
 
 from __future__ import annotations
@@ -869,6 +869,44 @@ class JavaScriptEmitter(BaseEmitter):
             for stmt in body:
                 self.emit_stmt(stmt)
         self.indent_level -= 1
+        self.emit_line("}")
+
+    def _emit_throw(self, node: dict) -> None:
+        message = self.emit_expr(node.get("message"))
+        self.emit_line(f"throw new Error({message});")
+
+    def _emit_try_catch(self, node: dict) -> None:
+        catch_var = node.get("catch_var")
+        body = node.get("body", [])
+        catch_body = node.get("catch_body", [])
+        finally_body = node.get("finally_body")
+
+        self.emit_line("try {")
+        self.indent_level += 1
+        if not body:
+            self.emit_line("// empty")
+        else:
+            for stmt in body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+
+        self.emit_line("} catch (__e) {")
+        self.indent_level += 1
+        self.emit_line(f"let {catch_var} = (__e instanceof Error) ? __e.message : String(__e);")
+        if not catch_body:
+            self.emit_line("// empty")
+        else:
+            for stmt in catch_body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+
+        if finally_body:
+            self.emit_line("} finally {")
+            self.indent_level += 1
+            for stmt in finally_body:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+
         self.emit_line("}")
 
 

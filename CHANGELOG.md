@@ -1,5 +1,67 @@
 # Changelog
 
+## Core IL v1.8 - 2026-02-15
+
+**Status: Stable and Production Ready**
+
+### New Features
+
+- **Throw**: Raise runtime errors with a message
+  - `{"type": "Throw", "message": <expr>}`
+  - Message must evaluate to a string
+
+- **TryCatch**: Exception handling with try/catch/finally
+  - `{"type": "TryCatch", "body": [...], "catch_var": "e", "catch_body": [...], "finally_body": [...]}`
+  - Catches both explicit `Throw` errors and runtime errors (division by zero, index out of bounds, etc.)
+  - `catch_var` receives the error message as a string
+  - `finally_body` is optional and always executes
+  - Control flow signals (Return, Break, Continue) propagate through — they are NOT caught
+
+### Backend Support
+
+- All backends (Interpreter, Python, JavaScript, C++, WASM/AssemblyScript) support v1.8 features
+- C++ backend simulates `finally` using `std::exception_ptr`
+- 100% parity maintained across all backends
+
+---
+
+## Core IL v1.7 - 2026-02-10
+
+**Status: Stable**
+
+### New Features
+
+- **Break**: Exit a loop early
+  - `{"type": "Break"}`
+  - Only valid inside While, For, or ForEach loops
+
+- **Continue**: Skip to next loop iteration
+  - `{"type": "Continue"}`
+  - Only valid inside While, For, or ForEach loops
+
+---
+
+## Core IL v1.6 - 2026-02-01
+
+**Status: Stable**
+
+### New Features
+
+- **MethodCall**: Call a method on an object (Tier 2, non-portable)
+  - `{"type": "MethodCall", "object": <expr>, "method": "fit", "args": [<expr>, ...]}`
+  - Enables OOP-style APIs (sklearn, numpy, pandas, etc.)
+
+- **PropertyGet**: Access a property on an object (Tier 2, non-portable)
+  - `{"type": "PropertyGet", "object": <expr>, "property": "coef_"}`
+
+### New Backends
+
+- **WASM/AssemblyScript Codegen**: Generates AssemblyScript code compiled to WebAssembly
+  - Runs via Node.js with AssemblyScript toolchain
+  - Full parity with interpreter for Tier 1 operations
+
+---
+
 ## Core IL v1.5 - 2026-01-26
 
 **Status: Stable and Production Ready**

@@ -1,7 +1,7 @@
 """Core IL interpreter.
 
-This file implements Core IL v1.7 semantics interpreter.
-Core IL v1.7 adds Break and Continue loop control statements.
+This file implements Core IL v1.8 semantics interpreter.
+Core IL v1.8 adds TryCatch and Throw for exception handling.
 
 Key features:
 - Short-circuit evaluation for 'and' and 'or' operators
@@ -17,9 +17,11 @@ Key features:
 - Array slicing (Slice)
 - Unary not (Not)
 - Break and Continue loop control
+- TryCatch and Throw exception handling
 - Recursion limit: 100 calls
 
 Version history:
+- v1.8: Added TryCatch and Throw for exception handling
 - v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
@@ -29,7 +31,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.7 programs.
+Backward compatibility: Accepts v0.1 through v1.8 programs.
 """
 
 from __future__ import annotations
@@ -60,6 +62,12 @@ class _BreakSignal(Exception):
 class _ContinueSignal(Exception):
     """Signal to continue to the next iteration of a loop."""
     pass
+
+
+@dataclass
+class _ThrowSignal(Exception):
+    """Signal for explicit Throw statements."""
+    message: str
 
 
 def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -> int:
@@ -977,6 +985,30 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
 
         if node_type == "Continue":
             raise _ContinueSignal()
+
+        if node_type == "Throw":
+            message = eval_expr(node.get("message"), local_env, call_depth)
+            raise _ThrowSignal(str(message))
+
+        if node_type == "TryCatch":
+            catch_var = node.get("catch_var")
+            finally_body = node.get("finally_body")
+            try:
+                exec_block(node.get("body", []), local_env, in_func, call_depth)
+            except (_ReturnSignal, _BreakSignal, _ContinueSignal):
+                raise
+            except _ThrowSignal as e:
+                env = local_env if (in_func and local_env is not None) else global_env
+                env[catch_var] = e.message
+                exec_block(node.get("catch_body", []), local_env, in_func, call_depth)
+            except Exception as e:
+                env = local_env if (in_func and local_env is not None) else global_env
+                env[catch_var] = str(e)
+                exec_block(node.get("catch_body", []), local_env, in_func, call_depth)
+            finally:
+                if finally_body:
+                    exec_block(finally_body, local_env, in_func, call_depth)
+            return
 
         raise ValueError(f"unexpected statement type '{node_type}'")
 
