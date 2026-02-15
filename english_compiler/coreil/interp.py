@@ -452,6 +452,41 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
 
+        # Type conversions (v1.9)
+        if node_type == "ToInt":
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            if isinstance(value, int) and not isinstance(value, bool):
+                return value
+            if isinstance(value, float):
+                return int(value)
+            if isinstance(value, str):
+                try:
+                    return int(value)
+                except ValueError:
+                    raise ValueError(f"runtime error: cannot convert string '{value}' to int")
+            raise ValueError(f"runtime error: cannot convert {type(value).__name__} to int")
+
+        if node_type == "ToFloat":
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            if isinstance(value, float):
+                return value
+            if isinstance(value, int) and not isinstance(value, bool):
+                return float(value)
+            if isinstance(value, str):
+                try:
+                    return float(value)
+                except ValueError:
+                    raise ValueError(f"runtime error: cannot convert string '{value}' to float")
+            raise ValueError(f"runtime error: cannot convert {type(value).__name__} to float")
+
+        if node_type == "ToString":
+            value = eval_expr(node.get("value"), local_env, call_depth)
+            if isinstance(value, bool):
+                return "True" if value else "False"
+            if value is None:
+                return "None"
+            return str(value)
+
         # Math operations (v1.2)
         if node_type == "Math":
             op = node.get("op")

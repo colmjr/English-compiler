@@ -485,6 +485,18 @@ class PythonEmitter(BaseEmitter):
         prop = node.get("property")
         return f"{obj}.{prop}"
 
+    def _emit_to_int(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        return f"int({value})"
+
+    def _emit_to_float(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        return f"float({value})"
+
+    def _emit_to_string(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        return f"str({value})"
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:

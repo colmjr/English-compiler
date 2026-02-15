@@ -37,6 +37,7 @@ _ALLOWED_NODE_TYPES = {
     "StringStartsWith", "StringEndsWith", "StringContains", "StringReplace", "ExternalCall",
     "Slice", "Not", "MethodCall", "PropertyGet", "Break", "Continue",
     "Throw", "TryCatch",
+    "ToInt", "ToFloat", "ToString",
 }
 
 
@@ -362,6 +363,11 @@ def _validate_not(node, path, defined, add_error, validate_expr):
     _require_expr(node, "arg", path, defined, add_error, validate_expr)
 
 
+def _validate_value_only(node, path, defined, add_error, validate_expr):
+    """Validator for expressions that only need 'value' validated (ToInt, ToFloat, ToString)."""
+    _require_expr(node, "value", path, defined, add_error, validate_expr)
+
+
 # Expression validator dispatch table
 _EXPR_VALIDATORS: dict[str, ValidatorFunc] = {
     "Literal": _validate_literal,
@@ -413,6 +419,9 @@ _EXPR_VALIDATORS: dict[str, ValidatorFunc] = {
     "PropertyGet": _validate_property_get,
     "Slice": _validate_slice,
     "Not": _validate_not,
+    "ToInt": _validate_value_only,
+    "ToFloat": _validate_value_only,
+    "ToString": _validate_value_only,
 }
 
 

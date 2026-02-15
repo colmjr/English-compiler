@@ -301,6 +301,11 @@ def _emit_target_code(
         output_path = _get_output_path(source_path, "rust", ".rs")
         lang_name = "Rust"
         emit_func = emit_rust
+    elif target == "go":
+        from english_compiler.coreil.emit_go import emit_go, get_runtime_path as get_go_runtime_path
+        output_path = _get_output_path(source_path, "go", ".go")
+        lang_name = "Go"
+        emit_func = emit_go
     elif target == "wasm":
         # WASM target - emit AssemblyScript and optionally compile
         return _emit_wasm_target(doc, source_path, coreil_path, check_freshness)
@@ -327,6 +332,11 @@ def _emit_target_code(
         if target == "rust":
             runtime_dir = output_path.parent
             shutil.copy(get_rust_runtime_path(), runtime_dir / "coreil_runtime.rs")
+
+        # For Go, copy runtime library
+        if target == "go":
+            runtime_dir = output_path.parent
+            shutil.copy(get_go_runtime_path(), runtime_dir / "coreil_runtime.go")
 
     except OSError as exc:
         print(f"{output_path}: {exc}")
@@ -627,6 +637,12 @@ def _compile_command(args: argparse.Namespace) -> int:
             print(f"{coreil_path}: invalid json")
             return 1
 
+        # Run optimizer if requested
+        if getattr(args, "optimize", False):
+            from english_compiler.coreil.optimize import optimize
+            doc = optimize(doc)
+            print("Applied optimization pass")
+
         # Run lint if requested
         if getattr(args, "lint", False):
             lint_rc = _run_lint_on_doc(doc)
@@ -695,6 +711,12 @@ def _compile_command(args: argparse.Namespace) -> int:
 
     if not _write_json(coreil_path, doc):
         return 1
+
+    # Run optimizer if requested
+    if getattr(args, "optimize", False):
+        from english_compiler.coreil.optimize import optimize
+        doc = optimize(doc)
+        print("Applied optimization pass")
 
     # Run lint if requested
     if getattr(args, "lint", False):
@@ -1100,6 +1122,26 @@ def _run_lint_on_doc(doc: dict, strict: bool = False) -> int:
     return 0
 
 
+def _explain_command(args: argparse.Namespace) -> int:
+    """Handle the explain subcommand."""
+    from english_compiler.explain import explain
+
+    path = Path(args.file)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            doc = json.load(handle)
+    except OSError as exc:
+        print(f"{path}: {exc}")
+        return 1
+    except json.JSONDecodeError as exc:
+        print(f"{path}: invalid json: {exc}")
+        return 1
+
+    text = explain(doc, verbose=getattr(args, "verbose", False))
+    print(text)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="english-compiler")
     parser.add_argument(
@@ -1119,7 +1161,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     compile_parser.add_argument(
         "--target",
-        choices=["coreil", "python", "javascript", "cpp", "rust", "wasm"],
+        choices=["coreil", "python", "javascript", "cpp", "rust", "go", "wasm"],
         default=None,
         help="Compilation target (default: coreil)",
     )
@@ -1148,6 +1190,11 @@ def main(argv: list[str] | None = None) -> int:
         "--lint",
         action="store_true",
         help="Run static analysis after compilation",
+    )
+    compile_parser.add_argument(
+        "--optimize",
+        action="store_true",
+        help="Run optimization pass on Core IL before codegen",
     )
     compile_parser.set_defaults(func=_compile_command)
 
@@ -1217,6 +1264,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Use LLM to explain runtime errors in user-friendly terms",
     )
     repl_parser.set_defaults(func=_repl_command)
+
+    # Explain subcommand
+    explain_parser = subparsers.add_parser("explain", help="Explain a Core IL program in English")
+    explain_parser.add_argument("file", help="Path to the Core IL JSON file")
+    explain_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Produce more detailed explanations",
+    )
+    explain_parser.set_defaults(func=_explain_command)
 
     # Lint subcommand
     lint_parser = subparsers.add_parser("lint", help="Run static analysis on a Core IL file")

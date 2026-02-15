@@ -20,7 +20,7 @@ pip install english-compiler[all]       # All providers
 
 ## Project Status
 
-**Core IL v1.8 is stable and production-ready.**
+**Core IL v1.9 is stable and production-ready.**
 
 The compiler has successfully compiled and executed real-world algorithms including:
 - Array operations (sum, reverse, max)
@@ -28,7 +28,7 @@ The compiler has successfully compiled and executed real-world algorithms includ
 - String processing (bigram frequency)
 - Advanced algorithms (Byte Pair Encoding - 596 lines of Core IL)
 
-All tests pass with 100% parity between interpreter, Python, JavaScript, C++, Rust, and WebAssembly code generation.
+All tests pass with 100% parity between interpreter, Python, JavaScript, C++, Rust, Go, and WebAssembly code generation.
 
 **Documentation**:
 - [STATUS.md](STATUS.md) - Detailed project status and capabilities
@@ -75,7 +75,8 @@ english-compiler compile [options] <source.txt>
 
 **Options:**
 - `--frontend <provider>`: LLM frontend (`mock`, `claude`, `openai`, `gemini`, `qwen`). Auto-detects based on available API keys if not specified.
-- `--target <lang>`: Output target (`coreil`, `python`, `javascript`, `cpp`, `rust`, `wasm`). Default: `coreil`.
+- `--target <lang>`: Output target (`coreil`, `python`, `javascript`, `cpp`, `rust`, `go`, `wasm`). Default: `coreil`.
+- `--optimize`: Run optimization pass (constant folding, dead code elimination) before codegen.
 - `--lint`: Run static analysis after compilation.
 - `--regen`: Force regeneration even if cache is valid.
 - `--freeze`: Fail if regeneration would be required (useful for CI).
@@ -102,6 +103,9 @@ examples/
     ├── rust/
     │   ├── hello.rs             # With --target rust
     │   └── coreil_runtime.rs    # Runtime library
+    ├── go/
+    │   ├── hello.go             # With --target go
+    │   └── coreil_runtime.go    # Runtime library
     └── wasm/
         ├── hello.as.ts          # With --target wasm
         ├── hello.wasm           # Compiled binary (if asc available)
@@ -119,6 +123,17 @@ english-compiler compile --frontend claude --target python examples/hello.txt
 
 # Auto-detect frontend, generate JavaScript
 english-compiler compile --target javascript examples/hello.txt
+```
+
+### Explain (Reverse Compile)
+
+Generate a human-readable English explanation of a Core IL program:
+
+```sh
+english-compiler explain examples/output/coreil/hello.coreil.json
+
+# More detailed output
+english-compiler explain --verbose examples/output/coreil/hello.coreil.json
 ```
 
 ### Run an existing Core IL file
@@ -180,7 +195,7 @@ english-compiler config reset
 | Setting | Values | Description |
 |---------|--------|-------------|
 | `frontend` | `mock`, `claude`, `openai`, `gemini`, `qwen` | Default LLM frontend |
-| `target` | `coreil`, `python`, `javascript`, `cpp`, `rust`, `wasm` | Default compilation target |
+| `target` | `coreil`, `python`, `javascript`, `cpp`, `rust`, `go`, `wasm` | Default compilation target |
 | `explain-errors` | `true`, `false` | Enable LLM-powered error explanations |
 | `regen` | `true`, `false` | Always force regeneration |
 | `freeze` | `true`, `false` | Always fail if regeneration required |
@@ -211,17 +226,17 @@ The compiler follows a three-stage pipeline:
                                  ▼
                           ┌─────────────┐
                           │  Core IL    │
-                          │   v1.8      │  (Deterministic JSON)
+                          │   v1.9      │  (Deterministic JSON)
                           └──────┬──────┘
                                  │
-         ┌───────────┬───────────┼───────────┬───────────┐
-         ▼           ▼           ▼           ▼           ▼
-    ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
-    │Interpret│ │ Python  │ │  Java   │ │   C++   │ │  Rust   │
-    │   er    │ │ Codegen │ │ Script  │ │ Codegen │ │ Codegen │
-    └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘
-         │           │           │           │           │
-         └───────────┴───────────┴───────────┴───────────┘
+         ┌──────────┬──────────┼──────────┬──────────┬──────────┐
+         ▼          ▼          ▼          ▼          ▼          ▼
+    ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+    │Interp. │ │ Python │ │  Java  │ │  C++   │ │  Rust  │ │   Go   │
+    │        │ │Codegen │ │ Script │ │Codegen │ │Codegen │ │Codegen │
+    └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘
+        │          │          │          │          │          │
+        └──────────┴──────────┴──────────┴──────────┴──────────┘
                                  │
                                  ▼
                          Identical Output
@@ -235,7 +250,7 @@ The compiler follows a three-stage pipeline:
 2. **Core IL**: A closed, deterministic intermediate representation
    - All semantics are explicitly defined
    - No extension mechanism or helper functions
-   - Version 1.8 is the current stable version
+   - Version 1.9 is the current stable version
 
 3. **Backends**: Deterministic execution
    - Interpreter: Direct execution of Core IL
@@ -243,9 +258,10 @@ The compiler follows a three-stage pipeline:
    - JavaScript codegen: Transpiles to executable JavaScript
    - C++ codegen: Transpiles to C++17
    - Rust codegen: Transpiles to Rust (single-file, no Cargo needed)
+   - Go codegen: Transpiles to Go (single-file with runtime)
    - All backends produce identical output (verified by tests)
 
-## Core IL v1.8
+## Core IL v1.9
 
 Core IL is a complete, closed intermediate representation with explicit primitives for all operations.
 
@@ -255,6 +271,7 @@ Core IL is a complete, closed intermediate representation with explicit primitiv
 
 | Version | Features |
 |---------|----------|
+| v1.9 | ToInt, ToFloat, ToString (type conversions), Go backend, optimizer, explain command |
 | v1.8 | Throw, TryCatch (exception handling) |
 | v1.7 | Break, Continue (loop control) |
 | v1.6 | MethodCall, PropertyGet (Tier 2 OOP), WASM/AssemblyScript backend |
@@ -291,6 +308,9 @@ output/
 ├── rust/                  # With --target rust
 │   ├── foo.rs
 │   └── coreil_runtime.rs
+├── go/                    # With --target go
+│   ├── foo.go
+│   └── coreil_runtime.go
 └── wasm/                  # With --target wasm
     ├── foo.as.ts
     ├── foo.wasm
@@ -397,6 +417,18 @@ The generated Rust code:
 - Includes runtime library in the same directory
 - Matches interpreter output exactly
 
+### Go
+
+```sh
+english-compiler compile --target go examples/hello.txt
+cd examples/output/go && go mod init prog && go build -o hello . && ./hello
+```
+
+The generated Go code:
+- Uses Go 1.18+ (standard library only)
+- Single-file with runtime library in the same directory
+- Matches interpreter output exactly
+
 ### WebAssembly
 
 ```sh
@@ -466,7 +498,7 @@ python -m tests.run_algorithms
 This enforces:
 - Core IL validation passes
 - Interpreter executes successfully
-- All backends execute successfully (Python, JavaScript, C++, Rust)
+- All backends execute successfully (Python, JavaScript, C++, Rust, Go)
 - Backend parity (all backend outputs are identical)
 - No invalid helper calls
 

@@ -51,6 +51,7 @@ def main() -> None:
     _run_example(examples / "slice_test.coreil.json", "[2, 3, 4]\n[1, 2]\n[4, 5]\n")
     _run_example(examples / "slice_negative.coreil.json", "[4, 5]\n[1, 2, 3, 4]\n[2, 3, 4]\n")
     _run_example(examples / "array_negative_index.coreil.json", "5\n4\n1\n[1, 2, 3, 4, 99]\nc\n")
+    _run_example(examples / "type_convert.coreil.json", "3\n42\n5.0\n3.14\n123\nTrue\n")
 
     print("All tests passed.")
 
