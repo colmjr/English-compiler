@@ -313,7 +313,7 @@ class TestValidTargets(unittest.TestCase):
 
     def test_contains_expected_values(self):
         """Should contain all expected target names."""
-        expected = {"coreil", "python", "javascript", "cpp", "wasm"}
+        expected = {"coreil", "python", "javascript", "cpp", "rust", "go", "wasm"}
         self.assertEqual(set(VALID_TARGETS), expected)
 
 
