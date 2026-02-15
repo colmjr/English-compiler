@@ -41,7 +41,7 @@ SUPPORTED_VERSIONS = frozenset([
 ])
 
 # Package version (semantic versioning)
-PACKAGE_VERSION = "1.7.3"
+PACKAGE_VERSION = "1.8.0"
 
 
 def is_version_supported(version: str) -> bool:
