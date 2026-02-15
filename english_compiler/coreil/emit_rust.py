@@ -665,37 +665,82 @@ class RustEmitter(BaseEmitter):
         catch_body = node.get("catch_body", [])
         finally_body = node.get("finally_body")
 
-        self.emit_line("{")
-        self.indent_level += 1
-        self.emit_line("let __result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {")
-        self.indent_level += 1
-        for stmt in body:
-            self.emit_stmt(stmt)
-        self.indent_level -= 1
-        self.emit_line("}));")
-        self.emit_line("match __result {")
-        self.indent_level += 1
-        self.emit_line("Ok(()) => {},")
-        self.emit_line("Err(__e) => {")
-        self.indent_level += 1
+        if not finally_body:
+            # Simple case: no finally block
+            self.emit_line("{")
+            self.indent_level += 1
+            self.emit_line("let __result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {")
+            self.indent_level += 1
+            for stmt in body:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+            self.emit_line("}));")
+            self.emit_line("match __result {")
+            self.indent_level += 1
+            self.emit_line("Ok(()) => {},")
+            self.emit_line("Err(__e) => {")
+            self.indent_level += 1
+            self._emit_catch_var_binding(catch_var, "__e")
+            for stmt in catch_body:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+            self.emit_line("}")
+            self.indent_level -= 1
+            self.emit_line("}")
+            self.indent_level -= 1
+            self.emit_line("}")
+        else:
+            # With finally: wrap catch body in its own catch_unwind
+            # so finally always executes even if catch body panics
+            self.emit_line("{")
+            self.indent_level += 1
+            self.emit_line("let mut __pending_panic: Option<Box<dyn std::any::Any + Send>> = None;")
+            self.emit_line("let __result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {")
+            self.indent_level += 1
+            for stmt in body:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+            self.emit_line("}));")
+            self.emit_line("match __result {")
+            self.indent_level += 1
+            self.emit_line("Ok(()) => {},")
+            self.emit_line("Err(__e) => {")
+            self.indent_level += 1
+            self._emit_catch_var_binding(catch_var, "__e")
+            self.emit_line("let __catch_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {")
+            self.indent_level += 1
+            for stmt in catch_body:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+            self.emit_line("}));")
+            self.emit_line("if let Err(__catch_panic) = __catch_result {")
+            self.indent_level += 1
+            self.emit_line("__pending_panic = Some(__catch_panic);")
+            self.indent_level -= 1
+            self.emit_line("}")
+            self.indent_level -= 1
+            self.emit_line("}")
+            self.indent_level -= 1
+            self.emit_line("}")
+            for stmt in finally_body:
+                self.emit_stmt(stmt)
+            self.emit_line("if let Some(__p) = __pending_panic {")
+            self.indent_level += 1
+            self.emit_line("std::panic::resume_unwind(__p);")
+            self.indent_level -= 1
+            self.emit_line("}")
+            self.indent_level -= 1
+            self.emit_line("}")
+
+    def _emit_catch_var_binding(self, catch_var: str, err_var: str) -> None:
+        """Emit the catch variable binding from a caught panic payload."""
         self.emit_line(f"let mut {catch_var} = Value::Str(")
         self.indent_level += 1
-        self.emit_line('__e.downcast_ref::<String>().map(|s| s.clone())')
-        self.emit_line('    .or_else(|| __e.downcast_ref::<&str>().map(|s| s.to_string()))')
+        self.emit_line(f'{err_var}.downcast_ref::<String>().map(|s| s.clone())')
+        self.emit_line(f'    .or_else(|| {err_var}.downcast_ref::<&str>().map(|s| s.to_string()))')
         self.emit_line('    .unwrap_or_else(|| "unknown error".to_string())')
         self.indent_level -= 1
         self.emit_line(");")
-        for stmt in catch_body:
-            self.emit_stmt(stmt)
-        self.indent_level -= 1
-        self.emit_line("}")
-        self.indent_level -= 1
-        self.emit_line("}")
-        if finally_body:
-            for stmt in finally_body:
-                self.emit_stmt(stmt)
-        self.indent_level -= 1
-        self.emit_line("}")
 
 
 def emit_rust(doc: dict) -> str:

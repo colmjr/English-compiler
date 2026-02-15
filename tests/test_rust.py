@@ -297,6 +297,60 @@ def test_try_catch():
     _test_parity(doc, "try_catch")
 
 
+def test_try_catch_finally():
+    """Finally block must execute even when catch body throws."""
+    doc = {
+        "version": "coreil-1.8",
+        "body": [
+            {"type": "TryCatch",
+             "body": [
+                 {"type": "Print", "args": [{"type": "Literal", "value": "try"}]},
+                 {"type": "Throw", "message": {"type": "Literal", "value": "err1"}},
+             ],
+             "catch_var": "e",
+             "catch_body": [
+                 {"type": "Print", "args": [{"type": "Literal", "value": "catch"}]},
+             ],
+             "finally_body": [
+                 {"type": "Print", "args": [{"type": "Literal", "value": "finally"}]},
+             ]},
+        ],
+    }
+    _test_parity(doc, "try_catch_finally")
+
+
+def test_try_catch_finally_rethrow():
+    """Finally block must execute even when catch body throws, then re-panic."""
+    doc = {
+        "version": "coreil-1.8",
+        "body": [
+            {"type": "TryCatch",
+             "body": [
+                 # Outer try-catch to capture the re-thrown panic
+                 {"type": "TryCatch",
+                  "body": [
+                      {"type": "Throw", "message": {"type": "Literal", "value": "inner"}},
+                  ],
+                  "catch_var": "e1",
+                  "catch_body": [
+                      {"type": "Print", "args": [{"type": "Literal", "value": "catch1"}]},
+                      {"type": "Throw", "message": {"type": "Literal", "value": "from catch"}},
+                  ],
+                  "finally_body": [
+                      {"type": "Print", "args": [{"type": "Literal", "value": "finally1"}]},
+                  ]},
+             ],
+             "catch_var": "e2",
+             "catch_body": [
+                 {"type": "Print", "args": [{"type": "Binary", "op": "+",
+                  "left": {"type": "Literal", "value": "outer caught: "},
+                  "right": {"type": "Var", "name": "e2"}}]},
+             ]},
+        ],
+    }
+    _test_parity(doc, "try_catch_finally_rethrow")
+
+
 def main() -> int:
     mode = "full parity" if _RUST_AVAILABLE else "codegen-only (rustc not found)"
     print(f"Running Rust backend tests ({mode})...\n")
@@ -315,6 +369,8 @@ def main() -> int:
         test_string_ops,
         test_break_continue,
         test_try_catch,
+        test_try_catch_finally,
+        test_try_catch_finally_rethrow,
     ]
 
     failures = []
