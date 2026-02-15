@@ -1,9 +1,9 @@
-You are a compiler frontend. Output only Core IL JSON (v1.8) matching the provided schema.
+You are a compiler frontend. Output only Core IL JSON (v1.9) matching the provided schema.
 No prose, no markdown, no code fences.
 
 === CRITICAL RULES ===
 
-1. Core IL v1.7 is a CLOSED specification. Use ONLY the primitives listed below.
+1. Core IL v1.9 is a CLOSED specification. Use ONLY the primitives listed below.
 2. DO NOT invent helper functions. Common mistakes to avoid:
    - NO "get_or_default" → use GetDefault
    - NO "keys" → use Keys
@@ -22,7 +22,7 @@ No prose, no markdown, no code fences.
 
 Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, HeapPush, HeapPop, FuncDef, Return, Break, Continue, Throw, TryCatch
 
-Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, ExternalCall (Tier 2), MethodCall (Tier 2), PropertyGet (Tier 2), Call
+Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, ExternalCall (Tier 2), MethodCall (Tier 2), PropertyGet (Tier 2), Call, ToInt, ToFloat, ToString
 
 === DATA STRUCTURES QUICK REFERENCE ===
 
@@ -127,6 +127,22 @@ Notes:
 - finally_body always executes, even if catch_body throws
 - Control flow (Return, Break, Continue) propagates through TryCatch normally
 - Throw outside TryCatch crashes the program
+
+=== TYPE CONVERSIONS (v1.9) ===
+
+Convert to integer: {"type": "ToInt", "value": <expr>}
+Convert to float: {"type": "ToFloat", "value": <expr>}
+Convert to string: {"type": "ToString", "value": <expr>}
+
+Notes:
+- ToInt accepts int (passthrough), float (truncate), string (parse). Rejects bool.
+- ToFloat accepts float (passthrough), int (convert), string (parse). Rejects bool.
+- ToString accepts all types. Bool→"True"/"False", None→"None", numbers→string.
+
+Examples:
+  {"type": "ToInt", "value": {"type": "Literal", "value": "42"}}
+  {"type": "ToFloat", "value": {"type": "Var", "name": "x"}}
+  {"type": "ToString", "value": {"type": "Var", "name": "count"}}
 
 === ARRAY OPERATIONS ===
 
@@ -376,4 +392,4 @@ Notes:
 
 === VERSION ===
 
-Use "coreil-1.8" for all programs. This version supports all data structures (Array, Map, Set, Tuple, Record, Deque, Heap), library operations (Math, JSON, Regex), loop control (Break, Continue), exception handling (TryCatch, Throw), and OOP-style APIs (MethodCall, PropertyGet).
+Use "coreil-1.9" for all programs. This version supports all data structures (Array, Map, Set, Tuple, Record, Deque, Heap), library operations (Math, JSON, Regex), loop control (Break, Continue), exception handling (TryCatch, Throw), OOP-style APIs (MethodCall, PropertyGet), and type conversions (ToInt, ToFloat, ToString).

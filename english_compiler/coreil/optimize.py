@@ -62,17 +62,20 @@ def _optimize_stmt(stmt: dict) -> dict:
         if else_body is not None:
             else_body = _optimize_stmts(else_body)
 
-        # DCE: constant condition
+        # DCE: constant condition — drop the dead branch
         if _is_literal(test):
             val = test.get("value")
             if val:
-                # Always true — just the then body
-                # We can't inline directly (need to keep it as an If for now,
-                # since inlining would change scope structure). Keep optimized.
-                return {**stmt, "test": test, "then": then_body, "else": else_body}
+                # Always true — drop else branch
+                result = {**stmt, "test": test, "then": then_body}
+                # Don't include else at all
+                result.pop("else", None)
+                return result
             else:
-                # Always false — use else body
-                return {**stmt, "test": test, "then": then_body, "else": else_body}
+                # Always false — replace then with else body (or empty)
+                result = {**stmt, "test": test, "then": else_body if else_body is not None else []}
+                result.pop("else", None)
+                return result
 
         result = {**stmt, "test": test, "then": then_body}
         if else_body is not None:
@@ -304,10 +307,10 @@ def _try_fold_binary(op: str, left: Any, right: Any) -> dict | None:
             return {"type": "Literal", "value": lv - rv}
         if op == "*" and isinstance(lv, (int, float)) and isinstance(rv, (int, float)):
             return {"type": "Literal", "value": lv * rv}
-        if op == "//" and isinstance(lv, (int, float)) and isinstance(rv, (int, float)):
+        if op == "/" and isinstance(lv, (int, float)) and isinstance(rv, (int, float)):
             if rv == 0:
                 return None  # Don't fold division by zero
-            return {"type": "Literal", "value": lv // rv}
+            return {"type": "Literal", "value": lv / rv}
         if op == "%" and isinstance(lv, (int, float)) and isinstance(rv, (int, float)):
             if rv == 0:
                 return None

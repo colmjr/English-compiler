@@ -939,11 +939,6 @@ func valueToInt(v Value) Value {
 		return v
 	case TypeFloat:
 		return ValueInt(int64(v.data.(float64)))
-	case TypeBool:
-		if v.data.(bool) {
-			return ValueInt(1)
-		}
-		return ValueInt(0)
 	case TypeStr:
 		n, err := strconv.ParseInt(v.data.(string), 10, 64)
 		if err != nil {
@@ -961,11 +956,6 @@ func valueToFloat(v Value) Value {
 		return v
 	case TypeInt:
 		return ValueFloat(float64(v.data.(int64)))
-	case TypeBool:
-		if v.data.(bool) {
-			return ValueFloat(1.0)
-		}
-		return ValueFloat(0.0)
 	case TypeStr:
 		f, err := strconv.ParseFloat(v.data.(string), 64)
 		if err != nil {

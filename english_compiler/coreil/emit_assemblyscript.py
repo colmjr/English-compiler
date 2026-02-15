@@ -464,7 +464,7 @@ class AssemblyScriptEmitter(BaseEmitter):
 
     def _emit_to_string(self, node: dict) -> str:
         value = self.emit_expr(node.get("value"))
-        return f"Value.fromString(({value}).asString())"
+        return f"({value}).toStringConvert()"
 
     # ========== Statement Handlers ==========
 

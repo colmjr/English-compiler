@@ -1,12 +1,12 @@
 // Core IL Runtime Library for Rust
 //
-// This file provides the runtime support for Core IL v1.8 programs compiled to Rust.
+// This file provides the runtime support for Core IL v1.9 programs compiled to Rust.
 // It implements Python-compatible semantics for all operations.
 //
 // Requirements: Rust stable (no external crates, only std)
 // Usage: `include!("coreil_runtime.rs");` from generated code
 //
-// Version: 1.8
+// Version: 1.9
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -1390,4 +1390,40 @@ fn value_to_i64(v: &Value) -> i64 {
 
 fn value_to_f64(v: &Value) -> f64 {
     as_float(v)
+}
+
+// ============================================================================
+// Type Conversions (v1.9) - reject bools for int/float, match interpreter
+// ============================================================================
+
+fn value_to_int(v: &Value) -> Value {
+    match v {
+        Value::Int(n) => Value::Int(*n),
+        Value::Float(f) => Value::Int(*f as i64),
+        Value::Str(s) => {
+            match s.parse::<i64>() {
+                Ok(n) => Value::Int(n),
+                Err(_) => panic!("runtime error: cannot convert string '{}' to int", s),
+            }
+        }
+        _ => panic!("runtime error: cannot convert {} to int", type_name(v)),
+    }
+}
+
+fn value_to_float(v: &Value) -> Value {
+    match v {
+        Value::Float(f) => Value::Float(*f),
+        Value::Int(n) => Value::Float(*n as f64),
+        Value::Str(s) => {
+            match s.parse::<f64>() {
+                Ok(f) => Value::Float(f),
+                Err(_) => panic!("runtime error: cannot convert string '{}' to float", s),
+            }
+        }
+        _ => panic!("runtime error: cannot convert {} to float", type_name(v)),
+    }
+}
+
+fn value_to_string_convert(v: &Value) -> Value {
+    Value::Str(format_value(v))
 }

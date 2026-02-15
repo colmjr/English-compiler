@@ -1,9 +1,10 @@
 """Core IL JSON schema for structured output.
 
-This schema defines Core IL v1.8 structure for LLM frontends.
-Core IL v1.8 adds TryCatch and Throw for exception handling.
+This schema defines Core IL v1.9 structure for LLM frontends.
+Core IL v1.9 adds type conversion expressions (ToInt, ToFloat, ToString).
 
 Version history:
+- v1.9: Added ToInt, ToFloat, ToString type conversion expressions
 - v1.8: Added TryCatch and Throw for exception handling
 - v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
@@ -14,8 +15,8 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Schema accepts v0.1 through v1.8 for validation,
-but LLMs should generate v1.8 programs.
+Backward compatibility: Schema accepts v0.1 through v1.9 for validation,
+but LLMs should generate v1.9 programs.
 """
 
 from english_compiler.coreil.versions import SUPPORTED_VERSIONS
@@ -260,6 +261,10 @@ COREIL_JSON_SCHEMA = {
                 # MethodCall and PropertyGet (Tier 2, v1.6)
                 {"$ref": "#/definitions/methodcall_expr"},
                 {"$ref": "#/definitions/propertyget_expr"},
+                # Type conversions (v1.9)
+                {"$ref": "#/definitions/toint_expr"},
+                {"$ref": "#/definitions/tofloat_expr"},
+                {"$ref": "#/definitions/tostring_expr"},
             ]
         },
         "literal_expr": {
@@ -954,6 +959,34 @@ COREIL_JSON_SCHEMA = {
             "properties": {
                 "type": {"const": "Not"},
                 "arg": {"$ref": "#/definitions/expr"},
+            },
+        },
+        # Type conversions (v1.9)
+        "toint_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "value"],
+            "properties": {
+                "type": {"const": "ToInt"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "tofloat_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "value"],
+            "properties": {
+                "type": {"const": "ToFloat"},
+                "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        "tostring_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "value"],
+            "properties": {
+                "type": {"const": "ToString"},
+                "value": {"$ref": "#/definitions/expr"},
             },
         },
     },

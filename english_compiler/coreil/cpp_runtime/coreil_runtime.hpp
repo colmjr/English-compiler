@@ -1271,6 +1271,40 @@ public:
     Iterator end() const { return Iterator(inclusive_ ? end_ + 1 : end_); }
 };
 
+// ============================================================================
+// Type Conversions (v1.9) - reject bools for int/float, match interpreter
+// ============================================================================
+
+inline Value to_int(const Value& v) {
+    if (auto* i = std::get_if<int64_t>(&v)) return *i;
+    if (auto* d = std::get_if<double>(&v)) return static_cast<int64_t>(*d);
+    if (auto* s = std::get_if<std::string>(&v)) {
+        try {
+            return static_cast<int64_t>(std::stoll(*s));
+        } catch (...) {
+            throw std::runtime_error("runtime error: cannot convert string '" + *s + "' to int");
+        }
+    }
+    throw std::runtime_error("runtime error: cannot convert to int");
+}
+
+inline Value to_float(const Value& v) {
+    if (auto* d = std::get_if<double>(&v)) return *d;
+    if (auto* i = std::get_if<int64_t>(&v)) return static_cast<double>(*i);
+    if (auto* s = std::get_if<std::string>(&v)) {
+        try {
+            return std::stod(*s);
+        } catch (...) {
+            throw std::runtime_error("runtime error: cannot convert string '" + *s + "' to float");
+        }
+    }
+    throw std::runtime_error("runtime error: cannot convert to float");
+}
+
+inline Value to_string_value(const Value& v) {
+    return format(v);
+}
+
 } // namespace coreil
 
 #endif // COREIL_RUNTIME_HPP

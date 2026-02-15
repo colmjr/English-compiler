@@ -1,14 +1,12 @@
 """Core IL package.
 
-Core IL v1.6 - OOP-Style Method Calls and Property Access
-=========================================================
+Core IL v1.9 - Type Conversion Expressions
+===========================================
 
-This package implements the Core IL (Core Intermediate Language) v1.6 specification.
+This package implements the Core IL (Core Intermediate Language) v1.9 specification.
 
-Core IL v1.6 adds:
-- MethodCall: Call a method on an object (obj.method(args))
-- PropertyGet: Access a property on an object (obj.property)
-These are Tier 2 (non-portable) operations for OOP-style library APIs.
+Core IL v1.9 adds:
+- ToInt, ToFloat, ToString type conversion expressions
 
 Core IL features:
 - Complete: All necessary primitives for algorithmic computation
@@ -17,6 +15,9 @@ Core IL features:
 - Closed specification: No extension mechanism or helper functions
 
 Version History:
+- v1.9: Added ToInt, ToFloat, ToString type conversion expressions
+- v1.8: Added Throw and TryCatch for exception handling
+- v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2)
 - v1.5: Added Slice, negative indexing, unary Not
 - v1.4: Consolidated v1.2 Math + v1.3 JSON/Regex operations
@@ -30,7 +31,7 @@ Version History:
 - v0.1: Basic statements and expressions
 
 Backward Compatibility:
-All v0.1-v1.5 programs continue to work in v1.6.
+All v0.1-v1.8 programs continue to work in v1.9.
 """
 
 from .interp import run_coreil
