@@ -648,6 +648,9 @@ inline Value array_slice(const Value& arr, const Value& start, const Value& end)
 
     if (auto* a = std::get_if<std::shared_ptr<Array>>(&arr)) {
         auto size = static_cast<int64_t>((*a)->items.size());
+        // Support Python-style negative indexing
+        if (s < 0) s = size + s;
+        if (e < 0) e = size + e;
         if (s < 0 || e < 0 || s > size || e > size) {
             throw std::runtime_error("slice out of range");
         }
@@ -659,6 +662,9 @@ inline Value array_slice(const Value& arr, const Value& start, const Value& end)
     }
     if (auto* t = std::get_if<std::shared_ptr<Tuple>>(&arr)) {
         auto size = static_cast<int64_t>((*t)->items.size());
+        // Support Python-style negative indexing
+        if (s < 0) s = size + s;
+        if (e < 0) e = size + e;
         if (s < 0 || e < 0 || s > size || e > size) {
             throw std::runtime_error("slice out of range");
         }

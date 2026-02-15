@@ -166,13 +166,18 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
                 raise ValueError(f"runtime error: Slice base must be an array or tuple, got {type(base).__name__}")
             start = eval_expr(node["start"], local_env, call_depth)
             end = eval_expr(node["end"], local_env, call_depth)
-            if not isinstance(start, int) or start < 0:
-                raise ValueError(f"runtime error: Slice start must be a non-negative integer, got {start}")
-            if not isinstance(end, int) or end < 0:
-                raise ValueError(f"runtime error: Slice end must be a non-negative integer, got {end}")
-            # Python slicing automatically clamps, but we raise error for out-of-range
-            if start > len(base) or end > len(base):
-                raise ValueError(f"runtime error: Slice range [{start}:{end}) out of bounds for array of length {len(base)}")
+            if not isinstance(start, int):
+                raise ValueError(f"runtime error: Slice start must be an integer, got {start}")
+            if not isinstance(end, int):
+                raise ValueError(f"runtime error: Slice end must be an integer, got {end}")
+            # Support negative indexing (Python-style: -1 = last element)
+            n = len(base)
+            if start < 0:
+                start = n + start
+            if end < 0:
+                end = n + end
+            if start < 0 or start > n or end < 0 or end > n:
+                raise ValueError(f"runtime error: Slice range [{start}:{end}) out of bounds for array of length {n}")
             return list(base[start:end])
 
         if node_type == "Not":

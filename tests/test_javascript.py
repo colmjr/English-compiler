@@ -435,6 +435,28 @@ def test_slice():
     _test_parity(doc, "slice")
 
 
+def test_slice_negative():
+    doc = {
+        "version": "coreil-1.5",
+        "body": [
+            {"type": "Let", "name": "arr", "value": {"type": "Array", "items": [
+                {"type": "Literal", "value": 1},
+                {"type": "Literal", "value": 2},
+                {"type": "Literal", "value": 3},
+                {"type": "Literal", "value": 4},
+                {"type": "Literal", "value": 5},
+            ]}},
+            # arr[-2:5] -> [4, 5]
+            {"type": "Print", "args": [{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": -2}, "end": {"type": "Length", "base": {"type": "Var", "name": "arr"}}}]},
+            # arr[0:-1] -> [1, 2, 3, 4]
+            {"type": "Print", "args": [{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": 0}, "end": {"type": "Literal", "value": -1}}]},
+            # arr[-4:-1] -> [2, 3, 4]
+            {"type": "Print", "args": [{"type": "Slice", "base": {"type": "Var", "name": "arr"}, "start": {"type": "Literal", "value": -4}, "end": {"type": "Literal", "value": -1}}]},
+        ]
+    }
+    _test_parity(doc, "slice_negative")
+
+
 def test_not():
     doc = {
         "version": "coreil-1.5",
@@ -488,6 +510,7 @@ def main() -> int:
         test_recursive_function,
         test_record,
         test_slice,
+        test_slice_negative,
         test_not,
     ]
 
