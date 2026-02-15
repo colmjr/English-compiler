@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Pre-commit hook: runs basic Core IL tests before allowing a commit.
+# To enable: git config core.hooksPath .githooks
+
+set -e
+
+# Activate the project virtualenv if present
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
+    source "$REPO_ROOT/.venv/bin/activate"
+fi
+
+echo "Running pre-commit tests..."
+if python -m tests.run; then
+    echo "Tests passed — committing."
+else
+    echo "Tests failed — commit blocked. Fix the failures and try again."
+    exit 1
+fi
