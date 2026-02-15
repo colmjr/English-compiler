@@ -21,6 +21,9 @@ from pathlib import Path
 
 # Built-in exit commands (instant, no API call)
 BUILTIN_EXIT_COMMANDS = {"exit", "quit", ":q", ":quit", ":exit"}
+TIER2_FALLBACK_ERROR_MARKERS = ("ExternalCall", "MethodCall", "PropertyGet")
+TRUE_VALUE_STRINGS = ("true", "1", "yes", "on")
+FALSE_VALUE_STRINGS = ("false", "0", "no", "off")
 
 
 def _print_validation_errors(errors: list[dict]) -> None:
@@ -255,6 +258,51 @@ def _run_cpp_file(cpp_path: Path) -> int:
     finally:
         # Clean up temp executable
         Path(exe_path).unlink(missing_ok=True)
+
+
+def _is_tier2_unsupported_error(exc: ValueError) -> bool:
+    message = str(exc)
+    return any(marker in message for marker in TIER2_FALLBACK_ERROR_MARKERS)
+
+
+def _run_tier2_fallback(
+    source_path: Path,
+    target: str,
+    supported_targets: tuple[str, ...],
+) -> int | None:
+    if target not in supported_targets:
+        return None
+
+    if target == "python":
+        python_path = _get_output_path(source_path, "py", ".py")
+        print(f"Note: Tier 2 operation not supported in interpreter, running {python_path}")
+        return _run_python_file(python_path)
+
+    if target == "javascript":
+        js_path = _get_output_path(source_path, "js", ".js")
+        print(f"Note: Tier 2 operation not supported in interpreter, running {js_path}")
+        return _run_javascript_file(js_path)
+
+    if target == "cpp":
+        cpp_path = _get_output_path(source_path, "cpp", ".cpp")
+        print(f"Note: Tier 2 operation not supported in interpreter, running {cpp_path}")
+        return _run_cpp_file(cpp_path)
+
+    if target == "rust":
+        rust_path = _get_output_path(source_path, "rust", ".rs")
+        print(f"Note: Tier 2 operation not supported in interpreter, running {rust_path}")
+        return _run_rust_file(rust_path)
+
+    return None
+
+
+def _parse_bool_setting(value: str) -> bool | None:
+    normalized = value.lower()
+    if normalized in TRUE_VALUE_STRINGS:
+        return True
+    if normalized in FALSE_VALUE_STRINGS:
+        return False
+    return None
 
 
 def _emit_target_code(
@@ -663,23 +711,14 @@ def _compile_command(args: argparse.Namespace) -> int:
         try:
             return run_coreil(doc, error_callback=error_callback)
         except ValueError as exc:
-            if "ExternalCall" in str(exc) or "MethodCall" in str(exc) or "PropertyGet" in str(exc):
-                if target == "python":
-                    python_path = _get_output_path(source_path, "py", ".py")
-                    print(f"Note: Tier 2 operation not supported in interpreter, running {python_path}")
-                    return _run_python_file(python_path)
-                elif target == "javascript":
-                    js_path = _get_output_path(source_path, "js", ".js")
-                    print(f"Note: Tier 2 operation not supported in interpreter, running {js_path}")
-                    return _run_javascript_file(js_path)
-                elif target == "cpp":
-                    cpp_path = _get_output_path(source_path, "cpp", ".cpp")
-                    print(f"Note: Tier 2 operation not supported in interpreter, running {cpp_path}")
-                    return _run_cpp_file(cpp_path)
-                elif target == "rust":
-                    rust_path = _get_output_path(source_path, "rust", ".rs")
-                    print(f"Note: Tier 2 operation not supported in interpreter, running {rust_path}")
-                    return _run_rust_file(rust_path)
+            if _is_tier2_unsupported_error(exc):
+                fallback_rc = _run_tier2_fallback(
+                    source_path,
+                    target,
+                    supported_targets=("python", "javascript", "cpp", "rust"),
+                )
+                if fallback_rc is not None:
+                    return fallback_rc
             raise
 
     if args.freeze:
@@ -748,19 +787,14 @@ def _compile_command(args: argparse.Namespace) -> int:
     try:
         return run_coreil(doc, error_callback=error_callback)
     except ValueError as exc:
-        if "ExternalCall" in str(exc) or "MethodCall" in str(exc) or "PropertyGet" in str(exc):
-            if target == "python":
-                python_path = _get_output_path(source_path, "py", ".py")
-                print(f"Note: Tier 2 operation not supported in interpreter, running {python_path}")
-                return _run_python_file(python_path)
-            elif target == "javascript":
-                js_path = _get_output_path(source_path, "js", ".js")
-                print(f"Note: Tier 2 operation not supported in interpreter, running {js_path}")
-                return _run_javascript_file(js_path)
-            elif target == "cpp":
-                cpp_path = _get_output_path(source_path, "cpp", ".cpp")
-                print(f"Note: Tier 2 operation not supported in interpreter, running {cpp_path}")
-                return _run_cpp_file(cpp_path)
+        if _is_tier2_unsupported_error(exc):
+            fallback_rc = _run_tier2_fallback(
+                source_path,
+                target,
+                supported_targets=("python", "javascript", "cpp"),
+            )
+            if fallback_rc is not None:
+                return fallback_rc
         raise
 
 
@@ -849,14 +883,12 @@ def _config_set(key: str, value: str) -> int:
             return 1
         settings.frontend = value
     elif key_normalized == "explain_errors":
-        if value.lower() in ("true", "1", "yes", "on"):
-            settings.explain_errors = True
-        elif value.lower() in ("false", "0", "no", "off"):
-            settings.explain_errors = False
-        else:
+        parsed_bool = _parse_bool_setting(value)
+        if parsed_bool is None:
             print(f"Invalid boolean value: {value}")
             print("Use: true, false, 1, 0, yes, no, on, off")
             return 1
+        settings.explain_errors = parsed_bool
     elif key_normalized == "target":
         if value not in VALID_TARGETS:
             print(f"Invalid target: {value}")
@@ -864,23 +896,19 @@ def _config_set(key: str, value: str) -> int:
             return 1
         settings.target = value
     elif key_normalized == "regen":
-        if value.lower() in ("true", "1", "yes", "on"):
-            settings.regen = True
-        elif value.lower() in ("false", "0", "no", "off"):
-            settings.regen = False
-        else:
+        parsed_bool = _parse_bool_setting(value)
+        if parsed_bool is None:
             print(f"Invalid boolean value: {value}")
             print("Use: true, false, 1, 0, yes, no, on, off")
             return 1
+        settings.regen = parsed_bool
     elif key_normalized == "freeze":
-        if value.lower() in ("true", "1", "yes", "on"):
-            settings.freeze = True
-        elif value.lower() in ("false", "0", "no", "off"):
-            settings.freeze = False
-        else:
+        parsed_bool = _parse_bool_setting(value)
+        if parsed_bool is None:
             print(f"Invalid boolean value: {value}")
             print("Use: true, false, 1, 0, yes, no, on, off")
             return 1
+        settings.freeze = parsed_bool
     else:
         print(f"Unknown setting: {key}")
         print("Valid settings: frontend, target, explain-errors, regen, freeze")
