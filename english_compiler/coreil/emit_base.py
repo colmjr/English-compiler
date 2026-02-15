@@ -122,6 +122,8 @@ class BaseEmitter(ABC):
             "Continue": self._emit_continue,
             "For": self._emit_for,
             "ForEach": self._emit_for_each,
+            "Throw": self._emit_throw,
+            "TryCatch": self._emit_try_catch,
         }
 
     @property
@@ -520,6 +522,16 @@ class BaseEmitter(ABC):
     @abstractmethod
     def _emit_for_each(self, node: dict) -> None:
         """Emit foreach loop statement."""
+        pass
+
+    @abstractmethod
+    def _emit_throw(self, node: dict) -> None:
+        """Emit throw statement."""
+        pass
+
+    @abstractmethod
+    def _emit_try_catch(self, node: dict) -> None:
+        """Emit try/catch/finally statement."""
         pass
 
     # ========== Utility Methods ==========

@@ -587,6 +587,99 @@ class AssemblyScriptEmitter(BaseEmitter):
         arg_strs = [self.emit_expr(arg) for arg in args]
         self.emit_line(f"{name}({', '.join(arg_strs)});")
 
+    def _emit_break(self, node: dict) -> None:
+        self.emit_line("break;")
+
+    def _emit_continue(self, node: dict) -> None:
+        self.emit_line("continue;")
+
+    def _emit_for(self, node: dict) -> None:
+        var = node.get("var")
+        iter_expr = node.get("iter")
+        body = node.get("body", [])
+
+        if isinstance(iter_expr, dict) and iter_expr.get("type") == "Range":
+            from_val = self.emit_expr(iter_expr.get("from"))
+            to_val = self.emit_expr(iter_expr.get("to"))
+            inclusive = iter_expr.get("inclusive", False)
+            cmp_method = "le" if inclusive else "lt"
+            self.emit_line(f"for (let {var}: Value = {from_val}; ({var}).{cmp_method}({to_val}).isTruthy(); {var} = ({var}).add(Value.fromInt(1))) {{")
+        else:
+            iter_code = self.emit_expr(iter_expr)
+            self.emit_line(f"for (let __i = 0; __i < ({iter_code}).asArray().length; __i++) {{")
+            self.indent_level += 1
+            self.emit_line(f"let {var}: Value = ({iter_code}).asArray()[__i];")
+            self.indent_level -= 1
+
+        self.indent_level += 1
+        if not body:
+            self.emit_line("// empty")
+        else:
+            for stmt in body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+        self.emit_line("}")
+
+    def _emit_for_each(self, node: dict) -> None:
+        var = node.get("var")
+        iter_code = self.emit_expr(node.get("iter"))
+        body = node.get("body", [])
+
+        self.emit_line(f"for (let __i = 0; __i < ({iter_code}).asArray().length; __i++) {{")
+        self.indent_level += 1
+        self.emit_line(f"let {var}: Value = ({iter_code}).asArray()[__i];")
+        if not body:
+            self.emit_line("// empty")
+        else:
+            for stmt in body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+        self.emit_line("}")
+
+    def _emit_method_call(self, node: dict) -> str:
+        raise ValueError("MethodCall is not supported in WASM backend")
+
+    def _emit_property_get(self, node: dict) -> str:
+        raise ValueError("PropertyGet is not supported in WASM backend")
+
+    def _emit_throw(self, node: dict) -> None:
+        message = self.emit_expr(node.get("message"))
+        self.emit_line(f"throw new Error(({message}).asString());")
+
+    def _emit_try_catch(self, node: dict) -> None:
+        catch_var = node.get("catch_var")
+        body = node.get("body", [])
+        catch_body = node.get("catch_body", [])
+        finally_body = node.get("finally_body")
+
+        self.emit_line("try {")
+        self.indent_level += 1
+        if not body:
+            self.emit_line("// empty")
+        else:
+            for stmt in body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+
+        self.emit_line("} catch (__e) {")
+        self.indent_level += 1
+        self.emit_line(f'let {catch_var}: Value = Value.fromString((__e instanceof Error) ? (__e as Error).message : "unknown error");')
+        if not catch_body:
+            self.emit_line("// empty")
+        else:
+            for stmt in catch_body:
+                self.emit_stmt(stmt)
+        self.indent_level -= 1
+
+        if finally_body:
+            self.emit_line("} finally {")
+            self.indent_level += 1
+            for stmt in finally_body:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+
+        self.emit_line("}")
+
 
 def emit_assemblyscript(doc: dict) -> str:
     """Generate AssemblyScript code from Core IL document.

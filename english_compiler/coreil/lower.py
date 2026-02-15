@@ -1,7 +1,7 @@
 """Lower Core IL syntax sugar into core constructs.
 
-This file implements Core IL v1.7 lowering pass.
-Core IL v1.7 adds Break and Continue loop control statements.
+This file implements Core IL v1.8 lowering pass.
+Core IL v1.8 adds TryCatch and Throw for exception handling.
 
 Lowering transformations:
 - For/ForEach loops are PRESERVED (not lowered to While) to properly
@@ -14,7 +14,7 @@ Note: Prior to v1.7, For/ForEach were lowered to While loops. This was
 changed to support Continue correctly (Continue in a lowered While loop
 would skip the increment, causing infinite loops).
 
-Backward compatibility: Accepts v0.1 through v1.7 programs.
+Backward compatibility: Accepts v0.1 through v1.8 programs.
 """
 
 from __future__ import annotations
@@ -135,6 +135,24 @@ def _lower_statement(stmt: Any, ctx: LoweringContext) -> list[dict]:
         lowered["base"] = _lower_expr(lowered.get("base"))
         lowered["key"] = _lower_expr(lowered.get("key"))
         lowered["value"] = _lower_expr(lowered.get("value"))
+        return [lowered]
+
+    if node_type == "Throw":
+        lowered = dict(stmt)
+        lowered["message"] = _lower_expr(lowered.get("message"))
+        return [lowered]
+
+    if node_type == "TryCatch":
+        lowered = dict(stmt)
+        body = lowered.get("body")
+        if body is not None:
+            lowered["body"] = _lower_statements(body, ctx)
+        catch_body = lowered.get("catch_body")
+        if catch_body is not None:
+            lowered["catch_body"] = _lower_statements(catch_body, ctx)
+        finally_body = lowered.get("finally_body")
+        if finally_body is not None:
+            lowered["finally_body"] = _lower_statements(finally_body, ctx)
         return [lowered]
 
     return [stmt]

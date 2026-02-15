@@ -1,9 +1,10 @@
 """Core IL validation.
 
-This file implements Core IL v1.7 semantics validation.
-Core IL v1.7 adds Break and Continue loop control statements.
+This file implements Core IL v1.8 semantics validation.
+Core IL v1.8 adds TryCatch and Throw for exception handling.
 
 Version history:
+- v1.8: Added TryCatch and Throw for exception handling
 - v1.7: Added Break and Continue loop control statements
 - v1.6: Added MethodCall and PropertyGet for OOP-style APIs (Tier 2, non-portable)
 - v1.5: Added Slice for array/list slicing, Not for logical negation
@@ -13,7 +14,7 @@ Version history:
 - v1.1: Added Record, GetField, SetField, Set, Deque operations, String operations, Heap operations
 - v1.0: Stable release (frozen)
 
-Backward compatibility: Accepts v0.1 through v1.7 programs.
+Backward compatibility: Accepts v0.1 through v1.8 programs.
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ _ALLOWED_NODE_TYPES = {
     "RegexSplit", "StringSplit", "StringTrim", "StringUpper", "StringLower",
     "StringStartsWith", "StringEndsWith", "StringContains", "StringReplace", "ExternalCall",
     "Slice", "Not", "MethodCall", "PropertyGet", "Break", "Continue",
+    "Throw", "TryCatch",
 }
 
 
@@ -638,6 +640,44 @@ def _validate_continue(node, path, defined, add_error, validate_expr, in_func, i
         add_error(path, "Continue is only allowed inside a loop (While, For, ForEach)")
 
 
+def _validate_throw(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+    _require_expr(node, "message", path, defined, add_error, validate_expr)
+
+
+def _validate_try_catch(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+    body = node.get("body")
+    if not isinstance(body, list):
+        add_error(f"{path}.body", "missing or invalid body")
+    else:
+        for i, stmt in enumerate(body):
+            validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func, in_loop)
+
+    catch_var = node.get("catch_var")
+    if not isinstance(catch_var, str) or not catch_var:
+        add_error(f"{path}.catch_var", "missing or invalid catch_var")
+
+    catch_body = node.get("catch_body")
+    if not isinstance(catch_body, list):
+        add_error(f"{path}.catch_body", "missing or invalid catch_body")
+    else:
+        # Add catch_var to defined set for catch_body scope
+        catch_defined = defined.copy()
+        if isinstance(catch_var, str) and catch_var:
+            catch_defined.add(catch_var)
+        for i, stmt in enumerate(catch_body):
+            validate_stmt(stmt, f"{path}.catch_body[{i}]", catch_defined, in_func, in_loop)
+        # Propagate any new definitions back
+        defined.update(catch_defined)
+
+    finally_body = node.get("finally_body")
+    if finally_body is not None:
+        if not isinstance(finally_body, list):
+            add_error(f"{path}.finally_body", "invalid finally_body")
+        else:
+            for i, stmt in enumerate(finally_body):
+                validate_stmt(stmt, f"{path}.finally_body[{i}]", defined, in_func, in_loop)
+
+
 # Statement validator dispatch table (version-independent statements)
 _STMT_VALIDATORS = {
     "Let": _validate_let,
@@ -663,6 +703,8 @@ _STMT_VALIDATORS = {
     "HeapPop": _validate_heap_pop,
     "Break": _validate_break,
     "Continue": _validate_continue,
+    "Throw": _validate_throw,
+    "TryCatch": _validate_try_catch,
 }
 
 

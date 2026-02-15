@@ -1,7 +1,7 @@
 # Project Status
 
-**Date:** 2026-01-26
-**Version:** Core IL v1.5
+**Date:** 2026-02-15
+**Version:** Core IL v1.8
 **Status:** Production Ready
 
 ---
@@ -32,7 +32,7 @@ The compiler successfully handles real-world algorithms including array operatio
                                  ▼
                           ┌─────────────┐
                           │  Core IL    │
-                          │   v1.5      │  (Deterministic JSON)
+                          │   v1.8      │  (Deterministic JSON)
                           └──────┬──────┘
                                  │
          ┌───────────┬───────────┼───────────┬───────────┐
@@ -51,7 +51,7 @@ The compiler successfully handles real-world algorithms including array operatio
 
 ---
 
-## Core IL v1.5 Features
+## Core IL v1.8 Features
 
 ### Complete Node Set
 
@@ -101,6 +101,8 @@ The compiler successfully handles real-world algorithms including array operatio
 - `Range` - Integer range (for loops)
 - `Call` - User-defined function calls
 - `ExternalCall` - Platform-specific calls (v1.4, Tier 2)
+- `MethodCall` - Method call on object (v1.6, Tier 2)
+- `PropertyGet` - Property access on object (v1.6, Tier 2)
 
 **Statements** (perform actions):
 - `Let` - Variable declaration
@@ -124,6 +126,10 @@ The compiler successfully handles real-world algorithms including array operatio
 - `ForEach` - Collection iteration
 - `FuncDef` - Function definition
 - `Return` - Function return
+- `Break` - Exit loop early (v1.7)
+- `Continue` - Skip to next loop iteration (v1.7)
+- `Throw` - Raise runtime error (v1.8)
+- `TryCatch` - Exception handling (v1.8)
 - `RegexReplace` - Replace regex matches (v1.3)
 - `RegexSplit` - Split by regex (v1.3)
 
@@ -177,6 +183,8 @@ $ python -m tests.run_algorithms
 - JSON parsing/serialization
 - Regex operations
 - List slicing
+- Break/Continue loop control
+- Exception handling (try/catch/finally)
 - Complex algorithms (BPE - 596 lines of Core IL)
 
 ---
@@ -207,7 +215,7 @@ All algorithms produce identical output on interpreter, Python, JavaScript, and 
 
 ### Core Documentation
 
-- **[coreil_v1.md](coreil_v1.md)** - Complete Core IL v1.0-v1.5 specification
+- **[coreil_v1.md](coreil_v1.md)** - Complete Core IL v1.0-v1.8 specification
   - Philosophy and design principles
   - All node types with semantics
   - Implementation requirements
@@ -232,7 +240,7 @@ All algorithms produce identical output on interpreter, Python, JavaScript, and 
 - **Separation of Concerns**: Frontend (LLM) | Core IL (JSON) | Backends (deterministic)
 - **Type Safety**: Runtime type checking with clear errors
 - **No Side Effects**: Core IL is pure data - no global state in representation
-- **Backward Compatible**: v1.5 accepts all v0.1-v1.4 programs
+- **Backward Compatible**: v1.8 accepts all v0.1-v1.7 programs
 
 ### Testing Philosophy
 
@@ -287,9 +295,8 @@ Core IL v1.5 is intentionally focused. It does NOT include:
 
 1. **Static Types**: All type checking is at runtime
 2. **Modules/Imports**: No code organization across files
-3. **Exception Handling**: No try/catch
-4. **Classes/Objects**: No OOP features
-5. **Iterators**: No lazy evaluation
+3. **Classes/Objects**: No OOP features (Tier 2 MethodCall/PropertyGet provides limited OOP interop)
+4. **Iterators**: No lazy evaluation
 
 These are deliberate design choices to keep Core IL simple and deterministic. Future versions may add some features, but v1.0 remains stable indefinitely.
 
@@ -317,7 +324,7 @@ Core IL is optimized for **correctness and simplicity**, not raw performance. Fo
 - Semantics are locked
 - Backward compatibility maintained
 
-Programs written in Core IL v1.0 will continue to work indefinitely. Versions v1.1-v1.5 add features but do not change v1.0 behavior.
+Programs written in Core IL v1.0 will continue to work indefinitely. Versions v1.1-v1.8 add features but do not change v1.0 behavior.
 
 ---
 
@@ -332,7 +339,7 @@ Programs written in Core IL v1.0 will continue to work indefinitely. Versions v1
 
 ### For Developers
 
-Core IL v1.5 is feature-complete. Potential areas for contribution:
+Core IL v1.8 is feature-complete. Potential areas for contribution:
 
 1. **New Backends**: Compile Core IL to WASM, Rust, etc.
 2. **Optimization**: Add optimization passes (constant folding, dead code elimination)
@@ -346,14 +353,14 @@ All contributions should maintain backward compatibility with existing versions.
 
 ## Conclusion
 
-The English Compiler with Core IL v1.5 is a **production-ready, well-tested, fully-documented** compiler for translating English pseudocode into executable code.
+The English Compiler with Core IL v1.8 is a **production-ready, well-tested, fully-documented** compiler for translating English pseudocode into executable code.
 
 The architecture successfully separates concerns:
 - LLMs handle the hard problem (natural language understanding)
 - Core IL provides deterministic semantics
 - Multiple backends ensure correctness through parity testing
 
-Core IL v1.5 is **stable, feature-rich, and ready for real-world use**.
+Core IL v1.8 is **stable, feature-rich, and ready for real-world use**.
 
 ---
 

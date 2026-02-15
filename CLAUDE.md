@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Environment Setup
 
-This is a Python project. Use the virtual environment at `.venv/` if present. If pip or imports fail, check for alternate Python installations before retrying repeatedly.
+This is a Python project. No virtual environment is set up yet. If pip or imports fail, check for alternate Python installations before retrying repeatedly.
 
 ## Project Philosophy
 
@@ -235,7 +235,7 @@ freeze = false
       - `prompt_python.txt` - Python generation prompt
       - `prompt_javascript.txt` - JavaScript generation prompt
       - `prompt_cpp.txt` - C++ generation prompt
-    - `coreil_schema.py` - JSON schema for Core IL v1.6 (shared)
+    - `coreil_schema.py` - JSON schema for Core IL v1.8 (shared)
   - `__main__.py` - CLI entry point
 
 - `tests/` - Test suite
@@ -250,11 +250,11 @@ freeze = false
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.6 (`"coreil-1.6"`)
+**Current stable version**: Core IL v1.8 (`"coreil-1.8"`)
 
-Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. Core IL v1.5 adds list slicing (Slice expression). Core IL v1.6 adds OOP-style method calls (MethodCall, PropertyGet) for Tier 2 non-portable operations. All versions maintain full backward compatibility.
+Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. Core IL v1.5 adds list slicing (Slice expression). Core IL v1.6 adds OOP-style method calls (MethodCall, PropertyGet) for Tier 2 non-portable operations. Core IL v1.7 adds Break and Continue for loop control flow. Core IL v1.8 adds Throw and TryCatch for exception handling. All versions maintain full backward compatibility.
 
-All versions from v0.1 through v1.6 are supported for backward compatibility. The codebase uses version constants:
+All versions from v0.1 through v1.8 are supported for backward compatibility. The codebase uses version constants:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
@@ -355,6 +355,8 @@ Cache reuse is based on matching source hash and Core IL hash.
 - HeapPush, HeapPop
 - Print, If, While, For, ForEach
 - FuncDef, Return
+- Break, Continue (v1.7)
+- Throw, TryCatch (v1.8)
 
 ### Critical Rules
 
@@ -468,6 +470,26 @@ Supported ops: sin, cos, tan (radians), sqrt, floor, ceil, abs, log (natural), e
 
 Optional "flags" parameter: "i" (case-insensitive), "m" (multiline), "s" (dotall).
 
+**Loop control (v1.7)**:
+```json
+{"type": "Break"}
+{"type": "Continue"}
+```
+
+Break and Continue are only valid inside loops (While, For, ForEach).
+
+**Exception handling (v1.8)**:
+```json
+{"type": "Throw", "message": <expr>}
+{"type": "TryCatch", "body": [<stmts>], "catch_var": "e", "catch_body": [<stmts>], "finally_body": [<stmts>]}
+```
+
+- `Throw` raises an error with a message (must evaluate to string)
+- `TryCatch` catches both explicit Throw and runtime errors (division by zero, etc.)
+- `catch_var` receives the error message as a string
+- `finally_body` is optional, always executes
+- Control flow (Return, Break, Continue) propagates through — NOT caught
+
 **String operations (v1.4)**:
 ```json
 {"type": "StringSplit", "base": <str>, "delimiter": <str>}
@@ -568,7 +590,7 @@ Create `tests/algorithms/new_algorithm.txt` with natural English pseudocode. The
 
 3. **Don't assume static types**: Core IL uses runtime type checking. Operations validate inputs and produce clear error messages.
 
-4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque, Heap), v1.2+ (Math), v1.3+/v1.4+ (JSON, Regex), v1.5+ (Slice), and v1.6+ (MethodCall, PropertyGet) with backward compatibility.
+4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque, Heap), v1.2+ (Math), v1.3+/v1.4+ (JSON, Regex), v1.5+ (Slice), v1.6+ (MethodCall, PropertyGet), v1.7+ (Break, Continue), and v1.8+ (Throw, TryCatch) with backward compatibility.
 
 5. **Don't skip lowering**: For/ForEach must be lowered before backend execution (happens automatically in `emit_python()`).
 

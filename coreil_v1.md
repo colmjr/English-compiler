@@ -1,8 +1,8 @@
-# Core IL v1.0-v1.5 Specification
+# Core IL v1.0-v1.8 Specification
 
-**Version:** 1.0-1.5
+**Version:** 1.0-1.8
 **Status:** Stable
-**Date:** 2026-01-26
+**Date:** 2026-02-15
 
 ---
 
@@ -27,6 +27,9 @@ Core IL is the **semantic heart** of the English compiler. It is a closed, deter
 
 ### Version History
 
+- **v1.8**: Added Throw, TryCatch (exception handling with try/catch/finally)
+- **v1.7**: Added Break, Continue (loop control flow)
+- **v1.6**: Added MethodCall, PropertyGet (Tier 2, OOP-style), WASM backend
 - **v1.5**: Added Slice, Not (unary), negative indexing
 - **v1.4**: Added ExternalCall, expanded string operations, JavaScript and C++ backends
 - **v1.3**: Added JSON operations (JsonParse, JsonStringify) and Regex operations
@@ -46,7 +49,7 @@ Core IL programs are JSON documents with this top-level structure:
 
 ```json
 {
-  "version": "coreil-1.5",
+  "version": "coreil-1.8",
   "ambiguities": [],
   "body": [<statement>, <statement>, ...]
 }
@@ -54,7 +57,7 @@ Core IL programs are JSON documents with this top-level structure:
 
 ### Fields
 
-- **version** (string, required): Current version is `"coreil-1.5"`. Backward compatibility is maintained for all versions from `"coreil-0.1"` through `"coreil-1.4"`.
+- **version** (string, required): Current version is `"coreil-1.8"`. Backward compatibility is maintained for all versions from `"coreil-0.1"` through `"coreil-1.7"`.
 
 - **ambiguities** (array, optional): A list of ambiguity objects documenting places where the LLM made interpretation choices.
 
@@ -478,6 +481,73 @@ Removes from a set.
 {"type": "RegexSplit", "pattern": <expr>, "text": <expr>, "target": "varName"}
 ```
 
+### MethodCall (v1.6, Tier 2)
+
+Calls a method on an object. Non-portable — not supported in the interpreter.
+
+```json
+{"type": "MethodCall", "object": <expr>, "method": "fit", "args": [<expr>, ...]}
+```
+
+### PropertyGet (v1.6, Tier 2)
+
+Accesses a property on an object. Non-portable.
+
+```json
+{"type": "PropertyGet", "object": <expr>, "property": "coef_"}
+```
+
+### Break (v1.7)
+
+Exits the innermost loop immediately.
+
+```json
+{"type": "Break"}
+```
+
+Only valid inside While, For, or ForEach loops.
+
+### Continue (v1.7)
+
+Skips to the next iteration of the innermost loop.
+
+```json
+{"type": "Continue"}
+```
+
+Only valid inside While, For, or ForEach loops.
+
+### Throw (v1.8)
+
+Raises a runtime error with a message.
+
+```json
+{"type": "Throw", "message": <expr>}
+```
+
+The message expression must evaluate to a string. If thrown outside of a TryCatch, it crashes the program.
+
+### TryCatch (v1.8)
+
+Exception handling with try/catch/finally.
+
+```json
+{
+  "type": "TryCatch",
+  "body": [<stmt>, ...],
+  "catch_var": "e",
+  "catch_body": [<stmt>, ...],
+  "finally_body": [<stmt>, ...]
+}
+```
+
+- `body` (required): Statements to try
+- `catch_var` (required): Variable name that receives the error message as a string
+- `catch_body` (required): Statements to execute on error
+- `finally_body` (optional): Statements that always execute, even if catch re-throws
+
+Catches both explicit `Throw` errors and runtime errors (division by zero, index out of bounds, etc.). Control flow signals (Return, Break, Continue) are NOT caught — they propagate through.
+
 ---
 
 ## Key Semantics
@@ -512,6 +582,7 @@ Keys maintain insertion order.
 - **Python Codegen**: Transpiles to Python 3.10+
 - **JavaScript Codegen**: Transpiles to ES6+
 - **C++ Codegen**: Transpiles to C++17
+- **WASM Codegen**: Transpiles to AssemblyScript (compiled to WebAssembly)
 
 All backends produce identical output.
 
@@ -532,11 +603,11 @@ All backends produce identical output.
 **Core IL v1.0 is stable and frozen.**
 
 - v1.0 semantics will never change
-- v1.1-v1.5 add features without breaking v1.0
+- v1.1-v1.8 add features without breaking v1.0
 - Full backward compatibility maintained
 
 ---
 
 ## Conclusion
 
-Core IL v1.5 provides a complete, deterministic IR for the English compiler. The specification is complete, closed, deterministic, tested, and documented.
+Core IL v1.8 provides a complete, deterministic IR for the English compiler. The specification is complete, closed, deterministic, tested, and documented.
