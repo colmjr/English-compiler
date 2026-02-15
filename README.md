@@ -20,7 +20,7 @@ pip install english-compiler[all]       # All providers
 
 ## Project Status
 
-**Core IL v1.5 is stable and production-ready.**
+**Core IL v1.8 is stable and production-ready.**
 
 The compiler has successfully compiled and executed real-world algorithms including:
 - Array operations (sum, reverse, max)
@@ -28,7 +28,7 @@ The compiler has successfully compiled and executed real-world algorithms includ
 - String processing (bigram frequency)
 - Advanced algorithms (Byte Pair Encoding - 596 lines of Core IL)
 
-All tests pass with 100% parity between interpreter, Python, JavaScript, C++, and WebAssembly code generation.
+All tests pass with 100% parity between interpreter, Python, JavaScript, C++, Rust, and WebAssembly code generation.
 
 **Documentation**:
 - [STATUS.md](STATUS.md) - Detailed project status and capabilities
@@ -75,7 +75,8 @@ english-compiler compile [options] <source.txt>
 
 **Options:**
 - `--frontend <provider>`: LLM frontend (`mock`, `claude`, `openai`, `gemini`, `qwen`). Auto-detects based on available API keys if not specified.
-- `--target <lang>`: Output target (`coreil`, `python`, `javascript`, `cpp`, `wasm`). Default: `coreil`.
+- `--target <lang>`: Output target (`coreil`, `python`, `javascript`, `cpp`, `rust`, `wasm`). Default: `coreil`.
+- `--lint`: Run static analysis after compilation.
 - `--regen`: Force regeneration even if cache is valid.
 - `--freeze`: Fail if regeneration would be required (useful for CI).
 
@@ -98,6 +99,9 @@ examples/
     │   ├── hello.cpp            # With --target cpp
     │   ├── coreil_runtime.hpp   # Runtime header
     │   └── json.hpp             # JSON library
+    ├── rust/
+    │   ├── hello.rs             # With --target rust
+    │   └── coreil_runtime.rs    # Runtime library
     └── wasm/
         ├── hello.as.ts          # With --target wasm
         ├── hello.wasm           # Compiled binary (if asc available)
@@ -122,6 +126,25 @@ english-compiler compile --target javascript examples/hello.txt
 ```sh
 english-compiler run examples/output/coreil/hello.coreil.json
 ```
+
+### Lint (Static Analysis)
+
+```sh
+# Lint a Core IL file
+english-compiler lint myprogram.coreil.json
+
+# Lint with strict mode (warnings become errors)
+english-compiler lint --strict myprogram.coreil.json
+
+# Lint after compilation
+english-compiler compile --lint --frontend mock examples/hello.txt
+```
+
+**Lint rules:**
+- `unused-variable` — Variable declared but never referenced
+- `unreachable-code` — Statements after Return/Break/Continue/Throw
+- `empty-body` — Control flow with empty body
+- `variable-shadowing` — Variable re-declared (should be Assign)
 
 ### Configuration
 
@@ -157,7 +180,7 @@ english-compiler config reset
 | Setting | Values | Description |
 |---------|--------|-------------|
 | `frontend` | `mock`, `claude`, `openai`, `gemini`, `qwen` | Default LLM frontend |
-| `target` | `coreil`, `python`, `javascript`, `cpp`, `wasm` | Default compilation target |
+| `target` | `coreil`, `python`, `javascript`, `cpp`, `rust`, `wasm` | Default compilation target |
 | `explain-errors` | `true`, `false` | Enable LLM-powered error explanations |
 | `regen` | `true`, `false` | Always force regeneration |
 | `freeze` | `true`, `false` | Always fail if regeneration required |
@@ -188,21 +211,21 @@ The compiler follows a three-stage pipeline:
                                  ▼
                           ┌─────────────┐
                           │  Core IL    │
-                          │   v1.5      │  (Deterministic JSON)
+                          │   v1.8      │  (Deterministic JSON)
                           └──────┬──────┘
                                  │
-         ┌───────────┬───────────┼───────────┐
-         ▼           ▼           ▼           ▼
-    ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
-    │Interpret│ │ Python  │ │  Java   │ │   C++   │
-    │   er    │ │ Codegen │ │ Script  │ │ Codegen │
-    └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘
-         │           │           │           │
-         └───────────┴───────────┴───────────┘
-                           │
-                           ▼
-                   Identical Output
-                 (Verified by tests)
+         ┌───────────┬───────────┼───────────┬───────────┐
+         ▼           ▼           ▼           ▼           ▼
+    ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+    │Interpret│ │ Python  │ │  Java   │ │   C++   │ │  Rust   │
+    │   er    │ │ Codegen │ │ Script  │ │ Codegen │ │ Codegen │
+    └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘
+         │           │           │           │           │
+         └───────────┴───────────┴───────────┴───────────┘
+                                 │
+                                 ▼
+                         Identical Output
+                       (Verified by tests)
 ```
 
 1. **Frontend (LLM)**: Multiple providers translate English/pseudocode into Core IL JSON
@@ -212,16 +235,17 @@ The compiler follows a three-stage pipeline:
 2. **Core IL**: A closed, deterministic intermediate representation
    - All semantics are explicitly defined
    - No extension mechanism or helper functions
-   - Version 1.5 is the current stable version
+   - Version 1.8 is the current stable version
 
 3. **Backends**: Deterministic execution
    - Interpreter: Direct execution of Core IL
    - Python codegen: Transpiles to executable Python
    - JavaScript codegen: Transpiles to executable JavaScript
-   - C++ codegen: Transpiles to C++
+   - C++ codegen: Transpiles to C++17
+   - Rust codegen: Transpiles to Rust (single-file, no Cargo needed)
    - All backends produce identical output (verified by tests)
 
-## Core IL v1.5
+## Core IL v1.8
 
 Core IL is a complete, closed intermediate representation with explicit primitives for all operations.
 
@@ -231,6 +255,9 @@ Core IL is a complete, closed intermediate representation with explicit primitiv
 
 | Version | Features |
 |---------|----------|
+| v1.8 | Throw, TryCatch (exception handling) |
+| v1.7 | Break, Continue (loop control) |
+| v1.6 | MethodCall, PropertyGet (Tier 2 OOP), WASM/AssemblyScript backend |
 | v1.5 | Slice, Not (unary), negative indexing |
 | v1.4 | ExternalCall (Tier 2), expanded string operations, JS/C++ backends |
 | v1.3 | JsonParse, JsonStringify, Regex operations |
@@ -261,6 +288,9 @@ output/
 │   ├── foo.cpp
 │   ├── coreil_runtime.hpp
 │   └── json.hpp
+├── rust/                  # With --target rust
+│   ├── foo.rs
+│   └── coreil_runtime.rs
 └── wasm/                  # With --target wasm
     ├── foo.as.ts
     ├── foo.wasm
@@ -354,6 +384,19 @@ The generated C++ code:
 - Includes runtime headers in the same directory
 - Matches interpreter output exactly
 
+### Rust
+
+```sh
+english-compiler compile --target rust examples/hello.txt
+rustc --edition 2021 examples/output/rust/hello.rs -o hello && ./hello
+```
+
+The generated Rust code:
+- Uses Rust 2021 edition
+- Single-file compilation with `rustc` (no Cargo needed)
+- Includes runtime library in the same directory
+- Matches interpreter output exactly
+
 ### WebAssembly
 
 ```sh
@@ -423,8 +466,8 @@ python -m tests.run_algorithms
 This enforces:
 - Core IL validation passes
 - Interpreter executes successfully
-- Python backend executes successfully
-- Backend parity (interpreter output == Python output)
+- All backends execute successfully (Python, JavaScript, C++, Rust)
+- Backend parity (all backend outputs are identical)
 - No invalid helper calls
 
 See [tests/ALGORITHM_TESTS.md](tests/ALGORITHM_TESTS.md) for details on failure modes and test coverage.

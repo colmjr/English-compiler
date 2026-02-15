@@ -164,6 +164,50 @@ def _run_javascript_file(js_path: Path) -> int:
     return result.returncode
 
 
+def _run_rust_file(rust_path: Path) -> int:
+    """Compile and run a Rust file and return exit code."""
+    import subprocess
+    import tempfile
+    import shutil
+
+    compiler = shutil.which("rustc")
+    if compiler is None:
+        print("Error: rustc not found")
+        return 1
+
+    with tempfile.NamedTemporaryFile(suffix="", delete=False) as tmp:
+        exe_path = tmp.name
+
+    try:
+        from english_compiler.coreil.emit_rust import get_runtime_path
+        runtime_dir = get_runtime_path().parent
+
+        # Copy runtime to same directory as source so include! works
+        import shutil as shutil2
+        runtime_dst = rust_path.parent / "coreil_runtime.rs"
+        shutil2.copy(get_runtime_path(), runtime_dst)
+
+        compile_result = subprocess.run(
+            [compiler, str(rust_path), "-o", exe_path, "--edition", "2021"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        if compile_result.returncode != 0:
+            print(f"Rust compilation failed:\n{compile_result.stderr}")
+            return 1
+
+        result = subprocess.run([exe_path], capture_output=False, timeout=30)
+        return result.returncode
+
+    except subprocess.TimeoutExpired:
+        print("Rust execution timeout")
+        return 1
+    finally:
+        Path(exe_path).unlink(missing_ok=True)
+
+
 def _run_cpp_file(cpp_path: Path) -> int:
     """Compile and run a C++ file and return exit code."""
     import subprocess
@@ -252,6 +296,11 @@ def _emit_target_code(
         output_path = _get_output_path(source_path, "cpp", ".cpp")
         lang_name = "C++"
         emit_func = emit_cpp
+    elif target == "rust":
+        from english_compiler.coreil.emit_rust import emit_rust, get_runtime_path as get_rust_runtime_path
+        output_path = _get_output_path(source_path, "rust", ".rs")
+        lang_name = "Rust"
+        emit_func = emit_rust
     elif target == "wasm":
         # WASM target - emit AssemblyScript and optionally compile
         return _emit_wasm_target(doc, source_path, coreil_path, check_freshness)
@@ -273,6 +322,11 @@ def _emit_target_code(
             runtime_dir = output_path.parent
             shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
             shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
+
+        # For Rust, copy runtime library
+        if target == "rust":
+            runtime_dir = output_path.parent
+            shutil.copy(get_rust_runtime_path(), runtime_dir / "coreil_runtime.rs")
 
     except OSError as exc:
         print(f"{output_path}: {exc}")
@@ -573,6 +627,12 @@ def _compile_command(args: argparse.Namespace) -> int:
             print(f"{coreil_path}: invalid json")
             return 1
 
+        # Run lint if requested
+        if getattr(args, "lint", False):
+            lint_rc = _run_lint_on_doc(doc)
+            if lint_rc != 0:
+                return lint_rc
+
         # Emit code for the specified target (even when using cache)
         target = getattr(args, "target", "coreil")
         if not _emit_target_code(doc, source_path, coreil_path, target, check_freshness=True):
@@ -600,6 +660,10 @@ def _compile_command(args: argparse.Namespace) -> int:
                     cpp_path = _get_output_path(source_path, "cpp", ".cpp")
                     print(f"Note: Tier 2 operation not supported in interpreter, running {cpp_path}")
                     return _run_cpp_file(cpp_path)
+                elif target == "rust":
+                    rust_path = _get_output_path(source_path, "rust", ".rs")
+                    print(f"Note: Tier 2 operation not supported in interpreter, running {rust_path}")
+                    return _run_rust_file(rust_path)
             raise
 
     if args.freeze:
@@ -631,6 +695,12 @@ def _compile_command(args: argparse.Namespace) -> int:
 
     if not _write_json(coreil_path, doc):
         return 1
+
+    # Run lint if requested
+    if getattr(args, "lint", False):
+        lint_rc = _run_lint_on_doc(doc)
+        if lint_rc != 0:
+            return lint_rc
 
     # Emit code for the specified target
     target = getattr(args, "target", "coreil")
@@ -964,6 +1034,72 @@ def _repl_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _lint_command(args: argparse.Namespace) -> int:
+    """Handle the lint subcommand."""
+    from english_compiler.coreil.lint import lint_coreil
+
+    path = Path(args.file)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            doc = json.load(handle)
+    except OSError as exc:
+        print(f"{path}: {exc}")
+        return 1
+    except json.JSONDecodeError as exc:
+        print(f"{path}: invalid json: {exc}")
+        return 1
+
+    diagnostics = lint_coreil(doc)
+
+    if not diagnostics:
+        print("No lint issues found.")
+        return 0
+
+    for d in diagnostics:
+        severity = d.get("severity", "warning").upper()
+        rule = d.get("rule", "unknown")
+        message = d.get("message", "")
+        lint_path = d.get("path", "")
+        print(f"[{severity}] {lint_path}: {rule} - {message}")
+
+    warning_count = sum(1 for d in diagnostics if d.get("severity") == "warning")
+    error_count = sum(1 for d in diagnostics if d.get("severity") == "error")
+    print(f"\n{len(diagnostics)} issue(s): {warning_count} warning(s), {error_count} error(s)")
+
+    if args.strict or error_count > 0:
+        return 1
+    return 0
+
+
+def _run_lint_on_doc(doc: dict, strict: bool = False) -> int:
+    """Run lint on a Core IL document and print results.
+
+    Returns 0 if no issues (or non-strict mode with only warnings), 1 otherwise.
+    """
+    from english_compiler.coreil.lint import lint_coreil
+
+    diagnostics = lint_coreil(doc)
+    if not diagnostics:
+        print("Lint: no issues found.")
+        return 0
+
+    print("\nLint results:")
+    for d in diagnostics:
+        severity = d.get("severity", "warning").upper()
+        rule = d.get("rule", "unknown")
+        message = d.get("message", "")
+        lint_path = d.get("path", "")
+        print(f"  [{severity}] {lint_path}: {rule} - {message}")
+
+    warning_count = sum(1 for d in diagnostics if d.get("severity") == "warning")
+    error_count = sum(1 for d in diagnostics if d.get("severity") == "error")
+    print(f"  {len(diagnostics)} issue(s): {warning_count} warning(s), {error_count} error(s)")
+
+    if strict or error_count > 0:
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="english-compiler")
     parser.add_argument(
@@ -983,7 +1119,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     compile_parser.add_argument(
         "--target",
-        choices=["coreil", "python", "javascript", "cpp", "wasm"],
+        choices=["coreil", "python", "javascript", "cpp", "rust", "wasm"],
         default=None,
         help="Compilation target (default: coreil)",
     )
@@ -1007,6 +1143,11 @@ def main(argv: list[str] | None = None) -> int:
         "--watch", "-w",
         action="store_true",
         help="Watch file/directory for changes and recompile automatically",
+    )
+    compile_parser.add_argument(
+        "--lint",
+        action="store_true",
+        help="Run static analysis after compilation",
     )
     compile_parser.set_defaults(func=_compile_command)
 
@@ -1076,6 +1217,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Use LLM to explain runtime errors in user-friendly terms",
     )
     repl_parser.set_defaults(func=_repl_command)
+
+    # Lint subcommand
+    lint_parser = subparsers.add_parser("lint", help="Run static analysis on a Core IL file")
+    lint_parser.add_argument("file", help="Path to the Core IL JSON file")
+    lint_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Treat warnings as errors (exit 1 if any found)",
+    )
+    lint_parser.set_defaults(func=_lint_command)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -575,6 +575,15 @@ python -m english_compiler compile --target javascript --frontend claude program
 # Compile to C++
 python -m english_compiler compile --target cpp --frontend openai program.txt
 
+# Compile to Rust
+python -m english_compiler compile --target rust --frontend mock program.txt
+
+# Compile with lint
+python -m english_compiler compile --lint --frontend mock program.txt
+
+# Lint a Core IL file
+python -m english_compiler lint program.coreil.json
+
 # Force regeneration
 python -m english_compiler compile --regen program.txt
 

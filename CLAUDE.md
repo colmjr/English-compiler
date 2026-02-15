@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Environment Setup
 
-This is a Python project. No virtual environment is set up yet. If pip or imports fail, check for alternate Python installations before retrying repeatedly.
+This is a Python project. Use the virtual environment at `.venv/`. If pip or imports fail, check for alternate Python installations before retrying repeatedly.
 
 ## Project Philosophy
 
@@ -49,6 +49,9 @@ python -m tests.run_algorithms
 python -m tests.test_short_circuit    # Short-circuit evaluation
 python -m tests.test_lower            # Lowering pass (For/ForEach to While)
 python -m tests.test_regression_suite # Meta-tests for regression suite
+python -m tests.test_lint             # Static analysis (linter) rules
+python -m tests.test_rust             # Rust backend codegen + parity
+python -m tests.test_wasm_host_print  # WASM host string decoding
 ```
 
 ### Installation
@@ -88,7 +91,15 @@ english-compiler compile --target python examples/hello.txt
 # Generate other targets
 english-compiler compile --target javascript examples/hello.txt
 english-compiler compile --target cpp examples/hello.txt
+english-compiler compile --target rust examples/hello.txt
 english-compiler compile --target wasm examples/hello.txt
+
+# Compile with lint (static analysis)
+english-compiler compile --lint examples/hello.txt
+
+# Lint an existing Core IL file
+english-compiler lint examples/output/coreil/hello.coreil.json
+english-compiler lint --strict examples/output/coreil/hello.coreil.json
 
 # Force regeneration (bypass cache)
 english-compiler compile --regen examples/hello.txt
@@ -187,7 +198,7 @@ english-compiler config reset
 
 **Available settings:**
 - `frontend` - Default LLM frontend (mock, claude, openai, gemini, qwen)
-- `target` - Default compilation target (coreil, python, javascript, cpp, wasm)
+- `target` - Default compilation target (coreil, python, javascript, cpp, rust, wasm)
 - `explain-errors` - Enable LLM-powered error explanations (true/false)
 - `regen` - Always force regeneration (true/false)
 - `freeze` - Always fail if regeneration required (true/false)
@@ -217,6 +228,12 @@ freeze = false
     - `validate.py` - Core IL validation (structural and semantic)
     - `interp.py` - Reference interpreter (deterministic execution)
     - `emit.py` - Python code generator (transpilation)
+    - `emit_javascript.py` - JavaScript code generator
+    - `emit_cpp.py` - C++ code generator
+    - `emit_rust.py` - Rust code generator
+    - `emit_assemblyscript.py` - AssemblyScript/WASM code generator
+    - `emit_base.py` - Shared codegen base class
+    - `lint.py` - Static analysis (unused vars, dead code, etc.)
     - `lower.py` - Lowering pass (For/ForEach → While)
   - `frontend/` - LLM frontends
     - `__init__.py` - Factory function `get_frontend()` for provider selection
@@ -245,6 +262,9 @@ freeze = false
   - `test_short_circuit.py` - Short-circuit evaluation tests
   - `test_lower.py` - Lowering pass tests
   - `test_regression_suite.py` - Meta-tests
+  - `test_lint.py` - Static analysis (linter) rule tests
+  - `test_rust.py` - Rust backend codegen and parity tests
+  - `test_wasm_host_print.py` - WASM host string decoding tests
 
 - `examples/` - Example Core IL programs and source files
 
@@ -277,7 +297,11 @@ from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
 3. **Backends (Deterministic)**
    - Interpreter: direct execution of Core IL
    - Python codegen: transpiles to executable Python
-   - Both backends must produce identical output (verified by tests)
+   - JavaScript codegen: transpiles to executable JavaScript
+   - C++ codegen: transpiles to C++17
+   - Rust codegen: transpiles to Rust (single-file, no Cargo needed)
+   - WASM codegen: transpiles to AssemblyScript, compiles to WebAssembly
+   - All backends must produce identical output (verified by tests)
 
 ### Experimental Mode (Direct Compilation)
 

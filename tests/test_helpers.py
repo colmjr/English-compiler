@@ -34,6 +34,8 @@ for _cc in ["g++", "clang++"]:
         break
 CPP_AVAILABLE = CPP_COMPILER is not None
 
+RUST_AVAILABLE = shutil.which("rustc") is not None
+
 # WASM backend availability (requires asc compiler)
 ASC_AVAILABLE = shutil.which("asc") is not None
 WASM_AVAILABLE = ASC_AVAILABLE and NODE_AVAILABLE
@@ -298,6 +300,97 @@ def run_cpp_backend(doc: dict, timeout: int = 10) -> BackendResult:
         )
 
 
+def run_rust_backend(doc: dict, timeout: int = 10) -> BackendResult:
+    """Generate Rust code, compile, and execute it.
+
+    Args:
+        doc: The Core IL document to transpile and run.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        BackendResult with output, exit code, and success status.
+        Returns failure if rustc is not available.
+    """
+    if not RUST_AVAILABLE:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error="Rust compiler not available",
+        )
+
+    from english_compiler.coreil.emit_rust import emit_rust, get_runtime_path
+
+    try:
+        rust_code = emit_rust(doc)
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Rust codegen failed: {exc}",
+        )
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = Path(tmp_dir)
+            rs_path = tmp_dir_path / "test.rs"
+            exe_path = tmp_dir_path / "test"
+
+            rs_path.write_text(rust_code, encoding="utf-8")
+
+            # Copy runtime
+            import shutil as shutil2
+            shutil2.copy(get_runtime_path(), tmp_dir_path / "coreil_runtime.rs")
+
+            # Compile
+            compile_result = subprocess.run(
+                ["rustc", str(rs_path), "-o", str(exe_path), "--edition", "2021"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=tmp_dir,
+            )
+
+            if compile_result.returncode != 0:
+                return BackendResult(
+                    output="",
+                    exit_code=1,
+                    success=False,
+                    error=f"Rust compilation failed:\n{compile_result.stderr}",
+                )
+
+            # Execute
+            result = subprocess.run(
+                [str(exe_path)],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+
+            return BackendResult(
+                output=result.stdout,
+                exit_code=result.returncode,
+                success=result.returncode == 0,
+                error=result.stderr if result.returncode != 0 else None,
+            )
+
+    except subprocess.TimeoutExpired:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Rust execution timeout (>{timeout}s)",
+        )
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Rust execution error: {exc}",
+        )
+
+
 def run_wasm_backend(doc: dict, timeout: int = 30) -> BackendResult:
     """Generate AssemblyScript code, compile to WASM, and execute with Node.js.
 
@@ -317,8 +410,8 @@ def run_wasm_backend(doc: dict, timeout: int = 30) -> BackendResult:
             error="WASM backend not available (requires asc and node)",
         )
 
-    from english_compiler.coreil.emit_assemblyscript import emit_assemblyscript, get_runtime_path
-    from english_compiler.coreil.wasm_build import compile_to_wasm
+    from english_compiler.coreil.emit_assemblyscript import emit_assemblyscript
+    from english_compiler.coreil.wasm_build import compile_to_wasm, run_wasm
 
     try:
         as_code = emit_assemblyscript(doc)
@@ -351,14 +444,14 @@ def run_wasm_backend(doc: dict, timeout: int = 30) -> BackendResult:
                     error=f"WASM compilation failed: {result.error}",
                 )
 
-            # Run WASM with Node.js
-            # Note: Full WASM execution with proper I/O binding is complex
-            # For now, we skip WASM parity tests until runtime I/O is fully implemented
+            # Run WASM with Node.js using proper I/O bindings
+            stdout_output, exit_code = run_wasm(result.wasm_path, timeout=timeout)
+
             return BackendResult(
-                output="",
-                exit_code=1,
-                success=False,
-                error="WASM execution not yet implemented (I/O bindings pending)",
+                output=stdout_output,
+                exit_code=exit_code,
+                success=exit_code == 0,
+                error=None if exit_code == 0 else stdout_output,
             )
 
     except subprocess.TimeoutExpired:
@@ -410,7 +503,8 @@ def verify_backend_parity(
     test_name: str,
     include_javascript: bool = True,
     include_cpp: bool = True,
-    include_wasm: bool = False,  # Disabled by default until I/O bindings complete
+    include_rust: bool = True,
+    include_wasm: bool = False,
 ) -> None:
     """Verify that all backends produce identical output.
 
@@ -469,6 +563,20 @@ def verify_backend_parity(
                 f"{test_name}: Output mismatch (C++)!\n"
                 f"Interpreter output:\n{interp_result.output}\n"
                 f"C++ output:\n{cpp_result.output}"
+            )
+
+    # Run Rust backend
+    if include_rust and RUST_AVAILABLE:
+        rust_result = run_rust_backend(doc)
+        if not rust_result.success:
+            error_msg = rust_result.error or "unknown error"
+            raise TestFailure(f"{test_name}: Rust backend failed: {error_msg}")
+
+        if interp_result.output != rust_result.output:
+            raise TestFailure(
+                f"{test_name}: Output mismatch (Rust)!\n"
+                f"Interpreter output:\n{interp_result.output}\n"
+                f"Rust output:\n{rust_result.output}"
             )
 
     # Run WASM backend (disabled by default)
