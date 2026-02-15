@@ -568,6 +568,31 @@ export class Value {
     }
     this._array!.push(val);
   }
+
+  // Type conversions (v1.9)
+  toInt(): Value {
+    if (this.type == ValueType.INT) return Value.fromInt(this._int);
+    if (this.type == ValueType.FLOAT) return Value.fromInt(i64(this._float));
+    if (this.type == ValueType.STRING) {
+      const n = I64.parseInt(this._string);
+      return Value.fromInt(n);
+    }
+    throw new Error("runtime error: cannot convert " + this.typeName() + " to int");
+  }
+
+  toFloat(): Value {
+    if (this.type == ValueType.FLOAT) return Value.fromFloat(this._float);
+    if (this.type == ValueType.INT) return Value.fromFloat(f64(this._int));
+    if (this.type == ValueType.STRING) {
+      const f = F64.parseFloat(this._string);
+      return Value.fromFloat(f);
+    }
+    throw new Error("runtime error: cannot convert " + this.typeName() + " to float");
+  }
+
+  toStringConvert(): Value {
+    return Value.fromString(this.toString());
+  }
 }
 
 // ============================================================================

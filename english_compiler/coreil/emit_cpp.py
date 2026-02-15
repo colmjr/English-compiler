@@ -449,6 +449,18 @@ class CppEmitter(BaseEmitter):
         prop = node.get("property")
         return f"{obj}.{prop}"
 
+    def _emit_to_int(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        return f"coreil::to_int({value})"
+
+    def _emit_to_float(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        return f"coreil::to_float({value})"
+
+    def _emit_to_string(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        return f"coreil::to_string_value({value})"
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:

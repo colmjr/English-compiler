@@ -95,6 +95,9 @@ class BaseEmitter(ABC):
             "ExternalCall": self._emit_external_call,
             "MethodCall": self._emit_method_call,
             "PropertyGet": self._emit_property_get,
+            "ToInt": self._emit_to_int,
+            "ToFloat": self._emit_to_float,
+            "ToString": self._emit_to_string,
         }
 
         self.stmt_handlers: dict[str, Callable[[dict], None]] = {
@@ -400,6 +403,21 @@ class BaseEmitter(ABC):
     @abstractmethod
     def _emit_property_get(self, node: dict) -> str:
         """Emit property get operation (Tier 2, v1.6)."""
+        pass
+
+    @abstractmethod
+    def _emit_to_int(self, node: dict) -> str:
+        """Emit type conversion to int (v1.9)."""
+        pass
+
+    @abstractmethod
+    def _emit_to_float(self, node: dict) -> str:
+        """Emit type conversion to float (v1.9)."""
+        pass
+
+    @abstractmethod
+    def _emit_to_string(self, node: dict) -> str:
+        """Emit type conversion to string (v1.9)."""
         pass
 
     # ========== Statement Handlers (Abstract) ==========

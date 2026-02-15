@@ -35,6 +35,7 @@ for _cc in ["g++", "clang++"]:
 CPP_AVAILABLE = CPP_COMPILER is not None
 
 RUST_AVAILABLE = shutil.which("rustc") is not None
+GO_AVAILABLE = shutil.which("go") is not None
 
 # WASM backend availability (requires asc compiler)
 ASC_AVAILABLE = shutil.which("asc") is not None
@@ -391,6 +392,80 @@ def run_rust_backend(doc: dict, timeout: int = 10) -> BackendResult:
         )
 
 
+def run_go_backend(doc: dict, timeout: int = 10) -> BackendResult:
+    """Generate Go code, compile, and execute it.
+
+    Args:
+        doc: The Core IL document to transpile and run.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        BackendResult with output, exit code, and success status.
+        Returns failure if Go is not available.
+    """
+    if not GO_AVAILABLE:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error="Go compiler not available",
+        )
+
+    from english_compiler.coreil.emit_go import emit_go, get_runtime_path
+
+    try:
+        go_code = emit_go(doc)
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Go codegen failed: {exc}",
+        )
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = Path(tmp_dir)
+            go_path = tmp_dir_path / "main.go"
+            runtime_path = tmp_dir_path / "coreil_runtime.go"
+
+            go_path.write_text(go_code, encoding="utf-8")
+
+            # Copy runtime
+            shutil.copy(get_runtime_path(), runtime_path)
+
+            # Compile and run
+            result = subprocess.run(
+                ["go", "run", str(go_path), str(runtime_path)],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=tmp_dir,
+            )
+
+            return BackendResult(
+                output=result.stdout,
+                exit_code=result.returncode,
+                success=result.returncode == 0,
+                error=result.stderr if result.returncode != 0 else None,
+            )
+
+    except subprocess.TimeoutExpired:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Go execution timeout (>{timeout}s)",
+        )
+    except Exception as exc:
+        return BackendResult(
+            output="",
+            exit_code=1,
+            success=False,
+            error=f"Go execution error: {exc}",
+        )
+
+
 def run_wasm_backend(doc: dict, timeout: int = 30) -> BackendResult:
     """Generate AssemblyScript code, compile to WASM, and execute with Node.js.
 
@@ -504,6 +579,7 @@ def verify_backend_parity(
     include_javascript: bool = True,
     include_cpp: bool = True,
     include_rust: bool = True,
+    include_go: bool = True,
     include_wasm: bool = False,
 ) -> None:
     """Verify that all backends produce identical output.
@@ -513,6 +589,8 @@ def verify_backend_parity(
         test_name: Name of the test for error messages.
         include_javascript: Whether to test JavaScript backend.
         include_cpp: Whether to test C++ backend.
+        include_rust: Whether to test Rust backend.
+        include_go: Whether to test Go backend.
         include_wasm: Whether to test WASM backend (disabled by default).
 
     Raises:
@@ -577,6 +655,20 @@ def verify_backend_parity(
                 f"{test_name}: Output mismatch (Rust)!\n"
                 f"Interpreter output:\n{interp_result.output}\n"
                 f"Rust output:\n{rust_result.output}"
+            )
+
+    # Run Go backend
+    if include_go and GO_AVAILABLE:
+        go_result = run_go_backend(doc)
+        if not go_result.success:
+            error_msg = go_result.error or "unknown error"
+            raise TestFailure(f"{test_name}: Go backend failed: {error_msg}")
+
+        if interp_result.output != go_result.output:
+            raise TestFailure(
+                f"{test_name}: Output mismatch (Go)!\n"
+                f"Interpreter output:\n{interp_result.output}\n"
+                f"Go output:\n{go_result.output}"
             )
 
     # Run WASM backend (disabled by default)

@@ -245,4 +245,4 @@ def delete_settings() -> bool:
 
 # Valid values for settings
 VALID_FRONTENDS = ("mock", "claude", "openai", "gemini", "qwen")
-VALID_TARGETS = ("coreil", "python", "javascript", "cpp", "rust", "wasm")
+VALID_TARGETS = ("coreil", "python", "javascript", "cpp", "rust", "go", "wasm")
