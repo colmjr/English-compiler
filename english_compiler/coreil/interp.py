@@ -515,18 +515,23 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
             return json.dumps(value, indent=indent, default=default_serializer)
 
         # Regex operations (v1.3)
-        if node_type == "RegexMatch":
+        def _eval_regex_args(node, op_name):
+            """Evaluate common regex arguments: string, pattern, flags."""
             string = eval_expr(node.get("string"), local_env, call_depth)
             if not isinstance(string, str):
-                raise ValueError(f"runtime error: RegexMatch string must be a string, got {type(string).__name__}")
+                raise ValueError(f"runtime error: {op_name} string must be a string, got {type(string).__name__}")
             pattern = eval_expr(node.get("pattern"), local_env, call_depth)
             if not isinstance(pattern, str):
-                raise ValueError(f"runtime error: RegexMatch pattern must be a string, got {type(pattern).__name__}")
+                raise ValueError(f"runtime error: {op_name} pattern must be a string, got {type(pattern).__name__}")
             flags_node = node.get("flags")
             flags_str = ""
             if flags_node:
                 flags_str = eval_expr(flags_node, local_env, call_depth) or ""
             flags = parse_regex_flags(flags_str)
+            return string, pattern, flags
+
+        if node_type == "RegexMatch":
+            string, pattern, flags = _eval_regex_args(node, "RegexMatch")
             try:
                 match = re.search(pattern, string, flags)
                 return match is not None
@@ -534,54 +539,24 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
                 raise ValueError(f"runtime error: invalid regex pattern: {e}")
 
         if node_type == "RegexFindAll":
-            string = eval_expr(node.get("string"), local_env, call_depth)
-            if not isinstance(string, str):
-                raise ValueError(f"runtime error: RegexFindAll string must be a string, got {type(string).__name__}")
-            pattern = eval_expr(node.get("pattern"), local_env, call_depth)
-            if not isinstance(pattern, str):
-                raise ValueError(f"runtime error: RegexFindAll pattern must be a string, got {type(pattern).__name__}")
-            flags_node = node.get("flags")
-            flags_str = ""
-            if flags_node:
-                flags_str = eval_expr(flags_node, local_env, call_depth) or ""
-            flags = parse_regex_flags(flags_str)
+            string, pattern, flags = _eval_regex_args(node, "RegexFindAll")
             try:
                 return re.findall(pattern, string, flags)
             except re.error as e:
                 raise ValueError(f"runtime error: invalid regex pattern: {e}")
 
         if node_type == "RegexReplace":
-            string = eval_expr(node.get("string"), local_env, call_depth)
-            if not isinstance(string, str):
-                raise ValueError(f"runtime error: RegexReplace string must be a string, got {type(string).__name__}")
-            pattern = eval_expr(node.get("pattern"), local_env, call_depth)
-            if not isinstance(pattern, str):
-                raise ValueError(f"runtime error: RegexReplace pattern must be a string, got {type(pattern).__name__}")
+            string, pattern, flags = _eval_regex_args(node, "RegexReplace")
             replacement = eval_expr(node.get("replacement"), local_env, call_depth)
             if not isinstance(replacement, str):
                 raise ValueError(f"runtime error: RegexReplace replacement must be a string, got {type(replacement).__name__}")
-            flags_node = node.get("flags")
-            flags_str = ""
-            if flags_node:
-                flags_str = eval_expr(flags_node, local_env, call_depth) or ""
-            flags = parse_regex_flags(flags_str)
             try:
                 return re.sub(pattern, replacement, string, flags=flags)
             except re.error as e:
                 raise ValueError(f"runtime error: invalid regex pattern: {e}")
 
         if node_type == "RegexSplit":
-            string = eval_expr(node.get("string"), local_env, call_depth)
-            if not isinstance(string, str):
-                raise ValueError(f"runtime error: RegexSplit string must be a string, got {type(string).__name__}")
-            pattern = eval_expr(node.get("pattern"), local_env, call_depth)
-            if not isinstance(pattern, str):
-                raise ValueError(f"runtime error: RegexSplit pattern must be a string, got {type(pattern).__name__}")
-            flags_node = node.get("flags")
-            flags_str = ""
-            if flags_node:
-                flags_str = eval_expr(flags_node, local_env, call_depth) or ""
-            flags = parse_regex_flags(flags_str)
+            string, pattern, flags = _eval_regex_args(node, "RegexSplit")
             maxsplit_node = node.get("maxsplit")
             maxsplit = 0  # 0 means no limit in re.split
             if maxsplit_node:

@@ -11,7 +11,7 @@ Version history:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Callable
 
 from english_compiler.coreil.emit_utils import escape_string_literal
 
