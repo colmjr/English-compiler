@@ -38,6 +38,7 @@ from .interp import run_coreil
 from .validate import validate_coreil
 from .emit import emit_python
 from .emit_javascript import emit_javascript
+from .debug import debug_coreil
 from .versions import COREIL_VERSION, SUPPORTED_VERSIONS, PACKAGE_VERSION
 
 __version__ = PACKAGE_VERSION
@@ -46,6 +47,7 @@ __all__ = [
     "validate_coreil",
     "emit_python",
     "emit_javascript",
+    "debug_coreil",
     "COREIL_VERSION",
     "SUPPORTED_VERSIONS",
 ]

@@ -56,6 +56,7 @@ python -m tests.test_optimize        # Core IL optimizer
 python -m tests.test_explain         # Reverse compiler (Core IL → English)
 python -m tests.test_wasm_host_print  # WASM host string decoding
 python -m tests.test_source_map       # Source map (English→CoreIL→target)
+python -m tests.test_debug            # Interactive debugger (step callback, formatting)
 ```
 
 ### Installation
@@ -125,6 +126,9 @@ english-compiler run examples/output/coreil/hello.coreil.json
 # Run with LLM-powered error explanations (useful for beginners)
 english-compiler run --explain-errors examples/output/coreil/hello.coreil.json
 english-compiler run --explain-errors --frontend claude examples/output/coreil/hello.coreil.json
+
+# Debug a Core IL file interactively (step through, inspect variables)
+english-compiler debug examples/output/coreil/hello.coreil.json
 
 # Compile with error explanations
 english-compiler compile --explain-errors examples/hello.txt
@@ -250,6 +254,7 @@ freeze = false
     - `lint.py` - Static analysis (unused vars, dead code, etc.)
     - `lower.py` - Lowering pass (For/ForEach → While)
     - `source_map.py` - Source map composition (English→CoreIL→target)
+    - `debug.py` - Interactive debugger (step-through, breakpoints, variable inspection)
   - `frontend/` - LLM frontends
     - `__init__.py` - Factory function `get_frontend()` for provider selection
     - `base.py` - Abstract base class with shared logic
@@ -285,6 +290,7 @@ freeze = false
   - `test_explain.py` - Reverse compiler (explain) tests
   - `test_wasm_host_print.py` - WASM host string decoding tests
   - `test_source_map.py` - Source map (English→CoreIL→target) tests
+  - `test_debug.py` - Interactive debugger tests
 
 - `examples/` - Example Core IL programs and source files
 
