@@ -866,6 +866,24 @@ def _run_command(args: argparse.Namespace) -> int:
     return run_coreil(doc, error_callback=error_callback)
 
 
+def _debug_command(args: argparse.Namespace) -> int:
+    """Handle the debug subcommand."""
+    from english_compiler.coreil.debug import debug_coreil
+
+    path = Path(args.file)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            doc = json.load(handle)
+    except OSError as exc:
+        print(f"{path}: {exc}")
+        return 1
+    except json.JSONDecodeError as exc:
+        print(f"{path}: invalid json: {exc}")
+        return 1
+
+    return debug_coreil(doc)
+
+
 def _config_command(args: argparse.Namespace) -> int:
     """Handle the config subcommand."""
     config_action = getattr(args, "config_action", None)
@@ -1328,6 +1346,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Treat warnings as errors (exit 1 if any found)",
     )
     lint_parser.set_defaults(func=_lint_command)
+
+    # Debug subcommand
+    debug_parser = subparsers.add_parser("debug", help="Debug a Core IL file interactively")
+    debug_parser.add_argument("file", help="Path to the Core IL JSON file")
+    debug_parser.set_defaults(func=_debug_command)
 
     args = parser.parse_args(argv)
     return args.func(args)

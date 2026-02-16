@@ -70,7 +70,11 @@ class _ThrowSignal(Exception):
     message: str
 
 
-def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -> int:
+def run_coreil(
+    doc: dict,
+    error_callback: Callable[[str], None] | None = None,
+    step_callback: Callable | None = None,
+) -> int:
     # Note: For/ForEach are handled natively (no lowering needed)
     # This ensures Continue works correctly in for loops
 
@@ -1028,7 +1032,9 @@ def run_coreil(doc: dict, error_callback: Callable[[str], None] | None = None) -
         in_func: bool,
         call_depth: int,
     ) -> None:
-        for stmt in body:
+        for i, stmt in enumerate(body):
+            if step_callback is not None:
+                step_callback(stmt, i, local_env, global_env, functions, call_depth)
             exec_stmt(stmt, local_env, in_func, call_depth)
 
     try:

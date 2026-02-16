@@ -142,6 +142,14 @@ english-compiler explain --verbose examples/output/coreil/hello.coreil.json
 english-compiler run examples/output/coreil/hello.coreil.json
 ```
 
+### Debug a Core IL file interactively
+
+```sh
+english-compiler debug examples/output/coreil/hello.coreil.json
+```
+
+Step through statements, inspect variables, and set breakpoints. Commands: `s`tep, `n`ext, `c`ontinue, `v`ars, `p <name>`, `b <index>`, `l`ist, `q`uit, `h`elp.
+
 ### Lint (Static Analysis)
 
 ```sh
