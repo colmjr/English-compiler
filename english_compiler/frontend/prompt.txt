@@ -390,6 +390,19 @@ Notes:
 - Python/JavaScript/C++ backends generate native dot notation code
 - Do NOT confuse with Record's GetField (which is for Core IL Records, not external objects)
 
+=== SOURCE MAP ===
+
+Include a top-level "source_map" field that maps English source line numbers to Core IL body statement indices.
+
+Format:
+- Keys: 1-indexed English line numbers as strings (e.g., "1", "3")
+- Values: arrays of 0-indexed top-level body statement indices
+- Every top-level body statement must appear in exactly one line's array
+- Skip blank lines in the English source
+
+Example for a 3-line program where line 1 produces statements 0-2, line 3 produces statements 3-4:
+  "source_map": {"1": [0, 1, 2], "3": [3, 4]}
+
 === VERSION ===
 
 Use "coreil-1.9" for all programs. This version supports all data structures (Array, Map, Set, Tuple, Record, Deque, Heap), library operations (Math, JSON, Regex), loop control (Break, Continue), exception handling (TryCatch, Throw), OOP-style APIs (MethodCall, PropertyGet), and type conversions (ToInt, ToFloat, ToString).

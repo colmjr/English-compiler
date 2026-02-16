@@ -53,19 +53,28 @@ class RustEmitter(BaseEmitter):
         """Generate Rust code from Core IL document."""
         # Separate function definitions from main body
         body = self.doc.get("body", [])
-        func_defs = [stmt for stmt in body if stmt.get("type") == "FuncDef"]
-        main_stmts = [stmt for stmt in body if stmt.get("type") != "FuncDef"]
+
+        # Build index mapping: original body index -> statement
+        body_indices = list(range(len(body)))
+        func_def_indices = [i for i in body_indices if body[i].get("type") == "FuncDef"]
+        main_indices = [i for i in body_indices if body[i].get("type") != "FuncDef"]
 
         # Generate function definitions
-        for stmt in func_defs:
-            self.emit_stmt(stmt)
+        for i in func_def_indices:
+            start = len(self.lines)
+            self.emit_stmt(body[i])
             self.emit_line("")
+            end = len(self.lines)
+            self.coreil_line_map[i] = list(range(start, end))
 
         # Generate main function
         self.emit_line("fn main() {")
         self.indent_level = 1
-        for stmt in main_stmts:
-            self.emit_stmt(stmt)
+        for i in main_indices:
+            start = len(self.lines)
+            self.emit_stmt(body[i])
+            end = len(self.lines)
+            self.coreil_line_map[i] = list(range(start, end))
         self.indent_level = 0
         self.emit_line("}")
 
@@ -85,6 +94,13 @@ class RustEmitter(BaseEmitter):
             header_lines.insert(0, "// WARNING: This program uses external calls and is NOT PORTABLE")
             header_lines.insert(1, f"// Required external modules: {', '.join(sorted(self.external_modules))}")
             header_lines.insert(2, "")
+
+        # Shift coreil_line_map by the number of header lines
+        offset = len(header_lines)
+        self.coreil_line_map = {
+            k: [ln + offset for ln in v]
+            for k, v in self.coreil_line_map.items()
+        }
 
         return "\n".join(header_lines + self.lines) + "\n"
 
@@ -755,13 +771,15 @@ class RustEmitter(BaseEmitter):
         self.emit_line(");")
 
 
-def emit_rust(doc: dict) -> str:
+def emit_rust(doc: dict) -> tuple[str, dict[int, list[int]]]:
     """Generate Rust code from Core IL document.
 
-    Returns Rust source code as a string.
+    Returns a tuple of (Rust source code, coreil_line_map).
+    The coreil_line_map maps Core IL body statement indices to output line numbers.
     """
     emitter = RustEmitter(doc)
-    return emitter.emit()
+    code = emitter.emit()
+    return code, emitter.coreil_line_map
 
 
 def get_runtime_path() -> Path:

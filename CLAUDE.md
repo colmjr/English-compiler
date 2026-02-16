@@ -55,6 +55,7 @@ python -m tests.test_go              # Go backend codegen + parity
 python -m tests.test_optimize        # Core IL optimizer
 python -m tests.test_explain         # Reverse compiler (Core IL → English)
 python -m tests.test_wasm_host_print  # WASM host string decoding
+python -m tests.test_source_map       # Source map (English→CoreIL→target)
 ```
 
 ### Installation
@@ -248,6 +249,7 @@ freeze = false
     - `optimize.py` - Core IL optimizer (constant folding, DCE, identity simplification)
     - `lint.py` - Static analysis (unused vars, dead code, etc.)
     - `lower.py` - Lowering pass (For/ForEach → While)
+    - `source_map.py` - Source map composition (English→CoreIL→target)
   - `frontend/` - LLM frontends
     - `__init__.py` - Factory function `get_frontend()` for provider selection
     - `base.py` - Abstract base class with shared logic
@@ -282,6 +284,7 @@ freeze = false
   - `test_optimize.py` - Core IL optimizer tests
   - `test_explain.py` - Reverse compiler (explain) tests
   - `test_wasm_host_print.py` - WASM host string decoding tests
+  - `test_source_map.py` - Source map (English→CoreIL→target) tests
 
 - `examples/` - Example Core IL programs and source files
 
@@ -358,7 +361,8 @@ examples/
     │   └── cpp/
     │       └── foo.cpp
     ├── py/
-    │   └── foo.py               (with --target python)
+    │   ├── foo.py               (with --target python)
+    │   └── foo.sourcemap.json   (source map, if source_map present)
     ├── js/
     │   └── foo.js               (with --target javascript)
     ├── cpp/
@@ -372,6 +376,26 @@ examples/
 ```
 
 Cache reuse is based on matching source hash and Core IL hash.
+
+### Source Maps
+
+When compiling with `--target`, a `.sourcemap.json` file is written alongside the target code. It contains three mappings:
+
+```json
+{
+  "english_to_coreil": {"1": [0, 1, 2], "3": [3, 4]},
+  "coreil_to_target": {"0": [1, 2, 3], "1": [4], "2": [5, 6], "3": [7, 8], "4": [9]},
+  "english_to_target": {"1": [1, 2, 3, 4, 5, 6], "3": [7, 8, 9]}
+}
+```
+
+- **english_to_coreil**: From the `source_map` field in `.coreil.json` (produced by LLM frontend). Keys are 1-indexed English line numbers (strings), values are 0-indexed body statement indices.
+- **coreil_to_target**: Computed mechanically by the emitter during codegen. Maps body statement indices to output line numbers.
+- **english_to_target**: Composed from the above two, giving the full English→target chain.
+
+The `source_map` field in Core IL JSON is optional for backward compatibility. The compose function lives in `english_compiler/coreil/source_map.py`.
+
+All `emit_*()` convenience functions return `(code, coreil_line_map)` tuples. Callers that don't need the line map should unpack with `code, _ = emit_python(doc)`.
 
 ## Core IL Fundamentals
 

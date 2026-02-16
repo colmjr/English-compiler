@@ -41,7 +41,7 @@ def test_stringlength():
     interp_output = buffer.getvalue()
     assert interp_output == "5\n"
 
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:
@@ -88,7 +88,7 @@ def test_substring():
     interp_output = buffer.getvalue()
     assert interp_output == "bcd\n"
 
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:
@@ -134,7 +134,7 @@ def test_charat():
     interp_output = buffer.getvalue()
     assert interp_output == "e\n"
 
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:
@@ -187,7 +187,7 @@ def test_join():
     interp_output = buffer.getvalue()
     assert interp_output == "a, b, c\n"
 
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:
@@ -240,7 +240,7 @@ def test_join_with_numbers():
     interp_output = buffer.getvalue()
     assert interp_output == "1-2-3\n"
 
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:

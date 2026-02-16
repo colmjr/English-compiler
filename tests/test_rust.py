@@ -72,7 +72,7 @@ def _run_interp(doc: dict) -> str:
 def _test_parity(doc: dict, test_name: str) -> None:
     """Test that interpreter and Rust produce identical output."""
     interp_output = _run_interp(doc)
-    rust_code = emit_rust(doc)
+    rust_code, _ = emit_rust(doc)
     assert rust_code.strip(), f"{test_name}: emit_rust() produced empty code"
 
     if _RUST_AVAILABLE:

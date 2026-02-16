@@ -31,7 +31,7 @@ def _run_interp(doc: dict) -> str:
 
 def _run_go(doc: dict) -> str:
     """Compile and run Go code from Core IL doc, return stdout."""
-    code = emit_go(doc)
+    code, _ = emit_go(doc)
     with tempfile.TemporaryDirectory() as tmpdir:
         tmppath = Path(tmpdir)
         # Write generated code
@@ -88,7 +88,7 @@ def _prog(body: list[dict]) -> dict:
 def test_codegen_hello():
     """Basic codegen produces valid Go code."""
     doc = _prog([{"type": "Print", "args": [_lit("hello")]}])
-    code = emit_go(doc)
+    code, _ = emit_go(doc)
     assert "package main" in code
     assert "coreilPrint" in code
     assert "hello" in code
@@ -102,7 +102,7 @@ def test_codegen_function():
         ]},
         {"type": "Print", "args": [{"type": "Call", "name": "add", "args": [_lit(2), _lit(3)]}]},
     ])
-    code = emit_go(doc)
+    code, _ = emit_go(doc)
     assert "func add(" in code
     assert "return" in code
 
@@ -114,7 +114,7 @@ def test_codegen_if_else():
          "then": [{"type": "Print", "args": [_lit("yes")]}],
          "else": [{"type": "Print", "args": [_lit("no")]}]},
     ])
-    code = emit_go(doc)
+    code, _ = emit_go(doc)
     assert "if isTruthy(" in code
     assert "} else {" in code
 
@@ -128,7 +128,7 @@ def test_codegen_while():
             {"type": "Assign", "name": "i", "value": _bin("+", _var("i"), _lit(1))},
         ]},
     ])
-    code = emit_go(doc)
+    code, _ = emit_go(doc)
     assert "for {" in code
 
 
@@ -141,7 +141,7 @@ def test_codegen_try_catch():
             {"type": "Print", "args": [_var("e")]},
         ]},
     ])
-    code = emit_go(doc)
+    code, _ = emit_go(doc)
     assert "recover()" in code
     assert "panic(" in code
 
@@ -153,7 +153,7 @@ def test_codegen_for_range():
          "iter": {"type": "Range", "from": _lit(0), "to": _lit(3), "inclusive": False},
          "body": [{"type": "Print", "args": [_var("i")]}]},
     ])
-    code = emit_go(doc)
+    code, _ = emit_go(doc)
     assert "__from" in code
     assert "__to" in code
 

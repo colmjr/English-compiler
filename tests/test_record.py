@@ -56,7 +56,7 @@ def test_record_basic():
     assert interp_output == "2\n"
 
     # Test Python backend
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:
@@ -123,7 +123,7 @@ def test_record_setfield():
     assert interp_output == "10\n"
 
     # Test Python backend
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:
@@ -193,7 +193,7 @@ def test_record_arithmetic():
     assert interp_output == "12\n"
 
     # Test Python backend
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:
@@ -276,7 +276,7 @@ def test_record_nested():
     assert interp_output == "10\n"
 
     # Test Python backend
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", delete=False, encoding="utf-8"
     ) as tmp:

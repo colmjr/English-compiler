@@ -96,7 +96,7 @@ def run_python_backend(doc: dict, timeout: int = 10) -> BackendResult:
         BackendResult with output, exit code, and success status.
     """
     try:
-        python_code = emit_python(doc)
+        python_code, _ = emit_python(doc)
     except Exception as exc:
         return BackendResult(
             output="",
@@ -164,7 +164,7 @@ def run_javascript_backend(doc: dict, timeout: int = 10) -> BackendResult:
         )
 
     try:
-        js_code = emit_javascript(doc)
+        js_code, _ = emit_javascript(doc)
     except Exception as exc:
         return BackendResult(
             output="",
@@ -232,7 +232,7 @@ def run_cpp_backend(doc: dict, timeout: int = 10) -> BackendResult:
         )
 
     try:
-        cpp_code = emit_cpp(doc)
+        cpp_code, _ = emit_cpp(doc)
     except Exception as exc:
         return BackendResult(
             output="",
@@ -323,7 +323,7 @@ def run_rust_backend(doc: dict, timeout: int = 10) -> BackendResult:
     from english_compiler.coreil.emit_rust import emit_rust, get_runtime_path
 
     try:
-        rust_code = emit_rust(doc)
+        rust_code, _ = emit_rust(doc)
     except Exception as exc:
         return BackendResult(
             output="",
@@ -414,7 +414,7 @@ def run_go_backend(doc: dict, timeout: int = 10) -> BackendResult:
     from english_compiler.coreil.emit_go import emit_go, get_runtime_path
 
     try:
-        go_code = emit_go(doc)
+        go_code, _ = emit_go(doc)
     except Exception as exc:
         return BackendResult(
             output="",
@@ -489,7 +489,7 @@ def run_wasm_backend(doc: dict, timeout: int = 30) -> BackendResult:
     from english_compiler.coreil.wasm_build import compile_to_wasm, run_wasm
 
     try:
-        as_code = emit_assemblyscript(doc)
+        as_code, _ = emit_assemblyscript(doc)
     except Exception as exc:
         return BackendResult(
             output="",

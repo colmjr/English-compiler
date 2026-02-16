@@ -162,7 +162,7 @@ def generate_python(json_str: str) -> str:
         })
 
     try:
-        code = emit_python(doc)
+        code, _ = emit_python(doc)
         return json.dumps({
             "success": True,
             "code": code,

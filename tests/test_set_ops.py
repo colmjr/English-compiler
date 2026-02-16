@@ -43,7 +43,7 @@ def test_set_literal_empty():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -92,7 +92,7 @@ def test_set_literal_with_items():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -157,7 +157,7 @@ def test_sethas():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -214,7 +214,7 @@ def test_setadd():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -273,7 +273,7 @@ def test_setremove():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -304,7 +304,7 @@ def test_dedup():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -335,7 +335,7 @@ def test_two_sum():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()

@@ -41,6 +41,13 @@ COREIL_JSON_SCHEMA = {
             "type": "array",
             "items": {"$ref": "#/definitions/statement"},
         },
+        "source_map": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0},
+            },
+        },
     },
     "definitions": {
         "ambiguity": {
