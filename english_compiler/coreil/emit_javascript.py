@@ -64,8 +64,11 @@ class JavaScriptEmitter(BaseEmitter):
     def emit(self) -> str:
         """Generate JavaScript code from Core IL document."""
         body = self.doc.get("body", [])
-        for stmt in body:
+        for i, stmt in enumerate(body):
+            start = len(self.lines)
             self.emit_stmt(stmt)
+            end = len(self.lines)
+            self.coreil_line_map[i] = list(range(start, end))
 
         return self._build_output()
 
@@ -153,6 +156,12 @@ class JavaScriptEmitter(BaseEmitter):
 
         if header_lines:
             header_lines.append("")
+            # Shift coreil_line_map by the number of header lines
+            offset = len(header_lines)
+            self.coreil_line_map = {
+                k: [ln + offset for ln in v]
+                for k, v in self.coreil_line_map.items()
+            }
             result = "\n".join(header_lines) + "\n".join(self.lines) + "\n"
         else:
             result = "\n".join(self.lines) + "\n"
@@ -919,11 +928,13 @@ class JavaScriptEmitter(BaseEmitter):
         self.emit_line("}")
 
 
-def emit_javascript(doc: dict) -> str:
+def emit_javascript(doc: dict) -> tuple[str, dict[int, list[int]]]:
     """Generate JavaScript code from Core IL document.
 
-    Returns JavaScript source code as a string (ES Module format).
+    Returns a tuple of (JavaScript source code, coreil_line_map).
+    The coreil_line_map maps Core IL body statement indices to output line numbers.
     """
     emitter = JavaScriptEmitter(doc)
-    return emitter.emit()
+    code = emitter.emit()
+    return code, emitter.coreil_line_map
 

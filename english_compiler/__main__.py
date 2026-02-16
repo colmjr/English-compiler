@@ -366,9 +366,25 @@ def _emit_target_code(
             return True
 
     try:
-        code = emit_func(doc)
+        code, coreil_line_map = emit_func(doc)
         output_path.write_text(code, encoding="utf-8")
         print(f"Generated {lang_name} code at {output_path}")
+
+        # Write source map if english→coreil source_map is present
+        english_to_coreil = doc.get("source_map")
+        if english_to_coreil is not None:
+            from english_compiler.coreil.source_map import compose_source_maps
+            english_to_target = compose_source_maps(english_to_coreil, coreil_line_map)
+            # Convert coreil_line_map keys to strings for JSON
+            coreil_to_target_str = {str(k): v for k, v in coreil_line_map.items()}
+            source_map_data = {
+                "english_to_coreil": english_to_coreil,
+                "coreil_to_target": coreil_to_target_str,
+                "english_to_target": english_to_target,
+            }
+            source_map_path = output_path.with_suffix(".sourcemap.json")
+            _write_json(source_map_path, source_map_data)
+            print(f"Generated source map at {source_map_path}")
 
         # For C++, also copy runtime headers
         if target == "cpp":
@@ -426,7 +442,7 @@ def _emit_wasm_target(
             return True
 
     try:
-        code = emit_assemblyscript(doc)
+        code, _line_map = emit_assemblyscript(doc)
         as_path.write_text(code, encoding="utf-8")
         print(f"Generated AssemblyScript code at {as_path}")
 

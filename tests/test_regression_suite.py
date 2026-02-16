@@ -104,7 +104,7 @@ def test_backend_parity_same():
     assert result.output == "hello\n"
 
     # Generate and check Python
-    python_code = emit_python(doc)
+    python_code, _ = emit_python(doc)
     assert "print(" in python_code, "Expected print statement in Python"
 
     print(f"✓ Backend parity test ready (interpreter output: {result.output!r})")

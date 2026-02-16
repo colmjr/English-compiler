@@ -64,8 +64,11 @@ class AssemblyScriptEmitter(BaseEmitter):
     def emit(self) -> str:
         """Generate AssemblyScript code from Core IL document."""
         body = self.doc.get("body", [])
-        for stmt in body:
+        for i, stmt in enumerate(body):
+            start = len(self.lines)
             self.emit_stmt(stmt)
+            end = len(self.lines)
+            self.coreil_line_map[i] = list(range(start, end))
 
         return self._build_output()
 
@@ -105,6 +108,13 @@ class AssemblyScriptEmitter(BaseEmitter):
 
         # Main function wrapper
         header_lines.append('export function main(): void {')
+
+        # Shift coreil_line_map by the number of header lines (including main function line)
+        offset = len(header_lines)
+        self.coreil_line_map = {
+            k: [ln + offset for ln in v]
+            for k, v in self.coreil_line_map.items()
+        }
 
         # Indent all body lines
         body_code = []
@@ -707,10 +717,12 @@ class AssemblyScriptEmitter(BaseEmitter):
         self.emit_line("}")
 
 
-def emit_assemblyscript(doc: dict) -> str:
+def emit_assemblyscript(doc: dict) -> tuple[str, dict[int, list[int]]]:
     """Generate AssemblyScript code from Core IL document.
 
-    Returns AssemblyScript source code as a string.
+    Returns a tuple of (AssemblyScript source code, coreil_line_map).
+    The coreil_line_map maps Core IL body statement indices to output line numbers.
     """
     emitter = AssemblyScriptEmitter(doc)
-    return emitter.emit()
+    code = emitter.emit()
+    return code, emitter.coreil_line_map

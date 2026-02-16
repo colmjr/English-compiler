@@ -37,7 +37,7 @@ def run_parity_test(coreil_path: Path) -> tuple[bool, str]:
 
     # Generate Python code
     try:
-        python_code = emit_python(doc)
+        python_code, _ = emit_python(doc)
     except Exception as exc:
         return False, f"Codegen failed: {exc}"
 

@@ -37,6 +37,7 @@ class BaseEmitter(ABC):
         self.doc = lower_coreil(doc)
         self.lines: list[str] = []
         self.indent_level = 0
+        self.coreil_line_map: dict[int, list[int]] = {}  # stmt_index -> output line numbers
         self._setup_state()
         self._setup_dispatch_tables()
 

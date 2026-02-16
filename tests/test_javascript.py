@@ -55,7 +55,7 @@ def _run_interp(doc: dict) -> str:
 def _test_parity(doc: dict, test_name: str) -> None:
     """Test that interpreter and JavaScript produce identical output."""
     interp_output = _run_interp(doc)
-    js_code = emit_javascript(doc)
+    js_code, _ = emit_javascript(doc)
     js_output = _run_js(js_code)
     if interp_output != js_output:
         print(f"FAILED: {test_name}")

@@ -299,7 +299,9 @@ output/
 ├── coreil/
 │   ├── foo.coreil.json    # Core IL (always generated)
 │   └── foo.lock.json      # Cache metadata
-├── py/foo.py              # With --target python
+├── py/
+│   ├── foo.py             # With --target python
+│   └── foo.sourcemap.json # Source map (if source_map in Core IL)
 ├── js/foo.js              # With --target javascript
 ├── cpp/                   # With --target cpp
 │   ├── foo.cpp

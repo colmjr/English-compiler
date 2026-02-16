@@ -42,7 +42,7 @@ def test_deque_new():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     assert "from collections import deque" in code
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
@@ -100,7 +100,7 @@ def test_pushback():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -152,7 +152,7 @@ def test_pushfront():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -232,7 +232,7 @@ def test_popfront():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -312,7 +312,7 @@ def test_popback():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()
@@ -383,7 +383,7 @@ def test_mixed_pushpop():
     interp_output = buffer.getvalue()
 
     # Python backend
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         f.flush()

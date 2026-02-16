@@ -823,4 +823,39 @@ def validate_coreil(doc: dict) -> list[dict]:
     for i, stmt in enumerate(body):
         validate_stmt(stmt, f"$.body[{i}]", defined, False)
 
+    # Validate optional source_map
+    source_map = doc.get("source_map")
+    if source_map is not None:
+        if not isinstance(source_map, dict):
+            add_error("$.source_map", "source_map must be an object")
+        else:
+            seen_indices: set[int] = set()
+            body_len = len(body)
+            for key, indices in source_map.items():
+                sm_path = f"$.source_map[{key}]"
+                # Keys must be string representations of positive integers
+                if not isinstance(key, str):
+                    add_error(sm_path, "source_map key must be a string")
+                    continue
+                try:
+                    line_num = int(key)
+                except ValueError:
+                    add_error(sm_path, f"source_map key '{key}' must be a string integer")
+                    continue
+                if line_num < 1:
+                    add_error(sm_path, f"source_map key '{key}' must be a positive integer")
+                # Values must be arrays of non-negative ints within body range
+                if not isinstance(indices, list):
+                    add_error(sm_path, "source_map value must be an array")
+                    continue
+                for j, idx in enumerate(indices):
+                    if not isinstance(idx, int) or idx < 0:
+                        add_error(f"{sm_path}[{j}]", "source_map index must be a non-negative integer")
+                    elif idx >= body_len:
+                        add_error(f"{sm_path}[{j}]", f"source_map index {idx} out of range (body has {body_len} statements)")
+                    elif idx in seen_indices:
+                        add_error(f"{sm_path}[{j}]", f"source_map index {idx} appears in multiple entries")
+                    else:
+                        seen_indices.add(idx)
+
     return errors

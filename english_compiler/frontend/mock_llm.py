@@ -128,6 +128,7 @@ class MockFrontend:
         return {
             "version": "coreil-1.2",
             "ambiguities": ambiguities,
+            "source_map": {"1": [0]},
             "body": [
                 {
                     "type": "Print",

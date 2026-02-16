@@ -87,8 +87,11 @@ class PythonEmitter(BaseEmitter):
     def emit(self) -> str:
         """Generate Python code from Core IL document."""
         body = self.doc.get("body", [])
-        for stmt in body:
+        for i, stmt in enumerate(body):
+            start = len(self.lines)
             self.emit_stmt(stmt)
+            end = len(self.lines)
+            self.coreil_line_map[i] = list(range(start, end))
 
         return self._build_output()
 
@@ -144,6 +147,13 @@ class PythonEmitter(BaseEmitter):
                 self.lines.insert(insert_pos + i, line)
             # Add blank line before main code
             self.lines.insert(len(import_lines) + len(helper_lines), "")
+
+            # Shift coreil_line_map by the number of prepended lines
+            offset = len(import_lines) + len(helper_lines) + 1  # +1 for blank separator
+            self.coreil_line_map = {
+                k: [ln + offset for ln in v]
+                for k, v in self.coreil_line_map.items()
+            }
 
         return "\n".join(self.lines) + "\n"
 
@@ -733,10 +743,12 @@ class PythonEmitter(BaseEmitter):
             self.indent_level -= 1
 
 
-def emit_python(doc: dict) -> str:
+def emit_python(doc: dict) -> tuple[str, dict[int, list[int]]]:
     """Generate Python code from Core IL document.
 
-    Returns Python source code as a string.
+    Returns a tuple of (Python source code, coreil_line_map).
+    The coreil_line_map maps Core IL body statement indices to output line numbers.
     """
     emitter = PythonEmitter(doc)
-    return emitter.emit()
+    code = emitter.emit()
+    return code, emitter.coreil_line_map

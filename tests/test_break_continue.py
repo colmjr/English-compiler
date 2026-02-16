@@ -33,7 +33,7 @@ def _run_interp(doc: dict) -> str:
 
 def _run_python(doc: dict) -> str:
     """Generate Python code and execute it."""
-    code = emit_python(doc)
+    code, _ = emit_python(doc)
     stdout = io.StringIO()
     with redirect_stdout(stdout):
         exec(code, {})
