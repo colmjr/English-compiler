@@ -57,6 +57,7 @@ python -m tests.test_explain         # Reverse compiler (Core IL → English)
 python -m tests.test_wasm_host_print  # WASM host string decoding
 python -m tests.test_source_map       # Source map (English→CoreIL→target)
 python -m tests.test_debug            # Interactive debugger (step callback, formatting)
+python -m tests.test_type_convert     # Type conversions (ToInt, ToFloat, ToString)
 ```
 
 ### Installation
@@ -291,6 +292,7 @@ freeze = false
   - `test_wasm_host_print.py` - WASM host string decoding tests
   - `test_source_map.py` - Source map (English→CoreIL→target) tests
   - `test_debug.py` - Interactive debugger tests
+  - `test_type_convert.py` - Type conversion (ToInt, ToFloat, ToString) tests
 
 - `examples/` - Example Core IL programs and source files
 
