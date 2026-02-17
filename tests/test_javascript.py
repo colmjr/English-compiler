@@ -478,6 +478,143 @@ def test_not():
     _test_parity(doc, "not")
 
 
+def test_break_continue():
+    """Test Break and Continue in loops (v1.7)."""
+    doc = {
+        "version": "coreil-1.7",
+        "body": [
+            # Break: print 0,1,2 then break
+            {"type": "Let", "name": "i", "value": {"type": "Literal", "value": 0}},
+            {"type": "While",
+             "test": {"type": "Binary", "op": "<", "left": {"type": "Var", "name": "i"}, "right": {"type": "Literal", "value": 10}},
+             "body": [
+                 {"type": "If",
+                  "test": {"type": "Binary", "op": "==", "left": {"type": "Var", "name": "i"}, "right": {"type": "Literal", "value": 3}},
+                  "then": [{"type": "Break"}]},
+                 {"type": "Print", "args": [{"type": "Var", "name": "i"}]},
+                 {"type": "Assign", "name": "i", "value": {"type": "Binary", "op": "+", "left": {"type": "Var", "name": "i"}, "right": {"type": "Literal", "value": 1}}},
+             ]},
+            # Continue: skip even numbers
+            {"type": "Let", "name": "j", "value": {"type": "Literal", "value": 0}},
+            {"type": "While",
+             "test": {"type": "Binary", "op": "<", "left": {"type": "Var", "name": "j"}, "right": {"type": "Literal", "value": 6}},
+             "body": [
+                 {"type": "Assign", "name": "j", "value": {"type": "Binary", "op": "+", "left": {"type": "Var", "name": "j"}, "right": {"type": "Literal", "value": 1}}},
+                 {"type": "If",
+                  "test": {"type": "Binary", "op": "==",
+                           "left": {"type": "Binary", "op": "%", "left": {"type": "Var", "name": "j"}, "right": {"type": "Literal", "value": 2}},
+                           "right": {"type": "Literal", "value": 0}},
+                  "then": [{"type": "Continue"}]},
+                 {"type": "Print", "args": [{"type": "Var", "name": "j"}]},
+             ]},
+        ]
+    }
+    _test_parity(doc, "break_continue")
+
+
+def test_try_catch_basic():
+    """Test basic TryCatch/Throw (v1.8)."""
+    doc = {
+        "version": "coreil-1.8",
+        "body": [
+            {"type": "TryCatch",
+             "body": [
+                 {"type": "Throw", "message": {"type": "Literal", "value": "oops"}},
+             ],
+             "catch_var": "e",
+             "catch_body": [
+                 {"type": "Print", "args": [{"type": "Var", "name": "e"}]},
+             ]},
+        ]
+    }
+    _test_parity(doc, "try_catch_basic")
+
+
+def test_try_catch_finally():
+    """Test TryCatch with finally block (v1.8)."""
+    doc = {
+        "version": "coreil-1.8",
+        "body": [
+            {"type": "TryCatch",
+             "body": [
+                 {"type": "Print", "args": [{"type": "Literal", "value": "try"}]},
+                 {"type": "Throw", "message": {"type": "Literal", "value": "err"}},
+             ],
+             "catch_var": "e",
+             "catch_body": [
+                 {"type": "Print", "args": [{"type": "Literal", "value": "catch"}]},
+             ],
+             "finally_body": [
+                 {"type": "Print", "args": [{"type": "Literal", "value": "finally"}]},
+             ]},
+        ]
+    }
+    _test_parity(doc, "try_catch_finally")
+
+
+def test_try_catch_nested():
+    """Test nested TryCatch blocks (v1.8)."""
+    doc = {
+        "version": "coreil-1.8",
+        "body": [
+            {"type": "TryCatch",
+             "body": [
+                 {"type": "TryCatch",
+                  "body": [
+                      {"type": "Throw", "message": {"type": "Literal", "value": "inner"}},
+                  ],
+                  "catch_var": "e1",
+                  "catch_body": [
+                      {"type": "Print", "args": [{"type": "Var", "name": "e1"}]},
+                      {"type": "Throw", "message": {"type": "Literal", "value": "re-thrown"}},
+                  ]},
+             ],
+             "catch_var": "e2",
+             "catch_body": [
+                 {"type": "Print", "args": [{"type": "Var", "name": "e2"}]},
+             ]},
+        ]
+    }
+    _test_parity(doc, "try_catch_nested")
+
+
+def test_type_convert_to_int():
+    """Test ToInt type conversion (v1.9)."""
+    doc = {
+        "version": "coreil-1.9",
+        "body": [
+            {"type": "Print", "args": [{"type": "ToInt", "value": {"type": "Literal", "value": 3.7}}]},
+            {"type": "Print", "args": [{"type": "ToInt", "value": {"type": "Literal", "value": "42"}}]},
+            {"type": "Print", "args": [{"type": "ToInt", "value": {"type": "Literal", "value": 99}}]},
+        ]
+    }
+    _test_parity(doc, "type_convert_to_int")
+
+
+def test_type_convert_to_float():
+    """Test ToFloat type conversion (v1.9) - uses float inputs to avoid int→float display differences."""
+    doc = {
+        "version": "coreil-1.9",
+        "body": [
+            {"type": "Print", "args": [{"type": "ToFloat", "value": {"type": "Literal", "value": "3.14"}}]},
+            {"type": "Print", "args": [{"type": "ToFloat", "value": {"type": "Literal", "value": 1.5}}]},
+        ]
+    }
+    _test_parity(doc, "type_convert_to_float")
+
+
+def test_type_convert_to_string():
+    """Test ToString type conversion (v1.9) - avoids None (Python 'None' vs JS 'null')."""
+    doc = {
+        "version": "coreil-1.9",
+        "body": [
+            {"type": "Print", "args": [{"type": "ToString", "value": {"type": "Literal", "value": 123}}]},
+            {"type": "Print", "args": [{"type": "ToString", "value": {"type": "Literal", "value": 3.14}}]},
+        ]
+    }
+    _test_parity(doc, "type_convert_to_string")
+
+
 def main() -> int:
     if not _NODE_AVAILABLE:
         print("Node.js not available - skipping JavaScript tests")
@@ -512,6 +649,13 @@ def main() -> int:
         test_slice,
         test_slice_negative,
         test_not,
+        test_break_continue,
+        test_try_catch_basic,
+        test_try_catch_finally,
+        test_try_catch_nested,
+        test_type_convert_to_int,
+        test_type_convert_to_float,
+        test_type_convert_to_string,
     ]
 
     failures = []
