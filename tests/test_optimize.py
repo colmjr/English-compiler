@@ -193,6 +193,42 @@ def test_nested_folding():
     assert _run_and_capture(prog) == _run_and_capture(optimized)
 
 
+def test_dead_code_after_continue():
+    """Statements after Continue should be removed."""
+    prog = _make_program([
+        {"type": "Let", "name": "i", "value": _lit(0)},
+        {"type": "While", "test": _binary("<", _var("i"), _lit(5)), "body": [
+            {"type": "Assign", "name": "i", "value": _binary("+", _var("i"), _lit(1))},
+            {"type": "Continue"},
+            {"type": "Print", "args": [_lit("unreachable")]},
+        ]},
+        {"type": "Print", "args": [_lit("done")]},
+    ])
+    optimized = optimize(prog)
+    while_body = optimized["body"][1]["body"]
+    assert len(while_body) == 2  # Only Assign and Continue, Print removed
+    assert _run_and_capture(prog) == _run_and_capture(optimized)
+
+
+def test_dead_code_after_throw():
+    """Statements after Throw should be removed."""
+    prog = _make_program([
+        {"type": "TryCatch",
+         "body": [
+             {"type": "Throw", "message": _lit("error")},
+             {"type": "Print", "args": [_lit("unreachable")]},
+         ],
+         "catch_var": "e",
+         "catch_body": [
+             {"type": "Print", "args": [_var("e")]},
+         ]},
+    ])
+    optimized = optimize(prog)
+    try_body = optimized["body"][0]["body"]
+    assert len(try_body) == 1  # Only Throw, Print removed
+    assert _run_and_capture(prog) == _run_and_capture(optimized)
+
+
 def test_complex_program_parity():
     """A complex program should produce identical output before and after optimization."""
     prog = _make_program([
@@ -216,6 +252,8 @@ def main() -> None:
         test_no_fold_division_by_zero,
         test_dead_code_after_return,
         test_dead_code_after_break,
+        test_dead_code_after_continue,
+        test_dead_code_after_throw,
         test_identity_add_zero,
         test_identity_multiply_one,
         test_identity_and_true,
