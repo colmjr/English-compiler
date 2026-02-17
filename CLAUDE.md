@@ -57,6 +57,7 @@ python -m tests.test_explain         # Reverse compiler (Core IL → English)
 python -m tests.test_wasm_host_print  # WASM host string decoding
 python -m tests.test_source_map       # Source map (English→CoreIL→target)
 python -m tests.test_debug            # Interactive debugger (step callback, formatting)
+python -m tests.test_switch           # Switch statement pattern matching
 ```
 
 ### Installation
@@ -296,11 +297,11 @@ freeze = false
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.9 (`"coreil-1.9"`)
+**Current stable version**: Core IL v1.10 (`"coreil-1.10"`)
 
-Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. Core IL v1.5 adds list slicing (Slice expression). Core IL v1.6 adds OOP-style method calls (MethodCall, PropertyGet) for Tier 2 non-portable operations. Core IL v1.7 adds Break and Continue for loop control flow. Core IL v1.8 adds Throw and TryCatch for exception handling. Core IL v1.9 adds type conversion expressions (ToInt, ToFloat, ToString). All versions maintain full backward compatibility.
+Core IL v1.0 is frozen and stable. Core IL v1.1 adds Record, Set (data structure), and string operations. Core IL v1.2 adds portable math operations (Math, MathPow, MathConst). Core IL v1.3 adds JSON operations (JsonParse, JsonStringify) and Regex operations. Core IL v1.4 consolidates Math, JSON, and Regex into a unified version. Core IL v1.5 adds list slicing (Slice expression). Core IL v1.6 adds OOP-style method calls (MethodCall, PropertyGet) for Tier 2 non-portable operations. Core IL v1.7 adds Break and Continue for loop control flow. Core IL v1.8 adds Throw and TryCatch for exception handling. Core IL v1.9 adds type conversion expressions (ToInt, ToFloat, ToString). Core IL v1.10 adds Switch statement for pattern matching. All versions maintain full backward compatibility.
 
-All versions from v0.1 through v1.9 are supported for backward compatibility. The codebase uses version constants:
+All versions from v0.1 through v1.10 are supported for backward compatibility. The codebase uses version constants:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
@@ -425,10 +426,11 @@ All `emit_*()` convenience functions return `(code, coreil_line_map)` tuples. Ca
 - Let, Assign, SetIndex, Set, Push, SetField, SetAdd, SetRemove
 - PushBack, PushFront, PopFront, PopBack
 - HeapPush, HeapPop
-- Print, If, While, For, ForEach
+- Print, If, While, For, ForEach, Switch
 - FuncDef, Return
 - Break, Continue (v1.7)
 - Throw, TryCatch (v1.8)
+- Switch (v1.10)
 
 ### Critical Rules
 
@@ -574,6 +576,17 @@ Break and Continue are only valid inside loops (While, For, ForEach).
 {"type": "StringReplace", "base": <str>, "old": <str>, "new": <str>}
 ```
 
+**Switch-Case pattern matching (v1.10)**:
+```json
+{"type": "Switch", "test": <expr>, "cases": [{"value": <expr>, "body": [<stmts>]}, ...], "default": [<stmts>]}
+```
+
+- Switch evaluates test expression and compares against each case value in order
+- First matching case body executes, then control continues after the Switch
+- If no case matches and default is present, default body executes
+- default is optional
+- cases must be a non-empty list
+
 ### Operation Tiers
 
 **Tier 1 (Portable)**: All operations above are portable - identical semantics across all platforms.
@@ -662,7 +675,7 @@ Create `tests/algorithms/new_algorithm.txt` with natural English pseudocode. The
 
 3. **Don't assume static types**: Core IL uses runtime type checking. Operations validate inputs and produce clear error messages.
 
-4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque, Heap), v1.2+ (Math), v1.3+/v1.4+ (JSON, Regex), v1.5+ (Slice), v1.6+ (MethodCall, PropertyGet), v1.7+ (Break, Continue), v1.8+ (Throw, TryCatch), and v1.9+ (ToInt, ToFloat, ToString) with backward compatibility.
+4. **Don't modify v1.0 semantics**: v1.0 is frozen. New features go in v1.1+ (Records, Sets, Deque, Heap), v1.2+ (Math), v1.3+/v1.4+ (JSON, Regex), v1.5+ (Slice), v1.6+ (MethodCall, PropertyGet), v1.7+ (Break, Continue), v1.8+ (Throw, TryCatch), v1.9+ (ToInt, ToFloat, ToString), and v1.10+ (Switch) with backward compatibility.
 
 5. **Don't skip lowering**: For/ForEach must be lowered before backend execution (happens automatically in `emit_python()`).
 

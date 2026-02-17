@@ -746,6 +746,21 @@ def run_coreil(
             exec_block(branch, local_env, in_func, call_depth)
             return
 
+        if node_type == "Switch":
+            test_val = eval_expr(node.get("test"), local_env, call_depth)
+            matched = False
+            for case in node.get("cases", []):
+                case_val = eval_expr(case["value"], local_env, call_depth)
+                if test_val == case_val:
+                    exec_block(case["body"], local_env, in_func, call_depth)
+                    matched = True
+                    break
+            if not matched:
+                default = node.get("default")
+                if default is not None:
+                    exec_block(default, local_env, in_func, call_depth)
+            return
+
         if node_type == "While":
             body = node.get("body")
             if not isinstance(body, list):

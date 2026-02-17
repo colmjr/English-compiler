@@ -38,6 +38,7 @@ _ALLOWED_NODE_TYPES = {
     "Slice", "Not", "MethodCall", "PropertyGet", "Break", "Continue",
     "Throw", "TryCatch",
     "ToInt", "ToFloat", "ToString",
+    "Switch",
 }
 
 
@@ -653,6 +654,36 @@ def _validate_throw(node, path, defined, add_error, validate_expr, in_func, in_l
     _require_expr(node, "message", path, defined, add_error, validate_expr)
 
 
+def _validate_switch(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+    _require_expr(node, "test", path, defined, add_error, validate_expr)
+    cases = node.get("cases")
+    if not isinstance(cases, list) or len(cases) == 0:
+        add_error(f"{path}.cases", "missing or invalid cases (must be non-empty list)")
+    else:
+        for i, case in enumerate(cases):
+            case_path = f"{path}.cases[{i}]"
+            if not isinstance(case, dict):
+                add_error(case_path, "case must be an object")
+                continue
+            if "value" not in case:
+                add_error(f"{case_path}.value", "missing case value")
+            else:
+                validate_expr(case["value"], f"{case_path}.value", defined)
+            case_body = case.get("body")
+            if not isinstance(case_body, list):
+                add_error(f"{case_path}.body", "missing or invalid case body")
+            else:
+                for j, stmt in enumerate(case_body):
+                    validate_stmt(stmt, f"{case_path}.body[{j}]", defined, in_func, in_loop)
+    default = node.get("default")
+    if default is not None:
+        if not isinstance(default, list):
+            add_error(f"{path}.default", "invalid default")
+        else:
+            for i, stmt in enumerate(default):
+                validate_stmt(stmt, f"{path}.default[{i}]", defined, in_func, in_loop)
+
+
 def _validate_try_catch(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
     body = node.get("body")
     if not isinstance(body, list):
@@ -714,6 +745,7 @@ _STMT_VALIDATORS = {
     "Continue": _validate_continue,
     "Throw": _validate_throw,
     "TryCatch": _validate_try_catch,
+    "Switch": _validate_switch,
 }
 
 

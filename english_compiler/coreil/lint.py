@@ -86,6 +86,7 @@ _BODY_CONTAINERS = {
     "For": ("body",),
     "ForEach": ("body",),
     "TryCatch": ("body", "catch_body", "finally_body"),
+    "Switch": (),  # Switch cases handled separately
 }
 
 
@@ -184,6 +185,17 @@ def _check_block(
             body = stmt.get("body")
             if isinstance(body, list):
                 _check_block(body, f"{stmt_path}.body", func_defined, diagnostics)
+
+        elif stype == "Switch":
+            cases = stmt.get("cases", [])
+            for ci, case in enumerate(cases):
+                if isinstance(case, dict):
+                    case_body = case.get("body")
+                    if isinstance(case_body, list):
+                        _check_block(case_body, f"{stmt_path}.cases[{ci}].body", defined, diagnostics)
+            default = stmt.get("default")
+            if isinstance(default, list):
+                _check_block(default, f"{stmt_path}.default", defined, diagnostics)
 
         elif stype == "TryCatch":
             body = stmt.get("body")
