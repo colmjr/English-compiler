@@ -65,14 +65,36 @@ def _load_system_prompt() -> str:
     return prompt_path.read_text(encoding="utf-8")
 
 
-def _build_user_message(source_text: str, errors: list[dict] | None) -> str:
-    """Build user message, optionally including validation errors for retry."""
+def _build_user_message(
+    source_text: str,
+    errors: list[dict] | None,
+    previous_output: dict | None = None,
+) -> str:
+    """Build user message, optionally including validation errors for retry.
+
+    When retrying, includes the full previous Core IL output and validation
+    errors so the LLM can see exactly what it generated and what went wrong.
+    """
     if not errors:
         return source_text
-    return (
-        f"{source_text}\n\nPrevious output failed validation. "
-        f"Errors: {json.dumps(errors, sort_keys=True)}"
+
+    parts = [source_text, "\n\n--- RETRY: Previous output failed validation ---\n"]
+
+    # Include the Core IL that failed so the LLM can see what it produced
+    if previous_output is not None:
+        coreil_str = json.dumps(previous_output, indent=2)
+        # Truncate if extremely large to stay within context limits
+        max_coreil_len = 30_000
+        if len(coreil_str) > max_coreil_len:
+            coreil_str = coreil_str[:max_coreil_len] + "\n... (truncated)"
+        parts.append(f"Your previous Core IL output:\n```json\n{coreil_str}\n```\n\n")
+
+    parts.append(f"Validation errors:\n{json.dumps(errors, indent=2, sort_keys=True)}")
+    parts.append(
+        "\n\nPlease fix these errors and regenerate the COMPLETE Core IL program."
     )
+
+    return "".join(parts)
 
 
 class BaseFrontend(ABC):
@@ -220,30 +242,43 @@ class BaseFrontend(ABC):
             # On error, assume it's code (safe default)
             return "CODE"
 
-    def generate_coreil_from_text(self, source_text: str) -> dict:
+    def generate_coreil_from_text(
+        self, source_text: str, *, max_retries: int = 3
+    ) -> dict:
         """Generate Core IL from source text with validation and retry.
+
+        On validation failure, retries up to *max_retries* times, feeding back
+        the full previous Core IL output and the validation errors so the LLM
+        can see exactly what it generated and what went wrong.
 
         Args:
             source_text: The English pseudocode to compile.
+            max_retries: Maximum number of retry attempts (default 3).
 
         Returns:
             Validated Core IL program as a dict.
 
         Raises:
-            RuntimeError: If validation fails after retry.
+            RuntimeError: If validation fails after all retries.
         """
         user_message = _build_user_message(source_text, None)
         data = self._call_api(user_message)
         errors = validate_coreil(data)
 
-        if errors:
-            retry_message = _build_user_message(source_text, errors)
+        attempt = 0
+        while errors and attempt < max_retries:
+            attempt += 1
+            retry_message = _build_user_message(
+                source_text, errors, previous_output=data
+            )
             data = self._call_api(retry_message)
             errors = validate_coreil(data)
-            if errors:
-                raise RuntimeError(
-                    f"Validation failed after retry. "
-                    f"model={self.get_model_name()} errors={errors}"
-                )
+
+        if errors:
+            raise RuntimeError(
+                f"Validation failed after {attempt} "
+                f"{'retry' if attempt == 1 else 'retries'}. "
+                f"model={self.get_model_name()} errors={errors}"
+            )
 
         return data

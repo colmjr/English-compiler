@@ -102,7 +102,7 @@ class MockFrontend:
         else:
             raise ValueError(f"Unsupported experimental target: {target}")
 
-    def generate_coreil_from_text(self, source_text: str) -> dict:
+    def generate_coreil_from_text(self, source_text: str, **kwargs: object) -> dict:
         """Generate a mock Core IL v1.2 program from source text.
 
         This is a simple mock that recognizes a few keywords and generates

@@ -59,6 +59,7 @@ python -m tests.test_map               # Map/dictionary operations
 python -m tests.test_optimize          # Core IL optimizer
 python -m tests.test_record            # Record operations
 python -m tests.test_regression_suite  # Meta-tests for regression suite
+python -m tests.test_retry             # LLM error recovery retry logic
 python -m tests.test_rust              # Rust backend codegen + parity
 python -m tests.test_set_ops           # Set operations
 python -m tests.test_settings          # Config/settings

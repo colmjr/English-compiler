@@ -1,5 +1,16 @@
 # Changelog
 
+## Post-v1.9 Features - 2026-02-17
+
+### LLM Error Recovery with Retry
+
+- **Enhanced retry logic**: When the LLM produces invalid Core IL, the compiler now retries up to 3 times (configurable via `max_retries` parameter)
+- **Full context on retry**: Retry messages include the complete previous Core IL output and validation errors, giving the LLM maximum context to fix issues
+- **Large output truncation**: Core IL outputs over 30KB are truncated in retry messages to respect context limits
+- **New test suite**: `python -m tests.test_retry` — 8 tests covering retry behavior and message formatting
+
+---
+
 ## Post-v1.8 Features - 2026-02-15
 
 ### Rust Backend
