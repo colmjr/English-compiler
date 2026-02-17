@@ -128,6 +128,7 @@ class BaseEmitter(ABC):
             "ForEach": self._emit_for_each,
             "Throw": self._emit_throw,
             "TryCatch": self._emit_try_catch,
+            "Switch": self._emit_switch,
         }
 
     @property
@@ -551,6 +552,11 @@ class BaseEmitter(ABC):
     @abstractmethod
     def _emit_try_catch(self, node: dict) -> None:
         """Emit try/catch/finally statement."""
+        pass
+
+    @abstractmethod
+    def _emit_switch(self, node: dict) -> None:
+        """Emit switch/case statement (v1.10)."""
         pass
 
     # ========== Utility Methods ==========

@@ -716,6 +716,27 @@ class AssemblyScriptEmitter(BaseEmitter):
 
         self.emit_line("}")
 
+    def _emit_switch(self, node: dict) -> None:
+        test = self.emit_expr(node.get("test"))
+        cases = node.get("cases", [])
+        default = node.get("default")
+        self.emit_line(f"const __switch_val: Value = {test};")
+        for i, case in enumerate(cases):
+            case_val = self.emit_expr(case["value"])
+            keyword = "if" if i == 0 else "} else if"
+            self.emit_line(f"{keyword} (__switch_val.eq({case_val})) {{")
+            self.indent_level += 1
+            for stmt in case.get("body", []):
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+        if default is not None:
+            self.emit_line("} else {")
+            self.indent_level += 1
+            for stmt in default:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+        self.emit_line("}")
+
 
 def emit_assemblyscript(doc: dict) -> tuple[str, dict[int, list[int]]]:
     """Generate AssemblyScript code from Core IL document.

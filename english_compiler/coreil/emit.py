@@ -82,6 +82,7 @@ class PythonEmitter(BaseEmitter):
         self.uses_math = False
         self.uses_json = False
         self.uses_regex = False
+        self.uses_type_convert_helpers = False
         self.external_modules: set[str] = set()
 
     def emit(self) -> str:
@@ -129,6 +130,33 @@ class PythonEmitter(BaseEmitter):
                 "        if 's' in flags_str:",
                 "            flags |= re.DOTALL",
                 "    return flags",
+            ])
+        if self.uses_type_convert_helpers:
+            helper_lines.extend([
+                "",
+                "def _coreil_to_int(value):",
+                "    if isinstance(value, int) and not isinstance(value, bool):",
+                "        return value",
+                "    if isinstance(value, float):",
+                "        return int(value)",
+                "    if isinstance(value, str):",
+                "        try:",
+                "            return int(value)",
+                "        except ValueError as exc:",
+                "            raise ValueError(f\"runtime error: cannot convert string '{value}' to int\") from exc",
+                "    raise ValueError(f\"runtime error: cannot convert {type(value).__name__} to int\")",
+                "",
+                "def _coreil_to_float(value):",
+                "    if isinstance(value, float):",
+                "        return value",
+                "    if isinstance(value, int) and not isinstance(value, bool):",
+                "        return float(value)",
+                "    if isinstance(value, str):",
+                "        try:",
+                "            return float(value)",
+                "        except ValueError as exc:",
+                "            raise ValueError(f\"runtime error: cannot convert string '{value}' to float\") from exc",
+                "    raise ValueError(f\"runtime error: cannot convert {type(value).__name__} to float\")",
             ])
 
         # Add warning comment for non-portable programs
@@ -497,11 +525,13 @@ class PythonEmitter(BaseEmitter):
 
     def _emit_to_int(self, node: dict) -> str:
         value = self.emit_expr(node.get("value"))
-        return f"int({value})"
+        self.uses_type_convert_helpers = True
+        return f"_coreil_to_int({value})"
 
     def _emit_to_float(self, node: dict) -> str:
         value = self.emit_expr(node.get("value"))
-        return f"float({value})"
+        self.uses_type_convert_helpers = True
+        return f"_coreil_to_float({value})"
 
     def _emit_to_string(self, node: dict) -> str:
         value = self.emit_expr(node.get("value"))
@@ -740,6 +770,33 @@ class PythonEmitter(BaseEmitter):
             self.indent_level += 1
             for stmt in finally_body:
                 self.emit_stmt(stmt)
+            self.indent_level -= 1
+
+    def _emit_switch(self, node: dict) -> None:
+        test = self.emit_expr(node.get("test"))
+        cases = node.get("cases", [])
+        default = node.get("default")
+        self.emit_line(f"__switch_val = {test}")
+        for i, case in enumerate(cases):
+            case_val = self.emit_expr(case["value"])
+            keyword = "if" if i == 0 else "elif"
+            self.emit_line(f"{keyword} __switch_val == {case_val}:")
+            self.indent_level += 1
+            case_body = case.get("body", [])
+            if not case_body:
+                self.emit_line("pass")
+            else:
+                for stmt in case_body:
+                    self.emit_stmt(stmt)
+            self.indent_level -= 1
+        if default is not None:
+            self.emit_line("else:")
+            self.indent_level += 1
+            if not default:
+                self.emit_line("pass")
+            else:
+                for stmt in default:
+                    self.emit_stmt(stmt)
             self.indent_level -= 1
 
 

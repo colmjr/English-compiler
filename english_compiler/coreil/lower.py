@@ -135,6 +135,25 @@ def _lower_statement(stmt: Any) -> list[dict]:
             lowered["finally_body"] = _lower_statements(finally_body)
         return [lowered]
 
+    if node_type == "Switch":
+        lowered = dict(stmt)
+        lowered["test"] = _lower_expr(lowered.get("test"))
+        cases = lowered.get("cases")
+        if isinstance(cases, list):
+            lowered_cases = []
+            for case in cases:
+                lc = dict(case)
+                lc["value"] = _lower_expr(lc.get("value"))
+                case_body = lc.get("body")
+                if isinstance(case_body, list):
+                    lc["body"] = _lower_statements(case_body)
+                lowered_cases.append(lc)
+            lowered["cases"] = lowered_cases
+        default = lowered.get("default")
+        if isinstance(default, list):
+            lowered["default"] = _lower_statements(default)
+        return [lowered]
+
     return [stmt]
 
 

@@ -123,6 +123,10 @@ def _format_stmt(stmt: dict) -> str:
         return "Throw ..."
     if stype == "TryCatch":
         return f"TryCatch (catch_var={stmt.get('catch_var')})"
+    if stype == "Switch":
+        num_cases = len(stmt.get("cases", []))
+        has_default = "default" in stmt
+        return f"Switch ({num_cases} case{'s' if num_cases != 1 else ''}{', +default' if has_default else ''})"
     return stype
 
 

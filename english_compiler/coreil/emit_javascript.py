@@ -58,6 +58,7 @@ class JavaScriptEmitter(BaseEmitter):
         self.uses_regex_flags = False
         self.uses_print = False
         self.uses_float = False
+        self.uses_type_convert_helpers = False
         self.uses_index = False  # Track if we need index helper for negative indexing
         self.external_modules: set[str] = set()
 
@@ -133,6 +134,12 @@ class JavaScriptEmitter(BaseEmitter):
             if header_lines:
                 header_lines.append("")
             header_lines.extend(self._float_wrapper_lines())
+
+        # Add type conversion helpers to match interpreter semantics
+        if self.uses_type_convert_helpers:
+            if header_lines:
+                header_lines.append("")
+            header_lines.extend(self._type_conversion_helper_lines())
 
         # Add print helper for Python-compatible output format
         if self.uses_print:
@@ -251,6 +258,52 @@ class JavaScriptEmitter(BaseEmitter):
             "  }",
             "}",
             "function __float(v) { return new __Float(v); }",
+        ]
+
+    def _type_conversion_helper_lines(self) -> list[str]:
+        """Return lines for type conversion helpers with interpreter-compatible semantics."""
+        return [
+            "// Type conversion helpers (Core IL v1.9 semantics)",
+            "function __coreilTypeName(v) {",
+            "  if (v === null) return 'NoneType';",
+            "  if (typeof __Float !== 'undefined' && v instanceof __Float) return 'float';",
+            "  if (Array.isArray(v)) return 'list';",
+            "  if (typeof v === 'boolean') return 'bool';",
+            "  if (typeof v === 'number') return Number.isInteger(v) ? 'int' : 'float';",
+            "  if (typeof v === 'string') return 'str';",
+            "  if (typeof v === 'object') return 'dict';",
+            "  return typeof v;",
+            "}",
+            "function __toInt(v) {",
+            "  if (typeof __Float !== 'undefined' && v instanceof __Float) v = v.value;",
+            "  if (typeof v === 'number' && Number.isInteger(v)) return v;",
+            "  if (typeof v === 'number') return Math.trunc(v);",
+            "  if (typeof v === 'string') {",
+            "    const s = v.trim();",
+            "    if (/^[+-]?\\d+$/.test(s)) return Number.parseInt(s, 10);",
+            "    throw new Error(`runtime error: cannot convert string '${v}' to int`);",
+            "  }",
+            "  throw new Error(`runtime error: cannot convert ${__coreilTypeName(v)} to int`);",
+            "}",
+            "function __toFloat(v) {",
+            "  if (typeof __Float !== 'undefined' && v instanceof __Float) return v;",
+            "  if (typeof v === 'number') return __float(v);",
+            "  if (typeof v === 'string') {",
+            "    const s = v.trim();",
+            "    if (s.length === 0) throw new Error(`runtime error: cannot convert string '${v}' to float`);",
+            "    const parsed = Number(s);",
+            "    if (!Number.isNaN(parsed)) return __float(parsed);",
+            "    throw new Error(`runtime error: cannot convert string '${v}' to float`);",
+            "  }",
+            "  throw new Error(`runtime error: cannot convert ${__coreilTypeName(v)} to float`);",
+            "}",
+            "function __toString(v) {",
+            "  if (v === true) return 'True';",
+            "  if (v === false) return 'False';",
+            "  if (v === null) return 'None';",
+            "  if (typeof __Float !== 'undefined' && v instanceof __Float) return v.toString();",
+            "  return String(v);",
+            "}",
         ]
 
     def _print_helper_lines(self) -> list[str]:
@@ -657,15 +710,19 @@ class JavaScriptEmitter(BaseEmitter):
 
     def _emit_to_int(self, node: dict) -> str:
         value = self.emit_expr(node.get("value"))
-        return f"Math.trunc(Number({value}))"
+        self.uses_type_convert_helpers = True
+        return f"__toInt({value})"
 
     def _emit_to_float(self, node: dict) -> str:
         value = self.emit_expr(node.get("value"))
-        return f"Number({value})"
+        self.uses_type_convert_helpers = True
+        self.uses_float = True
+        return f"__toFloat({value})"
 
     def _emit_to_string(self, node: dict) -> str:
         value = self.emit_expr(node.get("value"))
-        return f"String({value})"
+        self.uses_type_convert_helpers = True
+        return f"__toString({value})"
 
     # ========== Statement Handlers ==========
 
@@ -927,6 +984,27 @@ class JavaScriptEmitter(BaseEmitter):
 
         self.emit_line("}")
 
+    def _emit_switch(self, node: dict) -> None:
+        test = self.emit_expr(node.get("test"))
+        cases = node.get("cases", [])
+        default = node.get("default")
+        self.emit_line(f"const __switch_val = {test};")
+        for i, case in enumerate(cases):
+            case_val = self.emit_expr(case["value"])
+            keyword = "if" if i == 0 else "} else if"
+            self.emit_line(f"{keyword} (__switch_val === {case_val}) {{")
+            self.indent_level += 1
+            for stmt in case.get("body", []):
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+        if default is not None:
+            self.emit_line("} else {")
+            self.indent_level += 1
+            for stmt in default:
+                self.emit_stmt(stmt)
+            self.indent_level -= 1
+        self.emit_line("}")
+
 
 def emit_javascript(doc: dict) -> tuple[str, dict[int, list[int]]]:
     """Generate JavaScript code from Core IL document.
@@ -937,4 +1015,3 @@ def emit_javascript(doc: dict) -> tuple[str, dict[int, list[int]]]:
     emitter = JavaScriptEmitter(doc)
     code = emitter.emit()
     return code, emitter.coreil_line_map
-
