@@ -50,6 +50,7 @@ python -m tests.test_debug             # Interactive debugger
 python -m tests.test_deque             # Deque operations
 python -m tests.test_explain           # Reverse compiler (Core IL → English)
 python -m tests.test_explain_errors    # LLM error explanations
+python -m tests.test_fuzz              # Property-based fuzzing for backend parity
 python -m tests.test_go               # Go backend codegen + parity
 python -m tests.test_helpers           # Helper utilities
 python -m tests.test_javascript        # JavaScript backend codegen

@@ -9,6 +9,13 @@
 - **Large output truncation**: Core IL outputs over 30KB are truncated in retry messages to respect context limits
 - **New test suite**: `python -m tests.test_retry` — 8 tests covering retry behavior and message formatting
 
+### Property-Based Fuzzing
+
+- **New test suite**: `python -m tests.test_fuzz` generates random valid Core IL programs and checks parity across interpreter, Python, and JavaScript backends
+- **Configurable**: `--count N` for iteration count, `--seed N` for reproducibility
+- **Random program generator**: Produces programs with For/While loops, If/Else, functions, arrays, binary ops, and more
+- **Verified**: 200+ random programs pass with full backend parity
+
 ---
 
 ## Post-v1.8 Features - 2026-02-15
