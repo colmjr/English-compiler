@@ -176,6 +176,26 @@ def test_multiple_rules():
     assert len(warnings) >= 2, f"expected at least 2 warnings, got {len(warnings)}"
 
 
+def test_used_variable_in_switch_case_value():
+    """Var references in Switch case values should count as usage."""
+    doc = _make_doc([
+        {"type": "Let", "name": "x", "value": {"type": "Literal", "value": 2}},
+        {
+            "type": "Switch",
+            "test": {"type": "Literal", "value": 1},
+            "cases": [
+                {
+                    "value": {"type": "Var", "name": "x"},
+                    "body": [{"type": "Print", "args": [{"type": "Literal", "value": "hit"}]}],
+                },
+            ],
+        },
+    ])
+    warnings = lint_coreil(doc)
+    unused = _warnings_for_rule(warnings, "unused-variable")
+    assert len(unused) == 0, f"expected 0 unused-variable warnings, got {len(unused)}"
+
+
 def main() -> int:
     print("Running lint tests...\n")
 
@@ -192,6 +212,7 @@ def main() -> int:
         test_clean_program,
         test_func_unused_top_level,
         test_multiple_rules,
+        test_used_variable_in_switch_case_value,
     ]
 
     failures = []

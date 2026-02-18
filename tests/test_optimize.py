@@ -244,6 +244,66 @@ def test_complex_program_parity():
     assert _run_and_capture(prog) == _run_and_capture(optimize(prog))
 
 
+def test_switch_optimization_recurse():
+    """Switch test/case/default expressions should be optimized recursively."""
+    prog = _make_program([
+        {"type": "Let", "name": "x", "value": _lit(2)},
+        {
+            "type": "Switch",
+            "test": _binary("+", _lit(1), _lit(1)),
+            "cases": [
+                {
+                    "value": _binary("+", _lit(1), _lit(1)),
+                    "body": [{"type": "Print", "args": [_binary("+", _lit(2), _lit(3))]}],
+                },
+            ],
+            "default": [{"type": "Print", "args": [_lit("default")]}],
+        },
+    ], version="coreil-1.10")
+
+    optimized = optimize(prog)
+    switch = optimized["body"][1]
+    assert switch["test"] == {"type": "Literal", "value": 2}
+    assert switch["cases"][0]["value"] == {"type": "Literal", "value": 2}
+    assert switch["cases"][0]["body"][0]["args"][0] == {"type": "Literal", "value": 5}
+    assert _run_and_capture(prog) == _run_and_capture(optimized)
+
+
+def test_regex_split_and_json_stringify_optimize_nested_fields():
+    """Regex/JSON nodes should optimize optional nested expression fields."""
+    prog = _make_program([
+        {
+            "type": "Let",
+            "name": "parts",
+            "value": {
+                "type": "RegexSplit",
+                "string": _lit("a,b,c"),
+                "pattern": _lit(","),
+                "maxsplit": _binary("+", _lit(1), _lit(1)),
+            },
+        },
+        {
+            "type": "Let",
+            "name": "pretty_json",
+            "value": {
+                "type": "JsonStringify",
+                "value": {"type": "Array", "items": [_lit(1), _binary("+", _lit(1), _lit(1))]},
+                "pretty": _binary("==", _lit(1), _lit(1)),
+            },
+        },
+        {"type": "Print", "args": [_var("parts"), _var("pretty_json")]},
+    ], version="coreil-1.10")
+
+    optimized = optimize(prog)
+    regex_split = optimized["body"][0]["value"]
+    assert regex_split["maxsplit"] == {"type": "Literal", "value": 2}
+
+    json_stringify = optimized["body"][1]["value"]
+    assert json_stringify["pretty"] == {"type": "Literal", "value": True}
+    assert json_stringify["value"]["items"][1] == {"type": "Literal", "value": 2}
+    assert _run_and_capture(prog) == _run_and_capture(optimized)
+
+
 def main() -> None:
     tests = [
         test_constant_folding_arithmetic,
@@ -261,6 +321,8 @@ def main() -> None:
         test_does_not_mutate_input,
         test_nested_folding,
         test_complex_program_parity,
+        test_switch_optimization_recurse,
+        test_regex_split_and_json_stringify_optimize_nested_fields,
     ]
 
     print("Running optimizer tests...\n")
