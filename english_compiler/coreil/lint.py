@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .node_nav import iter_nodes
+
 
 def lint_coreil(doc: dict) -> list[dict]:
     """Run static analysis on a Core IL document.
@@ -40,7 +42,7 @@ def lint_coreil(doc: dict) -> list[dict]:
     if not isinstance(body, list):
         return diagnostics
 
-    _check_block(body, "$", set(), diagnostics, is_top_level=True)
+    _check_block(body, "$", set(), diagnostics)
     return diagnostics
 
 
@@ -59,23 +61,15 @@ def _add(diagnostics: list[dict], rule: str, message: str, path: str,
 # ---------------------------------------------------------------------------
 
 def _collect_var_refs(node: Any) -> set[str]:
-    """Recursively collect all Var name references in an expression or statement tree."""
+    """Collect all Var node names in an expression or statement tree."""
     refs: set[str] = set()
-    _walk_var_refs(node, refs)
+    for candidate in iter_nodes(node):
+        if candidate.get("type") != "Var":
+            continue
+        name = candidate.get("name")
+        if isinstance(name, str):
+            refs.add(name)
     return refs
-
-
-def _walk_var_refs(node: Any, refs: set[str]) -> None:
-    if isinstance(node, dict):
-        if node.get("type") == "Var":
-            name = node.get("name")
-            if isinstance(name, str):
-                refs.add(name)
-        for value in node.values():
-            _walk_var_refs(value, refs)
-    elif isinstance(node, list):
-        for item in node:
-            _walk_var_refs(item, refs)
 
 
 _TERMINATOR_TYPES = {"Return", "Break", "Continue", "Throw"}
@@ -95,8 +89,6 @@ def _check_block(
     path: str,
     defined: set[str],
     diagnostics: list[dict],
-    *,
-    is_top_level: bool = False,
 ) -> None:
     """Check a block of statements for lint issues.
 
@@ -105,7 +97,6 @@ def _check_block(
         path: JSON path prefix for diagnostics.
         defined: Set of variable names defined in this scope.
         diagnostics: Accumulator for warnings.
-        is_top_level: Whether this is the document-level body.
     """
     # --- Rule: unreachable-code ---
     for i, stmt in enumerate(stmts):
@@ -217,11 +208,6 @@ def _check_block(
         remaining_stmts = stmts[let_idx + 1:]
         refs = _collect_var_refs(remaining_stmts)
         if let_name not in refs:
-            # Check if it's a function definition (functions may be called externally)
-            let_stmt = stmts[let_idx]
-            # Don't warn for FuncDef names at top level (they might be entry points)
-            if is_top_level and let_stmt.get("type") == "FuncDef":
-                continue
             _add(diagnostics, "unused-variable",
                  f"variable '{let_name}' is declared but never used",
                  f"{path}[{let_idx}]")

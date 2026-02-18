@@ -48,6 +48,20 @@ def _optimize_stmts(stmts: list[dict]) -> list[dict]:
     return result
 
 
+def _optimize_block(block: Any) -> Any:
+    """Optimize a statement block when value is a list."""
+    if isinstance(block, list):
+        return _optimize_stmts(block)
+    return block
+
+
+def _optimize_expr_list(items: Any) -> Any:
+    """Optimize a list of expressions when value is a list."""
+    if not isinstance(items, list):
+        return items
+    return [_optimize_expr(item) for item in items]
+
+
 def _optimize_stmt(stmt: dict) -> dict:
     """Optimize a single statement."""
     node_type = stmt.get("type")
@@ -57,10 +71,10 @@ def _optimize_stmt(stmt: dict) -> dict:
 
     if node_type == "If":
         test = _optimize_expr(stmt.get("test"))
-        then_body = _optimize_stmts(stmt.get("then", []))
+        then_body = _optimize_block(stmt.get("then", []))
         else_body = stmt.get("else")
         if else_body is not None:
-            else_body = _optimize_stmts(else_body)
+            else_body = _optimize_block(else_body)
 
         # DCE: constant condition — drop the dead branch
         if _is_literal(test):
@@ -84,24 +98,23 @@ def _optimize_stmt(stmt: dict) -> dict:
 
     if node_type == "While":
         test = _optimize_expr(stmt.get("test"))
-        body = _optimize_stmts(stmt.get("body", []))
+        body = _optimize_block(stmt.get("body", []))
         return {**stmt, "test": test, "body": body}
 
     if node_type == "For":
         iter_expr = stmt.get("iter")
         if isinstance(iter_expr, dict):
             iter_expr = _optimize_expr(iter_expr)
-        body = _optimize_stmts(stmt.get("body", []))
+        body = _optimize_block(stmt.get("body", []))
         return {**stmt, "iter": iter_expr, "body": body}
 
     if node_type == "ForEach":
         iter_expr = _optimize_expr(stmt.get("iter"))
-        body = _optimize_stmts(stmt.get("body", []))
+        body = _optimize_block(stmt.get("body", []))
         return {**stmt, "iter": iter_expr, "body": body}
 
     if node_type in ("Print", "Call"):
-        args = stmt.get("args", [])
-        return {**stmt, "args": [_optimize_expr(a) for a in args]}
+        return {**stmt, "args": _optimize_expr_list(stmt.get("args", []))}
 
     if node_type == "SetIndex":
         return {
@@ -155,7 +168,7 @@ def _optimize_stmt(stmt: dict) -> dict:
         return {**stmt, "base": _optimize_expr(stmt.get("base"))}
 
     if node_type == "FuncDef":
-        body = _optimize_stmts(stmt.get("body", []))
+        body = _optimize_block(stmt.get("body", []))
         return {**stmt, "body": body}
 
     if node_type == "Return":
@@ -166,13 +179,33 @@ def _optimize_stmt(stmt: dict) -> dict:
     if node_type == "Throw":
         return {**stmt, "message": _optimize_expr(stmt.get("message"))}
 
+    if node_type == "Switch":
+        result = {**stmt, "test": _optimize_expr(stmt.get("test"))}
+        cases = stmt.get("cases")
+        if isinstance(cases, list):
+            optimized_cases: list[Any] = []
+            for case in cases:
+                if not isinstance(case, dict):
+                    optimized_cases.append(case)
+                    continue
+                optimized_case = dict(case)
+                optimized_case["value"] = _optimize_expr(case.get("value"))
+                optimized_case["body"] = _optimize_block(case.get("body", []))
+                optimized_cases.append(optimized_case)
+            result["cases"] = optimized_cases
+
+        default = stmt.get("default")
+        if default is not None:
+            result["default"] = _optimize_block(default)
+        return result
+
     if node_type == "TryCatch":
-        body = _optimize_stmts(stmt.get("body", []))
-        catch_body = _optimize_stmts(stmt.get("catch_body", []))
+        body = _optimize_block(stmt.get("body", []))
+        catch_body = _optimize_block(stmt.get("catch_body", []))
         result = {**stmt, "body": body, "catch_body": catch_body}
         finally_body = stmt.get("finally_body")
         if finally_body is not None:
-            result["finally_body"] = _optimize_stmts(finally_body)
+            result["finally_body"] = _optimize_block(finally_body)
         return result
 
     return stmt
@@ -206,13 +239,8 @@ def _optimize_expr(expr: Any) -> Any:
             return {"type": "Literal", "value": not arg["value"]}
         return {**expr, "arg": arg}
 
-    if node_type == "Array":
-        items = expr.get("items", [])
-        return {**expr, "items": [_optimize_expr(i) for i in items]}
-
-    if node_type == "Tuple":
-        items = expr.get("items", [])
-        return {**expr, "items": [_optimize_expr(i) for i in items]}
+    if node_type in ("Array", "Tuple", "Set"):
+        return {**expr, "items": _optimize_expr_list(expr.get("items", []))}
 
     if node_type == "Index":
         return {
@@ -233,24 +261,109 @@ def _optimize_expr(expr: Any) -> Any:
         return {**expr, "base": _optimize_expr(expr.get("base"))}
 
     if node_type == "Call":
-        args = expr.get("args", [])
-        return {**expr, "args": [_optimize_expr(a) for a in args]}
+        return {**expr, "args": _optimize_expr_list(expr.get("args", []))}
 
     if node_type == "Map":
         items = expr.get("items", [])
-        optimized_items = []
+        optimized_items: list[Any] = []
         for item in items:
+            if not isinstance(item, dict):
+                optimized_items.append(item)
+                continue
             optimized_items.append({
                 "key": _optimize_expr(item.get("key")),
                 "value": _optimize_expr(item.get("value")),
             })
         return {**expr, "items": optimized_items}
 
+    if node_type == "Record":
+        fields = expr.get("fields")
+        if not isinstance(fields, list):
+            return expr
+        optimized_fields: list[Any] = []
+        for field in fields:
+            if not isinstance(field, dict):
+                optimized_fields.append(field)
+                continue
+            optimized_field = dict(field)
+            optimized_field["value"] = _optimize_expr(field.get("value"))
+            optimized_fields.append(optimized_field)
+        return {**expr, "fields": optimized_fields}
+
     if node_type in ("Get", "GetDefault"):
         result = {**expr, "base": _optimize_expr(expr.get("base")), "key": _optimize_expr(expr.get("key"))}
         if "default" in expr:
             result["default"] = _optimize_expr(expr["default"])
         return result
+
+    if node_type in ("GetField", "Keys", "StringLength", "StringTrim", "StringUpper", "StringLower",
+                     "DequeSize", "HeapSize", "HeapPeek", "SetSize"):
+        return {**expr, "base": _optimize_expr(expr.get("base"))}
+
+    if node_type == "Substring":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "start": _optimize_expr(expr.get("start")),
+            "end": _optimize_expr(expr.get("end")),
+        }
+
+    if node_type == "CharAt":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "index": _optimize_expr(expr.get("index")),
+        }
+
+    if node_type == "Join":
+        return {
+            **expr,
+            "sep": _optimize_expr(expr.get("sep")),
+            "items": _optimize_expr(expr.get("items")),
+        }
+
+    if node_type == "StringSplit":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "delimiter": _optimize_expr(expr.get("delimiter")),
+        }
+
+    if node_type == "StringStartsWith":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "prefix": _optimize_expr(expr.get("prefix")),
+        }
+
+    if node_type == "StringEndsWith":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "suffix": _optimize_expr(expr.get("suffix")),
+        }
+
+    if node_type == "StringContains":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "substring": _optimize_expr(expr.get("substring")),
+        }
+
+    if node_type == "StringReplace":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "old": _optimize_expr(expr.get("old")),
+            "new": _optimize_expr(expr.get("new")),
+        }
+
+    if node_type == "SetHas":
+        return {
+            **expr,
+            "base": _optimize_expr(expr.get("base")),
+            "value": _optimize_expr(expr.get("value")),
+        }
 
     if node_type == "Range":
         result = {**expr}
@@ -273,10 +386,60 @@ def _optimize_expr(expr: Any) -> Any:
             "exponent": _optimize_expr(expr.get("exponent")),
         }
 
-    # For most other expression types, just recurse on known fields
-    if node_type in ("StringLength", "StringTrim", "StringUpper", "StringLower",
-                      "DequeSize", "HeapSize", "HeapPeek", "SetSize"):
-        return {**expr, "base": _optimize_expr(expr.get("base"))}
+    if node_type == "JsonParse":
+        return {**expr, "source": _optimize_expr(expr.get("source"))}
+
+    if node_type == "JsonStringify":
+        result = {**expr, "value": _optimize_expr(expr.get("value"))}
+        if "pretty" in expr:
+            result["pretty"] = _optimize_expr(expr.get("pretty"))
+        return result
+
+    if node_type in ("RegexMatch", "RegexFindAll"):
+        result = {
+            **expr,
+            "string": _optimize_expr(expr.get("string")),
+            "pattern": _optimize_expr(expr.get("pattern")),
+        }
+        if "flags" in expr:
+            result["flags"] = _optimize_expr(expr.get("flags"))
+        return result
+
+    if node_type == "RegexReplace":
+        result = {
+            **expr,
+            "string": _optimize_expr(expr.get("string")),
+            "pattern": _optimize_expr(expr.get("pattern")),
+            "replacement": _optimize_expr(expr.get("replacement")),
+        }
+        if "flags" in expr:
+            result["flags"] = _optimize_expr(expr.get("flags"))
+        return result
+
+    if node_type == "RegexSplit":
+        result = {
+            **expr,
+            "string": _optimize_expr(expr.get("string")),
+            "pattern": _optimize_expr(expr.get("pattern")),
+        }
+        if "flags" in expr:
+            result["flags"] = _optimize_expr(expr.get("flags"))
+        if "maxsplit" in expr:
+            result["maxsplit"] = _optimize_expr(expr.get("maxsplit"))
+        return result
+
+    if node_type == "ExternalCall":
+        return {**expr, "args": _optimize_expr_list(expr.get("args", []))}
+
+    if node_type == "MethodCall":
+        return {
+            **expr,
+            "object": _optimize_expr(expr.get("object")),
+            "args": _optimize_expr_list(expr.get("args", [])),
+        }
+
+    if node_type == "PropertyGet":
+        return {**expr, "object": _optimize_expr(expr.get("object"))}
 
     return expr
 
