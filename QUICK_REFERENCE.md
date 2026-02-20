@@ -382,6 +382,24 @@ Fast reference for Core IL node types and common patterns.
 - `finally_body` always executes
 - Return/Break/Continue propagate through (NOT caught)
 
+### Import (v1.10.5 — Multi-File Modules)
+
+```json
+// Import a module (must be pre-compiled to .coreil.json)
+{"type": "Import", "path": "module_name"}
+
+// Import with alias
+{"type": "Import", "path": "module_name", "alias": "m"}
+
+// Call imported function using dotted name
+{"type": "Call", "name": "module_name.func", "args": [...]}
+```
+
+Rules:
+- Import must appear at top level (not inside functions)
+- Modules export their top-level FuncDef nodes
+- Dotted calls (`module.func`) are rewritten to `module__func` at resolve time
+
 ### Output
 
 ```json

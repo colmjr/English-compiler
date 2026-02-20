@@ -725,7 +725,7 @@ def _compile_command(args: argparse.Namespace) -> int:
 
         # Try interpreter first, fall back to generated code for ExternalCall
         try:
-            return run_coreil(doc, error_callback=error_callback)
+            return run_coreil(doc, error_callback=error_callback, base_dir=coreil_path.parent)
         except ValueError as exc:
             if _is_tier2_unsupported_error(exc):
                 fallback_rc = _run_tier2_fallback(
@@ -801,7 +801,7 @@ def _compile_command(args: argparse.Namespace) -> int:
 
     # Try interpreter first, fall back to generated code for Tier 2 operations
     try:
-        return run_coreil(doc, error_callback=error_callback)
+        return run_coreil(doc, error_callback=error_callback, base_dir=coreil_path.parent)
     except ValueError as exc:
         if _is_tier2_unsupported_error(exc):
             fallback_rc = _run_tier2_fallback(
@@ -863,7 +863,7 @@ def _run_command(args: argparse.Namespace) -> int:
             return 1
         error_callback = _make_error_callback(frontend)
 
-    return run_coreil(doc, error_callback=error_callback)
+    return run_coreil(doc, error_callback=error_callback, base_dir=path.parent)
 
 
 def _debug_command(args: argparse.Namespace) -> int:

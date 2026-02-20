@@ -48,6 +48,7 @@ python -m tests.run_parity             # Backend parity checks
 python -m tests.test_break_continue    # Break/Continue loop control
 python -m tests.test_debug             # Interactive debugger
 python -m tests.test_deque             # Deque operations
+python -m tests.test_import            # Multi-file module system (Import)
 python -m tests.test_explain           # Reverse compiler (Core IL → English)
 python -m tests.test_explain_errors    # LLM error explanations
 python -m tests.test_fuzz              # Property-based fuzzing for backend parity
@@ -112,6 +113,7 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
     - `lower.py` - Lowering pass (For/ForEach → While)
     - `source_map.py` - Source map composition (English→CoreIL→target)
     - `debug.py` - Interactive debugger (step-through, breakpoints, variable inspection)
+    - `module.py` - Multi-file module system (Import resolution, flattening)
   - `frontend/` - LLM frontends
     - `__init__.py` - Factory function `get_frontend()` for provider selection
     - `base.py` - Abstract base class with shared logic
@@ -133,15 +135,15 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.10 (`"coreil-1.10"`)
+**Current stable version**: Core IL v1.10.5 (`"coreil-1.10.5"`)
 
-All versions from v0.1 through v1.10 are supported for backward compatibility. The codebase uses version constants:
+All versions from v0.1 through v1.10.5 are supported for backward compatibility. The codebase uses version constants:
 
 ```python
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
 ```
 
-Version history: v1.0 (frozen core), v1.1 (Record, Set, Deque, Heap, string ops), v1.2 (Math), v1.3/v1.4 (JSON, Regex, string ops consolidated), v1.5 (Slice), v1.6 (MethodCall, PropertyGet — Tier 2), v1.7 (Break, Continue), v1.8 (Throw, TryCatch), v1.9 (ToInt, ToFloat, ToString), v1.10 (Switch).
+Version history: v1.0 (frozen core), v1.1 (Record, Set, Deque, Heap, string ops), v1.2 (Math), v1.3/v1.4 (JSON, Regex, string ops consolidated), v1.5 (Slice), v1.6 (MethodCall, PropertyGet — Tier 2), v1.7 (Break, Continue), v1.8 (Throw, TryCatch), v1.9 (ToInt, ToFloat, ToString), v1.10 (Switch), v1.10.5 (Import — multi-file modules).
 
 ### Pipeline Stages
 
@@ -180,6 +182,7 @@ For the complete Core IL specification and JSON examples, see `coreil_v1.md` and
 - Print, If, While, For, ForEach, Switch
 - FuncDef, Return, Break, Continue
 - Throw, TryCatch
+- Import (v1.10.5 — multi-file modules, resolved before execution)
 
 ### Critical Rules
 
