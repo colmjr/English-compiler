@@ -8,11 +8,8 @@
 //
 // Version: 1.10
 
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-#![allow(unused_mut)]
-#![allow(unreachable_patterns)]
+// Note: #![allow(...)] attributes are emitted in the generated program.rs
+// (the crate root) since include!() files cannot use inner attributes.
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -1669,6 +1666,8 @@ fn rx_match_at(insts: &[RxInst], input: &[char], start: usize, ci: bool) -> Opti
     let mut p = start;
     loop {
         if cur.is_empty() { break; }
+        // Collect deferred additions for AnchorEnd (cannot mutate cur while iterating)
+        let mut anchor_end_adds: Vec<usize> = Vec::new();
         for &pc in &cur {
             if pc >= insts.len() { continue; }
             match &insts[pc] {
@@ -1687,9 +1686,13 @@ fn rx_match_at(insts: &[RxInst], input: &[char], start: usize, ci: bool) -> Opti
                         if in_class != *neg { rx_add_thread(&mut nxt, insts, pc + 1, input, p + 1); }
                     }
                 }
-                RxInst::AnchorEnd => { if p == input.len() { rx_add_thread(&mut cur, insts, pc + 1, input, p); } }
+                RxInst::AnchorEnd => { if p == input.len() { anchor_end_adds.push(pc + 1); } }
                 _ => {}
             }
+        }
+        // Apply deferred AnchorEnd thread additions
+        for add_pc in anchor_end_adds {
+            rx_add_thread(&mut cur, insts, add_pc, input, p);
         }
         cur.clear();
         std::mem::swap(&mut cur, &mut nxt);

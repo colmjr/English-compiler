@@ -606,14 +606,14 @@ class GoEmitter(BaseEmitter):
             self.indent_level += 1
             self.emit_line(f"__from := asInt({from_val})")
             self.emit_line(f"__to := asInt({to_val})")
-            self.emit_line(f"for __from {cmp_op} __to {{")
+            # Use 3-part for so __from++ runs even on continue
+            self.emit_line(f"for __i := __from; __i {cmp_op} __to; __i++ {{")
             self.indent_level += 1
-            self.emit_line(f"{var} := ValueInt(__from)")
+            self.emit_line(f"{var} := ValueInt(__i)")
             # Suppress unused variable warning
             self.emit_line(f"_ = {var}")
             for stmt in body:
                 self.emit_stmt(stmt)
-            self.emit_line("__from++")
             self.indent_level -= 1
             self.emit_line("}")
             self.indent_level -= 1

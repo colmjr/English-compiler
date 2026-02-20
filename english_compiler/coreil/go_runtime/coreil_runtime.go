@@ -1070,7 +1070,45 @@ func jsonStringify(value Value, pretty Value) Value {
 	if err != nil {
 		panic(fmt.Sprintf("runtime error: cannot stringify to JSON: %s", err))
 	}
+	// Match Python's json.dumps default separators (", " and ": ")
+	if !isTruthy(pretty) {
+		s := string(result)
+		s = jsonAddPythonSpacing(s)
+		return ValueStr(s)
+	}
 	return ValueStr(string(result))
+}
+
+// jsonAddPythonSpacing adds spaces after : and , in JSON to match Python's
+// json.dumps default separators (", " and ": "). It respects string literals.
+func jsonAddPythonSpacing(s string) string {
+	var buf strings.Builder
+	inString := false
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if inString {
+			buf.WriteByte(ch)
+			if ch == '\\' && i+1 < len(s) {
+				i++
+				buf.WriteByte(s[i])
+			} else if ch == '"' {
+				inString = false
+			}
+		} else {
+			switch ch {
+			case '"':
+				inString = true
+				buf.WriteByte(ch)
+			case ',':
+				buf.WriteString(", ")
+			case ':':
+				buf.WriteString(": ")
+			default:
+				buf.WriteByte(ch)
+			}
+		}
+	}
+	return buf.String()
 }
 
 // ============================================================================
