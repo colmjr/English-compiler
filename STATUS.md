@@ -296,7 +296,7 @@ examples/
 Core IL v1.5 is intentionally focused. It does NOT include:
 
 1. **Static Types**: All type checking is at runtime
-2. **Modules/Imports**: No code organization across files
+2. **Modules/Imports**: Multi-file module system via Import (v1.10.5, interpreter + Python backend)
 3. **Classes/Objects**: No OOP features (Tier 2 MethodCall/PropertyGet provides limited OOP interop)
 4. **Iterators**: No lazy evaluation
 

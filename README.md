@@ -20,7 +20,7 @@ pip install english-compiler[all]       # All providers
 
 ## Project Status
 
-**Core IL v1.10 is stable and production-ready.**
+**Core IL v1.10.5 is stable and production-ready.**
 
 The compiler has successfully compiled and executed real-world algorithms including:
 - Array operations (sum, reverse, max)
@@ -269,7 +269,7 @@ The compiler follows a three-stage pipeline:
    - Go codegen: Transpiles to Go (single-file with runtime)
    - All backends produce identical output (verified by tests)
 
-## Core IL v1.10
+## Core IL v1.10.5
 
 Core IL is a complete, closed intermediate representation with explicit primitives for all operations.
 
@@ -279,6 +279,7 @@ Core IL is a complete, closed intermediate representation with explicit primitiv
 
 | Version | Features |
 |---------|----------|
+| v1.10.5 | Import (multi-file module system with namespaced calls) |
 | v1.10 | Switch (pattern matching / case dispatch) |
 | v1.9 | ToInt, ToFloat, ToString (type conversions), Go backend, optimizer, explain command |
 | v1.8 | Throw, TryCatch (exception handling) |

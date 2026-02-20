@@ -298,7 +298,8 @@ If Core IL v1.6 or v2.0 is created:
 
 | Version | Key Features | Status |
 |---------|-------------|--------|
-| v1.5 | Slice, Not, negative indexing | Current |
+| v1.10.5 | Import (multi-file modules) | Current |
+| v1.5 | Slice, Not, negative indexing | Stable |
 | v1.4 | ExternalCall, JS/C++ backends, expanded strings | Stable |
 | v1.3 | JSON, Regex operations | Stable |
 | v1.2 | Math operations | Stable |

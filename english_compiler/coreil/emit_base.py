@@ -129,6 +129,7 @@ class BaseEmitter(ABC):
             "Throw": self._emit_throw,
             "TryCatch": self._emit_try_catch,
             "Switch": self._emit_switch,
+            "Import": self._emit_import,
         }
 
     @property
@@ -558,6 +559,15 @@ class BaseEmitter(ABC):
     def _emit_switch(self, node: dict) -> None:
         """Emit switch/case statement (v1.10)."""
         pass
+
+    def _emit_import(self, node: dict) -> None:
+        """Emit import statement (v1.10.5).
+
+        In practice, imports are resolved before emission so this should
+        never be called. Emits a comment by default.
+        """
+        import_path = node.get("path", "?")
+        self.emit_line(f"# import {import_path} (resolved at compile time)")
 
     # ========== Utility Methods ==========
 

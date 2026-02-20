@@ -42,6 +42,7 @@ import math
 import re
 from collections import deque
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 
 from .constants import BINARY_OPS, MAX_CALL_DEPTH
@@ -74,9 +75,19 @@ def run_coreil(
     doc: dict,
     error_callback: Callable[[str], None] | None = None,
     step_callback: Callable | None = None,
+    base_dir: Path | None = None,
 ) -> int:
     # Note: For/ForEach are handled natively (no lowering needed)
     # This ensures Continue works correctly in for loops
+
+    # Resolve imports if any Import nodes are present
+    body = doc.get("body", [])
+    has_imports = any(
+        isinstance(s, dict) and s.get("type") == "Import" for s in body
+    )
+    if has_imports:
+        from .module import resolve_imports
+        doc = resolve_imports(doc, base_dir=base_dir)
 
     global_env: dict[str, Any] = {}
     functions: dict[str, dict] = {}

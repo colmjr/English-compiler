@@ -39,6 +39,7 @@ _ALLOWED_NODE_TYPES = {
     "Throw", "TryCatch",
     "ToInt", "ToFloat", "ToString",
     "Switch",
+    "Import",
 }
 
 
@@ -684,6 +685,17 @@ def _validate_switch(node, path, defined, add_error, validate_expr, in_func, in_
                 validate_stmt(stmt, f"{path}.default[{i}]", defined, in_func, in_loop)
 
 
+def _validate_import(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+    if in_func:
+        add_error(path, "Import is only allowed at the top level, not inside functions")
+    import_path = node.get("path")
+    if not isinstance(import_path, str) or not import_path:
+        add_error(f"{path}.path", "missing or invalid path")
+    alias = node.get("alias")
+    if alias is not None and (not isinstance(alias, str) or not alias):
+        add_error(f"{path}.alias", "alias must be a non-empty string if provided")
+
+
 def _validate_try_catch(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
     body = node.get("body")
     if not isinstance(body, list):
@@ -746,6 +758,7 @@ _STMT_VALIDATORS = {
     "Throw": _validate_throw,
     "TryCatch": _validate_try_catch,
     "Switch": _validate_switch,
+    "Import": _validate_import,
 }
 
 
