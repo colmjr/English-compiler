@@ -25,8 +25,8 @@ Feature ideas and improvements for the English Compiler. Items are tagged by pri
 
 ## Backend Expansion
 
-- `[HIGH]` Rust backend: JSON and Regex support (currently raises errors)
-- `[HIGH]` Go backend: JSON and Regex support (currently raises errors)
+- ~~`[HIGH]` Rust backend: JSON and Regex support (currently raises errors)~~ ✅ Done (pure Rust JSON parser/serializer + NFA regex engine)
+- ~~`[HIGH]` Go backend: JSON and Regex support (currently raises errors)~~ ✅ Done (encoding/json + regexp stdlib)
 - `[MED]` TypeScript backend (separate from WASM/AssemblyScript)
 - `[MED]` Java backend
 - `[LOW]` C backend (vs C++)

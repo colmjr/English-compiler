@@ -1,7 +1,6 @@
 """Rust code generator for Core IL.
 
-This file implements Core IL v1.8 to Rust transpilation.
-Core IL v1.8 adds TryCatch and Throw for exception handling.
+This file implements Core IL v1.10 to Rust transpilation.
 
 The generated Rust code:
 - Matches interpreter semantics exactly
@@ -13,6 +12,8 @@ The generated Rust code:
 - Deque operations (double-ended queue)
 - Heap operations (min-heap priority queue)
 - Math operations (sin, cos, tan, sqrt, floor, ceil, abs, log, exp, pow, pi, e)
+- JSON operations (pure Rust recursive descent parser/serializer)
+- Regex operations (pure Rust NFA-based engine)
 - Array slicing (Slice)
 - Unary not (Not)
 - Break and Continue loop control
@@ -20,9 +21,10 @@ The generated Rust code:
 - Exception handling via panic/catch_unwind (TryCatch, Throw)
 
 Version history:
+- v1.10: Added JSON and Regex support (pure Rust, no external crates)
 - v1.8: Initial Rust backend
 
-Backward compatibility: Accepts v0.1 through v1.8 programs.
+Backward compatibility: Accepts v0.1 through v1.10 programs.
 """
 
 from __future__ import annotations
@@ -403,25 +405,54 @@ class RustEmitter(BaseEmitter):
             return "math_e()"
         raise ValueError(f"unknown math constant: {name}")
 
-    def _unsupported_json(self, node: dict) -> str:
-        raise ValueError(
-            f"{node.get('type')} is not supported in the Rust backend. "
-            "No serde_json available in the runtime."
-        )
+    def _emit_json_parse(self, node: dict) -> str:
+        source = self.emit_expr(node.get("source"))
+        return f"json_parse_val(&{source})"
 
-    _emit_json_parse = _unsupported_json
-    _emit_json_stringify = _unsupported_json
+    def _emit_json_stringify(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        pretty = node.get("pretty")
+        if pretty:
+            pretty_expr = self.emit_expr(pretty)
+            return f"json_stringify_val(&{value}, &{pretty_expr})"
+        return f"json_stringify_val(&{value}, &Value::Bool(false))"
 
-    def _unsupported_regex(self, node: dict) -> str:
-        raise ValueError(
-            f"{node.get('type')} is not supported in the Rust backend. "
-            "No regex crate available in the runtime."
-        )
+    def _emit_regex_match(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regex_match_val(&{string}, &{pattern}, &{flags})"
+        return f"regex_match_val(&{string}, &{pattern}, &Value::None)"
 
-    _emit_regex_match = _unsupported_regex
-    _emit_regex_find_all = _unsupported_regex
-    _emit_regex_replace = _unsupported_regex
-    _emit_regex_split = _unsupported_regex
+    def _emit_regex_find_all(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regex_find_all_val(&{string}, &{pattern}, &{flags})"
+        return f"regex_find_all_val(&{string}, &{pattern}, &Value::None)"
+
+    def _emit_regex_replace(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        replacement = self.emit_expr(node.get("replacement"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regex_replace_val(&{string}, &{pattern}, &{replacement}, &{flags})"
+        return f"regex_replace_val(&{string}, &{pattern}, &{replacement}, &Value::None)"
+
+    def _emit_regex_split(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regex_split_val(&{string}, &{pattern}, &{flags})"
+        return f"regex_split_val(&{string}, &{pattern}, &Value::None)"
 
     def _emit_external_call(self, node: dict) -> str:
         module = node.get("module")

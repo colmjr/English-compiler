@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -971,5 +973,181 @@ func valueToStringConvert(v Value) Value {
 	return ValueStr(formatValue(v))
 }
 
+// ============================================================================
+// JSON operations
+// ============================================================================
+
+func jsonConvertGoToValue(v interface{}) Value {
+	if v == nil {
+		return ValueNone
+	}
+	switch val := v.(type) {
+	case json.Number:
+		if n, err := val.Int64(); err == nil {
+			return ValueInt(n)
+		}
+		if f, err := val.Float64(); err == nil {
+			return ValueFloat(f)
+		}
+		return ValueStr(val.String())
+	case bool:
+		return ValueBool(val)
+	case string:
+		return ValueStr(val)
+	case []interface{}:
+		items := make([]Value, len(val))
+		for i, item := range val {
+			items[i] = jsonConvertGoToValue(item)
+		}
+		return ValueArray(items)
+	case map[string]interface{}:
+		om := NewOrderedMap()
+		keys := make([]string, 0, len(val))
+		for k := range val {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			om.Set(k, jsonConvertGoToValue(val[k]))
+		}
+		return Value{Type: TypeMap, data: om}
+	default:
+		return ValueStr(fmt.Sprintf("%v", v))
+	}
+}
+
+func jsonParse(source Value) Value {
+	s := asString(source)
+	decoder := json.NewDecoder(strings.NewReader(s))
+	decoder.UseNumber()
+	var result interface{}
+	if err := decoder.Decode(&result); err != nil {
+		panic(fmt.Sprintf("runtime error: invalid JSON: %s", err))
+	}
+	return jsonConvertGoToValue(result)
+}
+
+func jsonConvertValueToGo(v Value) interface{} {
+	switch v.Type {
+	case TypeNone:
+		return nil
+	case TypeBool:
+		return v.data.(bool)
+	case TypeInt:
+		return v.data.(int64)
+	case TypeFloat:
+		return v.data.(float64)
+	case TypeStr:
+		return v.data.(string)
+	case TypeArray:
+		arr := *v.data.(*[]Value)
+		result := make([]interface{}, len(arr))
+		for i, item := range arr {
+			result[i] = jsonConvertValueToGo(item)
+		}
+		return result
+	case TypeMap:
+		om := v.data.(*OrderedMap)
+		result := make(map[string]interface{})
+		for _, k := range om.keys {
+			result[k] = jsonConvertValueToGo(om.values[k])
+		}
+		return result
+	default:
+		return formatValue(v)
+	}
+}
+
+func jsonStringify(value Value, pretty Value) Value {
+	goVal := jsonConvertValueToGo(value)
+	var result []byte
+	var err error
+	if isTruthy(pretty) {
+		result, err = json.MarshalIndent(goVal, "", "  ")
+	} else {
+		result, err = json.Marshal(goVal)
+	}
+	if err != nil {
+		panic(fmt.Sprintf("runtime error: cannot stringify to JSON: %s", err))
+	}
+	return ValueStr(string(result))
+}
+
+// ============================================================================
+// Regex operations
+// ============================================================================
+
+func regexCompileWithFlags(pattern, flags string) *regexp.Regexp {
+	p := pattern
+	if strings.Contains(flags, "i") {
+		p = "(?i)" + p
+	}
+	re, err := regexp.Compile(p)
+	if err != nil {
+		panic(fmt.Sprintf("runtime error: invalid regex pattern: %s", err))
+	}
+	return re
+}
+
+func regexMatch(str, pattern, flags Value) Value {
+	s := asString(str)
+	p := asString(pattern)
+	f := ""
+	if flags.Type != TypeNone {
+		f = asString(flags)
+	}
+	re := regexCompileWithFlags(p, f)
+	return ValueBool(re.MatchString(s))
+}
+
+func regexFindAll(str, pattern, flags Value) Value {
+	s := asString(str)
+	p := asString(pattern)
+	f := ""
+	if flags.Type != TypeNone {
+		f = asString(flags)
+	}
+	re := regexCompileWithFlags(p, f)
+	matches := re.FindAllString(s, -1)
+	if matches == nil {
+		return ValueArray(nil)
+	}
+	items := make([]Value, len(matches))
+	for i, m := range matches {
+		items[i] = ValueStr(m)
+	}
+	return ValueArray(items)
+}
+
+func regexReplace(str, pattern, replacement, flags Value) Value {
+	s := asString(str)
+	p := asString(pattern)
+	r := asString(replacement)
+	f := ""
+	if flags.Type != TypeNone {
+		f = asString(flags)
+	}
+	re := regexCompileWithFlags(p, f)
+	return ValueStr(re.ReplaceAllString(s, r))
+}
+
+func regexSplit(str, pattern, flags Value) Value {
+	s := asString(str)
+	p := asString(pattern)
+	f := ""
+	if flags.Type != TypeNone {
+		f = asString(flags)
+	}
+	re := regexCompileWithFlags(p, f)
+	parts := re.Split(s, -1)
+	items := make([]Value, len(parts))
+	for i, part := range parts {
+		items[i] = ValueStr(part)
+	}
+	return ValueArray(items)
+}
+
 // Ensure all imports are used
 var _ = sort.Strings
+var _ = regexp.Compile
+var _ = json.NewDecoder
