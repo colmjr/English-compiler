@@ -1,18 +1,15 @@
 // Core IL Runtime Library for Rust
 //
-// This file provides the runtime support for Core IL v1.9 programs compiled to Rust.
+// This file provides the runtime support for Core IL v1.10 programs compiled to Rust.
 // It implements Python-compatible semantics for all operations.
 //
 // Requirements: Rust stable (no external crates, only std)
 // Usage: `include!("coreil_runtime.rs");` from generated code
 //
-// Version: 1.9
+// Version: 1.10
 
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-#![allow(unused_mut)]
-#![allow(unreachable_patterns)]
+// Note: #![allow(...)] attributes are emitted in the generated program.rs
+// (the crate root) since include!() files cannot use inner attributes.
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -1257,35 +1254,550 @@ fn math_e() -> Value {
 }
 
 // ============================================================================
-// JSON Operations (deferred - panic with clear message)
+// JSON Operations — Pure Rust recursive descent parser and serializer
 // ============================================================================
 
-fn json_parse(s: &Value) -> Value {
-    panic!("JSON operations are not yet supported in the Rust backend");
+#[derive(Clone, Debug, PartialEq)]
+enum JsonToken {
+    LBrace, RBrace, LBracket, RBracket, Colon, Comma,
+    StringVal(String),
+    NumberVal(String),
+    True, False, Null,
 }
 
-fn json_stringify(v: &Value, pretty: bool) -> Value {
-    panic!("JSON operations are not yet supported in the Rust backend");
+struct JsonLexer { chars: Vec<char>, pos: usize }
+
+impl JsonLexer {
+    fn new(input: &str) -> Self { JsonLexer { chars: input.chars().collect(), pos: 0 } }
+
+    fn skip_ws(&mut self) {
+        while self.pos < self.chars.len() && self.chars[self.pos].is_ascii_whitespace() { self.pos += 1; }
+    }
+
+    fn next_token(&mut self) -> Option<JsonToken> {
+        self.skip_ws();
+        if self.pos >= self.chars.len() { return None; }
+        let ch = self.chars[self.pos];
+        match ch {
+            '{' => { self.pos += 1; Some(JsonToken::LBrace) }
+            '}' => { self.pos += 1; Some(JsonToken::RBrace) }
+            '[' => { self.pos += 1; Some(JsonToken::LBracket) }
+            ']' => { self.pos += 1; Some(JsonToken::RBracket) }
+            ':' => { self.pos += 1; Some(JsonToken::Colon) }
+            ',' => { self.pos += 1; Some(JsonToken::Comma) }
+            '"' => Some(self.lex_string()),
+            't' => self.lex_kw("true", JsonToken::True),
+            'f' => self.lex_kw("false", JsonToken::False),
+            'n' => self.lex_kw("null", JsonToken::Null),
+            '-' | '0'..='9' => Some(self.lex_number()),
+            _ => panic!("runtime error: invalid JSON: unexpected '{}'", ch),
+        }
+    }
+
+    fn lex_string(&mut self) -> JsonToken {
+        self.pos += 1;
+        let mut s = String::new();
+        while self.pos < self.chars.len() {
+            let ch = self.chars[self.pos];
+            if ch == '"' { self.pos += 1; return JsonToken::StringVal(s); }
+            if ch == '\\' {
+                self.pos += 1;
+                if self.pos >= self.chars.len() { panic!("runtime error: invalid JSON: unterminated escape"); }
+                match self.chars[self.pos] {
+                    '"' => s.push('"'), '\\' => s.push('\\'), '/' => s.push('/'),
+                    'b' => s.push('\u{08}'), 'f' => s.push('\u{0C}'),
+                    'n' => s.push('\n'), 'r' => s.push('\r'), 't' => s.push('\t'),
+                    'u' => {
+                        let mut hex = String::new();
+                        for _ in 0..4 { self.pos += 1; hex.push(self.chars[self.pos]); }
+                        if let Some(c) = char::from_u32(u32::from_str_radix(&hex, 16).unwrap_or(0)) { s.push(c); }
+                    }
+                    c => s.push(c),
+                }
+            } else { s.push(ch); }
+            self.pos += 1;
+        }
+        panic!("runtime error: invalid JSON: unterminated string");
+    }
+
+    fn lex_number(&mut self) -> JsonToken {
+        let start = self.pos;
+        if self.chars[self.pos] == '-' { self.pos += 1; }
+        while self.pos < self.chars.len() && self.chars[self.pos].is_ascii_digit() { self.pos += 1; }
+        if self.pos < self.chars.len() && self.chars[self.pos] == '.' {
+            self.pos += 1;
+            while self.pos < self.chars.len() && self.chars[self.pos].is_ascii_digit() { self.pos += 1; }
+        }
+        if self.pos < self.chars.len() && (self.chars[self.pos] == 'e' || self.chars[self.pos] == 'E') {
+            self.pos += 1;
+            if self.pos < self.chars.len() && (self.chars[self.pos] == '+' || self.chars[self.pos] == '-') { self.pos += 1; }
+            while self.pos < self.chars.len() && self.chars[self.pos].is_ascii_digit() { self.pos += 1; }
+        }
+        JsonToken::NumberVal(self.chars[start..self.pos].iter().collect())
+    }
+
+    fn lex_kw(&mut self, kw: &str, tok: JsonToken) -> Option<JsonToken> {
+        let kc: Vec<char> = kw.chars().collect();
+        for (i, &c) in kc.iter().enumerate() {
+            if self.pos + i >= self.chars.len() || self.chars[self.pos + i] != c {
+                panic!("runtime error: invalid JSON: unexpected token");
+            }
+        }
+        self.pos += kc.len();
+        Some(tok)
+    }
+}
+
+struct JsonParser { tokens: Vec<JsonToken>, pos: usize }
+
+impl JsonParser {
+    fn new(input: &str) -> Self {
+        let mut lex = JsonLexer::new(input);
+        let mut tokens = Vec::new();
+        while let Some(t) = lex.next_token() { tokens.push(t); }
+        JsonParser { tokens, pos: 0 }
+    }
+    fn peek(&self) -> Option<&JsonToken> { self.tokens.get(self.pos) }
+    fn next(&mut self) -> JsonToken {
+        let t = self.tokens.get(self.pos).cloned().unwrap_or_else(|| panic!("runtime error: invalid JSON: unexpected end"));
+        self.pos += 1; t
+    }
+    fn expect(&mut self, e: &JsonToken) { let t = self.next(); if &t != e { panic!("runtime error: invalid JSON: expected {:?}", e); } }
+
+    fn parse_value(&mut self) -> Value {
+        match self.peek().cloned() {
+            Some(JsonToken::LBrace) => self.parse_object(),
+            Some(JsonToken::LBracket) => self.parse_array(),
+            Some(JsonToken::StringVal(_)) => { if let JsonToken::StringVal(s) = self.next() { Value::Str(s) } else { unreachable!() } }
+            Some(JsonToken::NumberVal(_)) => {
+                if let JsonToken::NumberVal(s) = self.next() {
+                    if s.contains('.') || s.contains('e') || s.contains('E') {
+                        Value::Float(s.parse().unwrap_or_else(|_| panic!("runtime error: invalid JSON number")))
+                    } else {
+                        Value::Int(s.parse().unwrap_or_else(|_| panic!("runtime error: invalid JSON number")))
+                    }
+                } else { unreachable!() }
+            }
+            Some(JsonToken::True) => { self.next(); Value::Bool(true) }
+            Some(JsonToken::False) => { self.next(); Value::Bool(false) }
+            Some(JsonToken::Null) => { self.next(); Value::None }
+            _ => panic!("runtime error: invalid JSON: unexpected token"),
+        }
+    }
+
+    fn parse_object(&mut self) -> Value {
+        self.expect(&JsonToken::LBrace);
+        let mut map = OrderedMap::new();
+        if self.peek() == Some(&JsonToken::RBrace) { self.next(); return Value::Map(Rc::new(RefCell::new(map))); }
+        loop {
+            let key = match self.next() { JsonToken::StringVal(s) => s, _ => panic!("runtime error: invalid JSON: expected string key") };
+            self.expect(&JsonToken::Colon);
+            let val = self.parse_value();
+            map.set(Value::Str(key), val);
+            match self.peek() {
+                Some(JsonToken::Comma) => { self.next(); }
+                Some(JsonToken::RBrace) => { self.next(); break; }
+                _ => panic!("runtime error: invalid JSON: expected ',' or '}}'"),
+            }
+        }
+        Value::Map(Rc::new(RefCell::new(map)))
+    }
+
+    fn parse_array(&mut self) -> Value {
+        self.expect(&JsonToken::LBracket);
+        let mut items = Vec::new();
+        if self.peek() == Some(&JsonToken::RBracket) { self.next(); return make_array(items); }
+        loop {
+            items.push(self.parse_value());
+            match self.peek() {
+                Some(JsonToken::Comma) => { self.next(); }
+                Some(JsonToken::RBracket) => { self.next(); break; }
+                _ => panic!("runtime error: invalid JSON: expected ',' or ']'"),
+            }
+        }
+        make_array(items)
+    }
+}
+
+fn json_parse_val(s: &Value) -> Value {
+    let input = match s { Value::Str(st) => st.clone(), _ => panic!("runtime error: JsonParse source must be a string") };
+    let mut parser = JsonParser::new(&input);
+    parser.parse_value()
+}
+
+fn json_serialize(v: &Value, indent: Option<usize>, depth: usize) -> String {
+    match v {
+        Value::None => "null".to_string(),
+        Value::Bool(b) => if *b { "true".to_string() } else { "false".to_string() },
+        Value::Int(n) => format!("{}", n),
+        Value::Float(f) => {
+            if *f == f.floor() && f.abs() < 1e15 { format!("{}.0", *f as i64) } else { format!("{}", f) }
+        }
+        Value::Str(s) => {
+            let mut r = String::from('"');
+            for ch in s.chars() {
+                match ch {
+                    '"' => r.push_str("\\\""), '\\' => r.push_str("\\\\"),
+                    '\n' => r.push_str("\\n"), '\r' => r.push_str("\\r"), '\t' => r.push_str("\\t"),
+                    c if (c as u32) < 0x20 => r.push_str(&format!("\\u{:04x}", c as u32)),
+                    c => r.push(c),
+                }
+            }
+            r.push('"'); r
+        }
+        Value::Array(arr) => {
+            let arr = arr.borrow();
+            if arr.is_empty() { return "[]".to_string(); }
+            match indent {
+                Some(ind) => {
+                    let inner = " ".repeat(ind * (depth + 1));
+                    let outer = " ".repeat(ind * depth);
+                    let parts: Vec<String> = arr.iter().map(|i| format!("{}{}", inner, json_serialize(i, Some(ind), depth + 1))).collect();
+                    format!("[\n{}\n{}]", parts.join(",\n"), outer)
+                }
+                None => {
+                    let parts: Vec<String> = arr.iter().map(|i| json_serialize(i, None, depth)).collect();
+                    format!("[{}]", parts.join(", "))
+                }
+            }
+        }
+        Value::Map(map) => {
+            let map = map.borrow();
+            if map.entries.is_empty() { return "{}".to_string(); }
+            match indent {
+                Some(ind) => {
+                    let inner = " ".repeat(ind * (depth + 1));
+                    let outer = " ".repeat(ind * depth);
+                    let parts: Vec<String> = map.entries.iter().map(|(k, v)| {
+                        format!("{}{}: {}", inner, json_serialize(k, Some(ind), depth + 1), json_serialize(v, Some(ind), depth + 1))
+                    }).collect();
+                    format!("{{\n{}\n{}}}", parts.join(",\n"), outer)
+                }
+                None => {
+                    let parts: Vec<String> = map.entries.iter().map(|(k, v)| {
+                        format!("{}: {}", json_serialize(k, None, depth), json_serialize(v, None, depth))
+                    }).collect();
+                    format!("{{{}}}", parts.join(", "))
+                }
+            }
+        }
+        _ => json_serialize(&Value::Str(format_value(v)), indent, depth),
+    }
+}
+
+fn json_stringify_val(v: &Value, pretty: &Value) -> Value {
+    let indent = if is_truthy(pretty) { Some(2) } else { None };
+    Value::Str(json_serialize(v, indent, 0))
 }
 
 // ============================================================================
-// Regex Operations (deferred - panic with clear message)
+// Regex Operations — Pure Rust NFA-based regex engine
 // ============================================================================
 
-fn regex_match(string: &Value, pattern: &Value) -> Value {
-    panic!("Regex operations are not yet supported in the Rust backend");
+#[derive(Clone, Debug)]
+enum RxInst {
+    Lit(char),
+    LitCI(char, char),
+    Dot,
+    AnchorStart,
+    AnchorEnd,
+    Class(Vec<(char, char)>, bool),
+    Split(usize, usize),
+    Jump(usize),
+    Match,
 }
 
-fn regex_find_all(string: &Value, pattern: &Value) -> Value {
-    panic!("Regex operations are not yet supported in the Rust backend");
+fn rx_compile(pattern: &str, ci: bool) -> Vec<RxInst> {
+    let chars: Vec<char> = pattern.chars().collect();
+    let mut insts = Vec::new();
+    rx_compile_inner(&chars, &mut 0, &mut insts, ci, false);
+    insts.push(RxInst::Match);
+    insts
 }
 
-fn regex_replace(string: &Value, pattern: &Value, replacement: &Value) -> Value {
-    panic!("Regex operations are not yet supported in the Rust backend");
+fn rx_compile_inner(chars: &[char], pos: &mut usize, insts: &mut Vec<RxInst>, ci: bool, in_group: bool) {
+    let mut alts: Vec<Vec<RxInst>> = vec![Vec::new()];
+
+    while *pos < chars.len() {
+        let ch = chars[*pos];
+        match ch {
+            ')' if in_group => break,
+            '|' => { *pos += 1; alts.push(Vec::new()); }
+            '(' => {
+                *pos += 1;
+                let mut sub = Vec::new();
+                rx_compile_inner(chars, pos, &mut sub, ci, true);
+                if *pos < chars.len() && chars[*pos] == ')' { *pos += 1; }
+                rx_apply_quant(chars, pos, &mut sub, alts.last_mut().unwrap());
+            }
+            '[' => {
+                *pos += 1;
+                let (ranges, neg) = rx_parse_class(chars, pos);
+                let mut sub = vec![RxInst::Class(ranges, neg)];
+                rx_apply_quant(chars, pos, &mut sub, alts.last_mut().unwrap());
+            }
+            '.' => { *pos += 1; let mut sub = vec![RxInst::Dot]; rx_apply_quant(chars, pos, &mut sub, alts.last_mut().unwrap()); }
+            '^' => { *pos += 1; alts.last_mut().unwrap().push(RxInst::AnchorStart); }
+            '$' => { *pos += 1; alts.last_mut().unwrap().push(RxInst::AnchorEnd); }
+            '\\' => {
+                *pos += 1;
+                if *pos >= chars.len() { panic!("runtime error: invalid regex: trailing backslash"); }
+                let esc = chars[*pos]; *pos += 1;
+                let mut sub = match esc {
+                    'd' => vec![RxInst::Class(vec![('0', '9')], false)],
+                    'D' => vec![RxInst::Class(vec![('0', '9')], true)],
+                    'w' => vec![RxInst::Class(vec![('a', 'z'), ('A', 'Z'), ('0', '9'), ('_', '_')], false)],
+                    'W' => vec![RxInst::Class(vec![('a', 'z'), ('A', 'Z'), ('0', '9'), ('_', '_')], true)],
+                    's' => vec![RxInst::Class(vec![(' ', ' '), ('\t', '\t'), ('\n', '\n'), ('\r', '\r')], false)],
+                    'S' => vec![RxInst::Class(vec![(' ', ' '), ('\t', '\t'), ('\n', '\n'), ('\r', '\r')], true)],
+                    c => if ci && c.is_alphabetic() {
+                        vec![RxInst::LitCI(c.to_lowercase().next().unwrap(), c.to_uppercase().next().unwrap())]
+                    } else { vec![RxInst::Lit(c)] },
+                };
+                rx_apply_quant(chars, pos, &mut sub, alts.last_mut().unwrap());
+            }
+            _ => {
+                *pos += 1;
+                let mut sub = if ci && ch.is_alphabetic() {
+                    vec![RxInst::LitCI(ch.to_lowercase().next().unwrap(), ch.to_uppercase().next().unwrap())]
+                } else { vec![RxInst::Lit(ch)] };
+                rx_apply_quant(chars, pos, &mut sub, alts.last_mut().unwrap());
+            }
+        }
+    }
+
+    if alts.len() == 1 {
+        insts.extend(alts.into_iter().next().unwrap());
+    } else {
+        rx_build_alt(&alts, 0, insts);
+    }
 }
 
-fn regex_split(string: &Value, pattern: &Value) -> Value {
-    panic!("Regex operations are not yet supported in the Rust backend");
+fn rx_build_alt(branches: &[Vec<RxInst>], idx: usize, out: &mut Vec<RxInst>) {
+    if idx == branches.len() - 1 { out.extend(branches[idx].iter().cloned()); return; }
+    let mut remaining = Vec::new();
+    rx_build_alt(branches, idx + 1, &mut remaining);
+    let blen = branches[idx].len();
+    let right = 1 + blen + 1;
+    out.push(RxInst::Split(1, right));
+    out.extend(branches[idx].iter().cloned());
+    out.push(RxInst::Jump(right + remaining.len()));
+    out.extend(remaining);
+}
+
+fn rx_apply_quant(chars: &[char], pos: &mut usize, sub: &mut Vec<RxInst>, target: &mut Vec<RxInst>) {
+    if *pos < chars.len() {
+        match chars[*pos] {
+            '*' => {
+                *pos += 1;
+                let greedy = !(*pos < chars.len() && chars[*pos] == '?');
+                if !greedy { *pos += 1; }
+                let blen = sub.len();
+                if greedy { target.push(RxInst::Split(1, blen + 2)); }
+                else { target.push(RxInst::Split(blen + 2, 1)); }
+                target.extend(sub.drain(..));
+                let jt = target.len() - blen - 1;
+                target.push(RxInst::Jump(jt));
+                return;
+            }
+            '+' => {
+                *pos += 1;
+                let greedy = !(*pos < chars.len() && chars[*pos] == '?');
+                if !greedy { *pos += 1; }
+                let start = target.len();
+                target.extend(sub.drain(..));
+                if greedy { target.push(RxInst::Split(start, target.len() + 1)); }
+                else { target.push(RxInst::Split(target.len() + 1, start)); }
+                return;
+            }
+            '?' => {
+                *pos += 1;
+                let greedy = !(*pos < chars.len() && chars[*pos] == '?');
+                if !greedy { *pos += 1; }
+                let spos = target.len();
+                target.push(RxInst::Split(0, 0)); // placeholder
+                let bstart = target.len();
+                target.extend(sub.drain(..));
+                let after = target.len();
+                if greedy { target[spos] = RxInst::Split(bstart, after); }
+                else { target[spos] = RxInst::Split(after, bstart); }
+                return;
+            }
+            _ => {}
+        }
+    }
+    target.extend(sub.drain(..));
+}
+
+fn rx_parse_class(chars: &[char], pos: &mut usize) -> (Vec<(char, char)>, bool) {
+    let mut ranges = Vec::new();
+    let neg = *pos < chars.len() && chars[*pos] == '^';
+    if neg { *pos += 1; }
+    while *pos < chars.len() && chars[*pos] != ']' {
+        let ch = chars[*pos]; *pos += 1;
+        let start = if ch == '\\' && *pos < chars.len() {
+            let esc = chars[*pos]; *pos += 1;
+            match esc {
+                'd' => { ranges.push(('0', '9')); continue; }
+                'w' => { ranges.extend_from_slice(&[('a','z'),('A','Z'),('0','9'),('_','_')]); continue; }
+                's' => { ranges.extend_from_slice(&[(' ',' '),('\t','\t'),('\n','\n'),('\r','\r')]); continue; }
+                _ => esc,
+            }
+        } else { ch };
+        if *pos + 1 < chars.len() && chars[*pos] == '-' && chars[*pos + 1] != ']' {
+            *pos += 1;
+            let end = chars[*pos]; *pos += 1;
+            ranges.push((start, end));
+        } else {
+            ranges.push((start, start));
+        }
+    }
+    if *pos < chars.len() && chars[*pos] == ']' { *pos += 1; }
+    (ranges, neg)
+}
+
+fn rx_match_at(insts: &[RxInst], input: &[char], start: usize, ci: bool) -> Option<usize> {
+    let mut cur: Vec<usize> = Vec::new();
+    let mut nxt: Vec<usize> = Vec::new();
+    let mut best: Option<usize> = None;
+
+    rx_add_thread(&mut cur, insts, 0, input, start);
+
+    let mut p = start;
+    loop {
+        if cur.is_empty() { break; }
+        // Collect deferred additions for AnchorEnd (cannot mutate cur while iterating)
+        let mut anchor_end_adds: Vec<usize> = Vec::new();
+        for &pc in &cur {
+            if pc >= insts.len() { continue; }
+            match &insts[pc] {
+                RxInst::Match => { if best.is_none() || p > best.unwrap() { best = Some(p); } }
+                RxInst::Lit(ch) => { if p < input.len() && input[p] == *ch { rx_add_thread(&mut nxt, insts, pc + 1, input, p + 1); } }
+                RxInst::LitCI(lo, hi) => { if p < input.len() && (input[p] == *lo || input[p] == *hi) { rx_add_thread(&mut nxt, insts, pc + 1, input, p + 1); } }
+                RxInst::Dot => { if p < input.len() && input[p] != '\n' { rx_add_thread(&mut nxt, insts, pc + 1, input, p + 1); } }
+                RxInst::Class(ranges, neg) => {
+                    if p < input.len() {
+                        let c = if ci { input[p].to_lowercase().next().unwrap_or(input[p]) } else { input[p] };
+                        let mut in_class = false;
+                        for &(lo, hi) in ranges {
+                            let (lo, hi) = if ci { (lo.to_lowercase().next().unwrap_or(lo), hi.to_lowercase().next().unwrap_or(hi)) } else { (lo, hi) };
+                            if c >= lo && c <= hi { in_class = true; break; }
+                        }
+                        if in_class != *neg { rx_add_thread(&mut nxt, insts, pc + 1, input, p + 1); }
+                    }
+                }
+                RxInst::AnchorEnd => { if p == input.len() { anchor_end_adds.push(pc + 1); } }
+                _ => {}
+            }
+        }
+        // Apply deferred AnchorEnd thread additions
+        for add_pc in anchor_end_adds {
+            rx_add_thread(&mut cur, insts, add_pc, input, p);
+        }
+        cur.clear();
+        std::mem::swap(&mut cur, &mut nxt);
+        p += 1;
+        if p > input.len() + 1 { break; }
+    }
+    best
+}
+
+fn rx_add_thread(threads: &mut Vec<usize>, insts: &[RxInst], pc: usize, input: &[char], pos: usize) {
+    if pc >= insts.len() || threads.contains(&pc) { return; }
+    match &insts[pc] {
+        RxInst::Split(a, b) => { rx_add_thread(threads, insts, *a, input, pos); rx_add_thread(threads, insts, *b, input, pos); }
+        RxInst::Jump(t) => { rx_add_thread(threads, insts, *t, input, pos); }
+        RxInst::AnchorStart => { if pos == 0 { rx_add_thread(threads, insts, pc + 1, input, pos); } }
+        _ => { threads.push(pc); }
+    }
+}
+
+fn rx_search(insts: &[RxInst], input: &str, ci: bool) -> bool {
+    let chars: Vec<char> = input.chars().collect();
+    for s in 0..=chars.len() {
+        if rx_match_at(insts, &chars, s, ci).is_some() { return true; }
+    }
+    false
+}
+
+fn rx_find_all(insts: &[RxInst], input: &str, ci: bool) -> Vec<String> {
+    let chars: Vec<char> = input.chars().collect();
+    let mut results = Vec::new();
+    let mut p = 0;
+    while p <= chars.len() {
+        if let Some(end) = rx_match_at(insts, &chars, p, ci) {
+            if end > p { results.push(chars[p..end].iter().collect()); p = end; continue; }
+        }
+        p += 1;
+    }
+    results
+}
+
+fn rx_replace_all(insts: &[RxInst], input: &str, repl: &str, ci: bool) -> String {
+    let chars: Vec<char> = input.chars().collect();
+    let mut result = String::new();
+    let mut p = 0;
+    while p < chars.len() {
+        if let Some(end) = rx_match_at(insts, &chars, p, ci) {
+            if end > p { result.push_str(repl); p = end; continue; }
+        }
+        result.push(chars[p]);
+        p += 1;
+    }
+    result
+}
+
+fn rx_split(insts: &[RxInst], input: &str, ci: bool) -> Vec<String> {
+    let chars: Vec<char> = input.chars().collect();
+    let mut parts = Vec::new();
+    let mut last = 0;
+    let mut p = 0;
+    while p < chars.len() {
+        if let Some(end) = rx_match_at(insts, &chars, p, ci) {
+            if end > p { parts.push(chars[last..p].iter().collect()); last = end; p = end; continue; }
+        }
+        p += 1;
+    }
+    parts.push(chars[last..].iter().collect());
+    parts
+}
+
+fn rx_get_flags(flags: &Value) -> bool {
+    match flags { Value::Str(f) => f.contains('i'), _ => false }
+}
+
+fn regex_match_val(string: &Value, pattern: &Value, flags: &Value) -> Value {
+    let s = match string { Value::Str(st) => st.clone(), _ => panic!("regex: string must be a string") };
+    let p = match pattern { Value::Str(st) => st.clone(), _ => panic!("regex: pattern must be a string") };
+    let ci = rx_get_flags(flags);
+    let insts = rx_compile(&p, ci);
+    Value::Bool(rx_search(&insts, &s, ci))
+}
+
+fn regex_find_all_val(string: &Value, pattern: &Value, flags: &Value) -> Value {
+    let s = match string { Value::Str(st) => st.clone(), _ => panic!("regex: string must be a string") };
+    let p = match pattern { Value::Str(st) => st.clone(), _ => panic!("regex: pattern must be a string") };
+    let ci = rx_get_flags(flags);
+    let insts = rx_compile(&p, ci);
+    let matches = rx_find_all(&insts, &s, ci);
+    make_array(matches.into_iter().map(|m| Value::Str(m)).collect())
+}
+
+fn regex_replace_val(string: &Value, pattern: &Value, replacement: &Value, flags: &Value) -> Value {
+    let s = match string { Value::Str(st) => st.clone(), _ => panic!("regex: string must be a string") };
+    let p = match pattern { Value::Str(st) => st.clone(), _ => panic!("regex: pattern must be a string") };
+    let r = match replacement { Value::Str(st) => st.clone(), _ => panic!("regex: replacement must be a string") };
+    let ci = rx_get_flags(flags);
+    let insts = rx_compile(&p, ci);
+    Value::Str(rx_replace_all(&insts, &s, &r, ci))
+}
+
+fn regex_split_val(string: &Value, pattern: &Value, flags: &Value) -> Value {
+    let s = match string { Value::Str(st) => st.clone(), _ => panic!("regex: string must be a string") };
+    let p = match pattern { Value::Str(st) => st.clone(), _ => panic!("regex: pattern must be a string") };
+    let ci = rx_get_flags(flags);
+    let insts = rx_compile(&p, ci);
+    make_array(rx_split(&insts, &s, ci).into_iter().map(|p| Value::Str(p)).collect())
 }
 
 // ============================================================================

@@ -1,18 +1,19 @@
 """Go code generator for Core IL.
 
-This file implements Core IL v1.9 to Go transpilation.
+This file implements Core IL v1.10 to Go transpilation.
 
 The generated Go code:
 - Matches interpreter semantics exactly
 - Uses coreil_runtime.go for runtime support (copied alongside output)
 - All values are of type Value (dynamically typed struct)
 - Implements short-circuit evaluation
-- Supports all Core IL v1.9 features
+- Supports all Core IL v1.10 features including JSON and Regex operations
 
 Version history:
+- v1.10: Added JSON (encoding/json) and Regex (regexp) support
 - v1.9: Initial Go backend
 
-Backward compatibility: Accepts v0.1 through v1.9 programs.
+Backward compatibility: Accepts v0.1 through v1.10 programs.
 """
 
 from __future__ import annotations
@@ -361,17 +362,54 @@ class GoEmitter(BaseEmitter):
             return "mathE()"
         raise ValueError(f"unknown math constant: {name}")
 
-    def _unsupported(self, node: dict) -> str:
-        raise ValueError(
-            f"{node.get('type')} is not supported in the Go backend."
-        )
+    def _emit_json_parse(self, node: dict) -> str:
+        source = self.emit_expr(node.get("source"))
+        return f"jsonParse({source})"
 
-    _emit_json_parse = _unsupported
-    _emit_json_stringify = _unsupported
-    _emit_regex_match = _unsupported
-    _emit_regex_find_all = _unsupported
-    _emit_regex_replace = _unsupported
-    _emit_regex_split = _unsupported
+    def _emit_json_stringify(self, node: dict) -> str:
+        value = self.emit_expr(node.get("value"))
+        pretty = node.get("pretty")
+        if pretty:
+            pretty_expr = self.emit_expr(pretty)
+            return f"jsonStringify({value}, {pretty_expr})"
+        return f"jsonStringify({value}, ValueBool(false))"
+
+    def _emit_regex_match(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regexMatch({string}, {pattern}, {flags})"
+        return f"regexMatch({string}, {pattern}, ValueNone)"
+
+    def _emit_regex_find_all(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regexFindAll({string}, {pattern}, {flags})"
+        return f"regexFindAll({string}, {pattern}, ValueNone)"
+
+    def _emit_regex_replace(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        replacement = self.emit_expr(node.get("replacement"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regexReplace({string}, {pattern}, {replacement}, {flags})"
+        return f"regexReplace({string}, {pattern}, {replacement}, ValueNone)"
+
+    def _emit_regex_split(self, node: dict) -> str:
+        string = self.emit_expr(node.get("string"))
+        pattern = self.emit_expr(node.get("pattern"))
+        flags_node = node.get("flags")
+        if flags_node:
+            flags = self.emit_expr(flags_node)
+            return f"regexSplit({string}, {pattern}, {flags})"
+        return f"regexSplit({string}, {pattern}, ValueNone)"
 
     def _emit_external_call(self, node: dict) -> str:
         module = node.get("module")
@@ -568,14 +606,14 @@ class GoEmitter(BaseEmitter):
             self.indent_level += 1
             self.emit_line(f"__from := asInt({from_val})")
             self.emit_line(f"__to := asInt({to_val})")
-            self.emit_line(f"for __from {cmp_op} __to {{")
+            # Use 3-part for so __from++ runs even on continue
+            self.emit_line(f"for __i := __from; __i {cmp_op} __to; __i++ {{")
             self.indent_level += 1
-            self.emit_line(f"{var} := ValueInt(__from)")
+            self.emit_line(f"{var} := ValueInt(__i)")
             # Suppress unused variable warning
             self.emit_line(f"_ = {var}")
             for stmt in body:
                 self.emit_stmt(stmt)
-            self.emit_line("__from++")
             self.indent_level -= 1
             self.emit_line("}")
             self.indent_level -= 1

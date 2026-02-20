@@ -281,6 +281,98 @@ def test_parity_type_convert():
     ]))
 
 
+# --- JSON tests ---
+
+def test_codegen_json_parse():
+    """JsonParse codegen produces valid Go code."""
+    doc = _prog([
+        {"type": "Let", "name": "data", "value": {"type": "JsonParse", "source": _lit('{"a": 1}')}},
+        {"type": "Print", "args": [_var("data")]},
+    ])
+    code, _ = emit_go(doc)
+    assert "jsonParse" in code
+
+
+def test_codegen_json_stringify():
+    """JsonStringify codegen produces valid Go code."""
+    doc = _prog([
+        {"type": "Let", "name": "m", "value": {"type": "Map", "items": [
+            {"key": _lit("x"), "value": _lit(1)},
+        ]}},
+        {"type": "Print", "args": [{"type": "JsonStringify", "value": _var("m")}]},
+    ])
+    code, _ = emit_go(doc)
+    assert "jsonStringify" in code
+
+
+def test_parity_json_parse():
+    """Parse JSON object and access fields."""
+    _check_parity(_prog([
+        {"type": "Let", "name": "data", "value": {"type": "JsonParse", "source": _lit('{"name": "Alice", "age": 30}')}},
+        {"type": "Print", "args": [{"type": "Get", "base": _var("data"), "key": _lit("name")}]},
+        {"type": "Print", "args": [{"type": "Get", "base": _var("data"), "key": _lit("age")}]},
+    ]))
+
+
+def test_parity_json_parse_array():
+    """Parse JSON array."""
+    _check_parity(_prog([
+        {"type": "Let", "name": "arr", "value": {"type": "JsonParse", "source": _lit('[1, 2, 3]')}},
+        {"type": "Print", "args": [{"type": "Length", "base": _var("arr")}]},
+        {"type": "Print", "args": [{"type": "Index", "base": _var("arr"), "index": _lit(0)}]},
+    ]))
+
+
+def test_parity_json_stringify():
+    """Stringify a map to JSON."""
+    _check_parity(_prog([
+        {"type": "Let", "name": "arr", "value": {"type": "Array", "items": [_lit(1), _lit(2), _lit(3)]}},
+        {"type": "Print", "args": [{"type": "JsonStringify", "value": _var("arr")}]},
+    ]))
+
+
+# --- Regex tests ---
+
+def test_codegen_regex_match():
+    """RegexMatch codegen produces valid Go code."""
+    doc = _prog([
+        {"type": "Print", "args": [{"type": "RegexMatch", "string": _lit("hello"), "pattern": _lit("hel+")}]},
+    ])
+    code, _ = emit_go(doc)
+    assert "regexMatch" in code
+
+
+def test_parity_regex_match():
+    """Regex match returns boolean."""
+    _check_parity(_prog([
+        {"type": "Print", "args": [{"type": "RegexMatch", "string": _lit("hello world"), "pattern": _lit("world")}]},
+        {"type": "Print", "args": [{"type": "RegexMatch", "string": _lit("hello world"), "pattern": _lit("xyz")}]},
+    ]))
+
+
+def test_parity_regex_find_all():
+    """Regex find all matches."""
+    _check_parity(_prog([
+        {"type": "Let", "name": "matches", "value": {"type": "RegexFindAll", "string": _lit("cat bat hat"), "pattern": _lit("[cbh]at")}},
+        {"type": "Print", "args": [_var("matches")]},
+    ]))
+
+
+def test_parity_regex_replace():
+    """Regex replace all occurrences."""
+    _check_parity(_prog([
+        {"type": "Print", "args": [{"type": "RegexReplace", "string": _lit("foo123bar456"), "pattern": _lit("[0-9]+"), "replacement": _lit("#")}]},
+    ]))
+
+
+def test_parity_regex_split():
+    """Regex split string."""
+    _check_parity(_prog([
+        {"type": "Let", "name": "parts", "value": {"type": "RegexSplit", "string": _lit("one,two;three four"), "pattern": _lit("[,; ]")}},
+        {"type": "Print", "args": [_var("parts")]},
+    ]))
+
+
 def main() -> None:
     tests = [
         # Codegen-only
@@ -290,6 +382,9 @@ def main() -> None:
         test_codegen_while,
         test_codegen_try_catch,
         test_codegen_for_range,
+        test_codegen_json_parse,
+        test_codegen_json_stringify,
+        test_codegen_regex_match,
         # Parity
         test_parity_hello,
         test_parity_arithmetic,
@@ -303,6 +398,13 @@ def main() -> None:
         test_parity_try_catch,
         test_parity_break_continue,
         test_parity_type_convert,
+        test_parity_json_parse,
+        test_parity_json_parse_array,
+        test_parity_json_stringify,
+        test_parity_regex_match,
+        test_parity_regex_find_all,
+        test_parity_regex_replace,
+        test_parity_regex_split,
     ]
 
     has_go = _has_go()

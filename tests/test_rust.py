@@ -351,6 +351,99 @@ def test_try_catch_finally_rethrow():
     _test_parity(doc, "try_catch_finally_rethrow")
 
 
+def _lit(v):
+    return {"type": "Literal", "value": v}
+
+
+def _var(n):
+    return {"type": "Var", "name": n}
+
+
+def test_json_parse():
+    """Parse JSON object and access fields."""
+    doc = {
+        "version": "coreil-1.10",
+        "body": [
+            {"type": "Let", "name": "data", "value": {"type": "JsonParse", "source": _lit('{"name": "Alice", "age": 30}')}},
+            {"type": "Print", "args": [{"type": "Get", "base": _var("data"), "key": _lit("name")}]},
+            {"type": "Print", "args": [{"type": "Get", "base": _var("data"), "key": _lit("age")}]},
+        ],
+    }
+    _test_parity(doc, "json_parse")
+
+
+def test_json_stringify():
+    """Stringify an array to JSON."""
+    doc = {
+        "version": "coreil-1.10",
+        "body": [
+            {"type": "Let", "name": "arr", "value": {"type": "Array", "items": [_lit(1), _lit(2), _lit(3)]}},
+            {"type": "Print", "args": [{"type": "JsonStringify", "value": _var("arr")}]},
+        ],
+    }
+    _test_parity(doc, "json_stringify")
+
+
+def test_json_parse_array():
+    """Parse JSON array."""
+    doc = {
+        "version": "coreil-1.10",
+        "body": [
+            {"type": "Let", "name": "arr", "value": {"type": "JsonParse", "source": _lit('[1, 2, 3]')}},
+            {"type": "Print", "args": [{"type": "Length", "base": _var("arr")}]},
+            {"type": "Print", "args": [{"type": "Index", "base": _var("arr"), "index": _lit(0)}]},
+        ],
+    }
+    _test_parity(doc, "json_parse_array")
+
+
+def test_regex_match():
+    """Regex match returns boolean."""
+    doc = {
+        "version": "coreil-1.10",
+        "body": [
+            {"type": "Print", "args": [{"type": "RegexMatch", "string": _lit("hello world"), "pattern": _lit("world")}]},
+            {"type": "Print", "args": [{"type": "RegexMatch", "string": _lit("hello world"), "pattern": _lit("xyz")}]},
+        ],
+    }
+    _test_parity(doc, "regex_match")
+
+
+def test_regex_find_all():
+    """Regex find all matches."""
+    doc = {
+        "version": "coreil-1.10",
+        "body": [
+            {"type": "Let", "name": "matches", "value": {"type": "RegexFindAll", "string": _lit("cat bat hat"), "pattern": _lit("[cbh]at")}},
+            {"type": "Print", "args": [_var("matches")]},
+        ],
+    }
+    _test_parity(doc, "regex_find_all")
+
+
+def test_regex_replace():
+    """Regex replace all occurrences."""
+    doc = {
+        "version": "coreil-1.10",
+        "body": [
+            {"type": "Print", "args": [{"type": "RegexReplace", "string": _lit("foo123bar456"), "pattern": _lit("[0-9]+"), "replacement": _lit("#")}]},
+        ],
+    }
+    _test_parity(doc, "regex_replace")
+
+
+def test_regex_split():
+    """Regex split string."""
+    doc = {
+        "version": "coreil-1.10",
+        "body": [
+            {"type": "Let", "name": "parts", "value": {"type": "RegexSplit", "string": _lit("one,two;three four"), "pattern": _lit("[,; ]")}},
+            {"type": "Print", "args": [_var("parts")]},
+        ],
+    }
+    _test_parity(doc, "regex_split")
+
+
 def main() -> int:
     mode = "full parity" if _RUST_AVAILABLE else "codegen-only (rustc not found)"
     print(f"Running Rust backend tests ({mode})...\n")
@@ -371,6 +464,13 @@ def main() -> int:
         test_try_catch,
         test_try_catch_finally,
         test_try_catch_finally_rethrow,
+        test_json_parse,
+        test_json_stringify,
+        test_json_parse_array,
+        test_regex_match,
+        test_regex_find_all,
+        test_regex_replace,
+        test_regex_split,
     ]
 
     failures = []
