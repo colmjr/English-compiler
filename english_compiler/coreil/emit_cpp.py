@@ -477,6 +477,19 @@ class CppEmitter(BaseEmitter):
         value = self.emit_expr(node.get("value"))
         return f"coreil::to_string_value({value})"
 
+    def _emit_ternary(self, node: dict) -> str:
+        test = self.emit_expr(node.get("test"))
+        consequent = self.emit_expr(node.get("consequent"))
+        alternate = self.emit_expr(node.get("alternate"))
+        return f"(coreil::is_truthy({test}) ? {consequent} : {alternate})"
+
+    def _emit_string_format(self, node: dict) -> str:
+        parts = node.get("parts", [])
+        part_strs = [f"coreil::to_string_value({self.emit_expr(part)})" for part in parts]
+        if not part_strs:
+            return 'coreil::Value(std::string(""))'
+        return "coreil::string_concat({" + ", ".join(part_strs) + "})"
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:

@@ -1,10 +1,13 @@
 """Tests for Core IL static analysis (linter).
 
-Tests the 4 lint rules in english_compiler/coreil/lint.py:
+Tests the 7 lint rules in english_compiler/coreil/lint.py:
 - unused-variable
 - unreachable-code
 - empty-body
 - variable-shadowing
+- unused-function
+- infinite-loop
+- unreachable-branch
 
 Run with: python -m tests.test_lint
 """
@@ -196,6 +199,83 @@ def test_used_variable_in_switch_case_value():
     assert len(unused) == 0, f"expected 0 unused-variable warnings, got {len(unused)}"
 
 
+def test_unused_function():
+    """FuncDef with no Call reference triggers unused-function."""
+    doc = _make_doc([
+        {"type": "FuncDef", "name": "helper", "params": ["a"], "body": [
+            {"type": "Return", "value": {"type": "Var", "name": "a"}},
+        ]},
+        {"type": "Print", "args": [{"type": "Literal", "value": "done"}]},
+    ])
+    warnings = lint_coreil(doc)
+    unused = _warnings_for_rule(warnings, "unused-function")
+    assert len(unused) == 1, f"expected 1 unused-function warning, got {len(unused)}"
+    assert "helper" in unused[0]["message"]
+
+
+def test_used_function():
+    """FuncDef that is called should not trigger unused-function."""
+    doc = _make_doc([
+        {"type": "FuncDef", "name": "helper", "params": ["a"], "body": [
+            {"type": "Return", "value": {"type": "Var", "name": "a"}},
+        ]},
+        {"type": "Print", "args": [{"type": "Call", "name": "helper", "args": [{"type": "Literal", "value": 1}]}]},
+    ])
+    warnings = lint_coreil(doc)
+    unused = _warnings_for_rule(warnings, "unused-function")
+    assert len(unused) == 0, f"expected 0 unused-function warnings, got {len(unused)}"
+
+
+def test_infinite_loop_detected():
+    """While(true) with no Break or Return triggers infinite-loop."""
+    doc = _make_doc([
+        {"type": "While", "test": {"type": "Literal", "value": True}, "body": [
+            {"type": "Print", "args": [{"type": "Literal", "value": "looping"}]},
+        ]},
+    ])
+    warnings = lint_coreil(doc)
+    infinite = _warnings_for_rule(warnings, "infinite-loop")
+    assert len(infinite) == 1, f"expected 1 infinite-loop warning, got {len(infinite)}"
+
+
+def test_while_true_with_break_ok():
+    """While(true) with Break should not trigger infinite-loop."""
+    doc = _make_doc([
+        {"type": "While", "test": {"type": "Literal", "value": True}, "body": [
+            {"type": "Break"},
+        ]},
+    ])
+    warnings = lint_coreil(doc)
+    infinite = _warnings_for_rule(warnings, "infinite-loop")
+    assert len(infinite) == 0, f"expected 0 infinite-loop warnings, got {len(infinite)}"
+
+
+def test_unreachable_branch_true():
+    """If with Literal(true) test has unreachable else branch."""
+    doc = _make_doc([
+        {"type": "If", "test": {"type": "Literal", "value": True},
+         "then": [{"type": "Print", "args": [{"type": "Literal", "value": "yes"}]}],
+         "else": [{"type": "Print", "args": [{"type": "Literal", "value": "no"}]}]},
+    ])
+    warnings = lint_coreil(doc)
+    unreachable = _warnings_for_rule(warnings, "unreachable-branch")
+    assert len(unreachable) == 1, f"expected 1 unreachable-branch warning, got {len(unreachable)}"
+    assert "else" in unreachable[0]["message"]
+
+
+def test_unreachable_branch_false():
+    """If with Literal(false) test has unreachable then branch."""
+    doc = _make_doc([
+        {"type": "If", "test": {"type": "Literal", "value": False},
+         "then": [{"type": "Print", "args": [{"type": "Literal", "value": "yes"}]}],
+         "else": [{"type": "Print", "args": [{"type": "Literal", "value": "no"}]}]},
+    ])
+    warnings = lint_coreil(doc)
+    unreachable = _warnings_for_rule(warnings, "unreachable-branch")
+    assert len(unreachable) == 1, f"expected 1 unreachable-branch warning, got {len(unreachable)}"
+    assert "then" in unreachable[0]["message"]
+
+
 def main() -> int:
     print("Running lint tests...\n")
 
@@ -213,6 +293,12 @@ def main() -> int:
         test_func_unused_top_level,
         test_multiple_rules,
         test_used_variable_in_switch_case_value,
+        test_unused_function,
+        test_used_function,
+        test_infinite_loop_detected,
+        test_while_true_with_break_ok,
+        test_unreachable_branch_true,
+        test_unreachable_branch_false,
     ]
 
     failures = []

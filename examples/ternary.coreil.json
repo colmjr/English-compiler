@@ -1,0 +1,38 @@
+{
+  "version": "coreil-1.11",
+  "body": [
+    {
+      "type": "Let",
+      "name": "x",
+      "value": {"type": "Literal", "value": 10}
+    },
+    {
+      "type": "Let",
+      "name": "result",
+      "value": {
+        "type": "Ternary",
+        "test": {"type": "Binary", "op": ">", "left": {"type": "Var", "name": "x"}, "right": {"type": "Literal", "value": 5}},
+        "consequent": {"type": "Literal", "value": "big"},
+        "alternate": {"type": "Literal", "value": "small"}
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "result"}]
+    },
+    {
+      "type": "Let",
+      "name": "result2",
+      "value": {
+        "type": "Ternary",
+        "test": {"type": "Binary", "op": "<", "left": {"type": "Var", "name": "x"}, "right": {"type": "Literal", "value": 5}},
+        "consequent": {"type": "Literal", "value": "yes"},
+        "alternate": {"type": "Literal", "value": "no"}
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "result2"}]
+    }
+  ]
+}

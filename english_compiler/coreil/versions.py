@@ -4,6 +4,7 @@ This module is the single source of truth for all Core IL version information.
 All other modules should import version constants from here.
 
 Version History:
+- v1.11: Added Ternary conditional expression and StringFormat string interpolation
 - v1.10.5: Added Import statement for multi-file module system
 - v1.10: Added Switch statement for pattern matching
 - v1.9: Added ToInt, ToFloat, ToString type conversion expressions
@@ -25,7 +26,7 @@ Version History:
 from __future__ import annotations
 
 # Current stable version
-COREIL_VERSION = "coreil-1.10.5"
+COREIL_VERSION = "coreil-1.11"
 
 # All supported versions (for backward compatibility)
 SUPPORTED_VERSIONS = frozenset([
@@ -46,10 +47,11 @@ SUPPORTED_VERSIONS = frozenset([
     "coreil-1.9",
     "coreil-1.10",
     "coreil-1.10.5",
+    "coreil-1.11",
 ])
 
 # Package version (semantic versioning)
-PACKAGE_VERSION = "1.10.5"
+PACKAGE_VERSION = "1.11.0"
 
 
 def is_sealed_version(version: str) -> bool:

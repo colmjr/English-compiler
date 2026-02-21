@@ -724,6 +724,17 @@ class JavaScriptEmitter(BaseEmitter):
         self.uses_type_convert_helpers = True
         return f"__toString({value})"
 
+    def _emit_ternary(self, node: dict) -> str:
+        test = self.emit_expr(node.get("test"))
+        consequent = self.emit_expr(node.get("consequent"))
+        alternate = self.emit_expr(node.get("alternate"))
+        return f"({test} ? {consequent} : {alternate})"
+
+    def _emit_string_format(self, node: dict) -> str:
+        parts = node.get("parts", [])
+        part_strs = [f"String({self.emit_expr(part)})" for part in parts]
+        return " + ".join(part_strs) if part_strs else '""'
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:

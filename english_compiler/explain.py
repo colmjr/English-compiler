@@ -141,6 +141,16 @@ def _expr_str(node: Any, verbose: bool = False) -> str:
     if t == "MathConst":
         return node.get("name", "?")
 
+    if t == "Ternary":
+        test = _expr_str(node.get("test"), verbose)
+        cons = _expr_str(node.get("consequent"), verbose)
+        alt = _expr_str(node.get("alternate"), verbose)
+        return f"(if {test} then {cons} else {alt})"
+
+    if t == "StringFormat":
+        parts = [_expr_str(p, verbose) for p in node.get("parts", [])]
+        return f"format({', '.join(parts)})"
+
     if t == "DequeNew":
         return "new deque"
     if t == "HeapNew":

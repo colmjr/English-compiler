@@ -497,6 +497,19 @@ class RustEmitter(BaseEmitter):
         value = self.emit_expr(node.get("value"))
         return f"value_to_string_convert(&{value})"
 
+    def _emit_ternary(self, node: dict) -> str:
+        test = self.emit_expr(node.get("test"))
+        consequent = self.emit_expr(node.get("consequent"))
+        alternate = self.emit_expr(node.get("alternate"))
+        return f"(if is_truthy(&{test}) {{ {consequent} }} else {{ {alternate} }})"
+
+    def _emit_string_format(self, node: dict) -> str:
+        parts = node.get("parts", [])
+        part_strs = [f"value_to_string_convert(&{self.emit_expr(part)})" for part in parts]
+        if not part_strs:
+            return 'Value::Str(String::new())'
+        return f"string_format(vec![{', '.join(part_strs)}])"
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:

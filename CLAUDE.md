@@ -109,7 +109,7 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
     - `emit_assemblyscript.py` - AssemblyScript/WASM code generator
     - `emit_base.py` - Shared codegen base class
     - `optimize.py` - Core IL optimizer (constant folding, DCE, identity simplification)
-    - `lint.py` - Static analysis (unused vars, dead code, etc.)
+    - `lint.py` - Static analysis (7 rules: unused vars/functions, dead code, infinite loops, etc.)
     - `lower.py` - Lowering pass (For/ForEach → While)
     - `source_map.py` - Source map composition (English→CoreIL→target)
     - `debug.py` - Interactive debugger (step-through, breakpoints, variable inspection)
@@ -135,7 +135,7 @@ Note: `python -m english_compiler` also works as an alternative to `english-comp
 
 ### Core IL Version Policy
 
-**Current stable version**: Core IL v1.10.5 (`"coreil-1.10.5"`)
+**Current stable version**: Core IL v1.11 (`"coreil-1.11"`)
 
 All versions from v0.1 through v1.10.5 are supported for backward compatibility. The codebase uses version constants:
 
@@ -143,7 +143,7 @@ All versions from v0.1 through v1.10.5 are supported for backward compatibility.
 from english_compiler.coreil import COREIL_VERSION, SUPPORTED_VERSIONS
 ```
 
-Version history: v1.0 (frozen core), v1.1 (Record, Set, Deque, Heap, string ops), v1.2 (Math), v1.3/v1.4 (JSON, Regex, string ops consolidated), v1.5 (Slice), v1.6 (MethodCall, PropertyGet — Tier 2), v1.7 (Break, Continue), v1.8 (Throw, TryCatch), v1.9 (ToInt, ToFloat, ToString), v1.10 (Switch), v1.10.5 (Import — multi-file modules).
+Version history: v1.0 (frozen core), v1.1 (Record, Set, Deque, Heap, string ops), v1.2 (Math), v1.3/v1.4 (JSON, Regex, string ops consolidated), v1.5 (Slice), v1.6 (MethodCall, PropertyGet — Tier 2), v1.7 (Break, Continue), v1.8 (Throw, TryCatch), v1.9 (ToInt, ToFloat, ToString), v1.10 (Switch), v1.10.5 (Import — multi-file modules), v1.11 (Ternary, StringFormat).
 
 ### Pipeline Stages
 
@@ -173,6 +173,8 @@ For the complete Core IL specification and JSON examples, see `coreil_v1.md` and
 - Math, MathPow, MathConst, JsonParse, JsonStringify
 - RegexMatch, RegexFindAll, RegexReplace, RegexSplit
 - ToInt, ToFloat, ToString (v1.9)
+- Ternary (v1.11 — inline conditional, short-circuit)
+- StringFormat (v1.11 — string interpolation, evaluates parts and concatenates)
 - ExternalCall, MethodCall, PropertyGet (Tier 2 — non-portable, raise error in interpreter)
 - Range, Call
 

@@ -442,6 +442,21 @@ class GoEmitter(BaseEmitter):
         value = self.emit_expr(node.get("value"))
         return f"valueToStringConvert({value})"
 
+    def _emit_ternary(self, node: dict) -> str:
+        test = self.emit_expr(node.get("test"))
+        consequent = self.emit_expr(node.get("consequent"))
+        alternate = self.emit_expr(node.get("alternate"))
+        # Use IIFE for short-circuit: only the chosen branch is evaluated
+        return (f"func() Value {{ if isTruthy({test}) {{ return {consequent} }} "
+                f"else {{ return {alternate} }} }}()")
+
+    def _emit_string_format(self, node: dict) -> str:
+        parts = node.get("parts", [])
+        part_strs = [self.emit_expr(part) for part in parts]
+        if not part_strs:
+            return 'ValueStr("")'
+        return f"stringFormat({', '.join(part_strs)})"
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:

@@ -40,6 +40,8 @@ _ALLOWED_NODE_TYPES = {
     "ToInt", "ToFloat", "ToString",
     "Switch",
     "Import",
+    "Ternary",
+    "StringFormat",
 }
 
 
@@ -370,6 +372,23 @@ def _validate_value_only(node, path, defined, add_error, validate_expr):
     _require_expr(node, "value", path, defined, add_error, validate_expr)
 
 
+def _validate_ternary(node, path, defined, add_error, validate_expr):
+    """Validator for Ternary conditional expression."""
+    _require_expr(node, "test", path, defined, add_error, validate_expr)
+    _require_expr(node, "consequent", path, defined, add_error, validate_expr)
+    _require_expr(node, "alternate", path, defined, add_error, validate_expr)
+
+
+def _validate_string_format(node, path, defined, add_error, validate_expr):
+    """Validator for StringFormat expression."""
+    parts = node.get("parts")
+    if not isinstance(parts, list):
+        add_error(f"{path}.parts", "missing or invalid parts")
+    else:
+        for i, part in enumerate(parts):
+            validate_expr(part, f"{path}.parts[{i}]", defined)
+
+
 # Expression validator dispatch table
 _EXPR_VALIDATORS: dict[str, ValidatorFunc] = {
     "Literal": _validate_literal,
@@ -424,6 +443,8 @@ _EXPR_VALIDATORS: dict[str, ValidatorFunc] = {
     "ToInt": _validate_value_only,
     "ToFloat": _validate_value_only,
     "ToString": _validate_value_only,
+    "Ternary": _validate_ternary,
+    "StringFormat": _validate_string_format,
 }
 
 
