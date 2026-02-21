@@ -146,17 +146,28 @@ def _validate_array(node, path, defined, add_error, validate_expr):
     _validate_items_list(node, path, defined, add_error, validate_expr)
 
 
-def _validate_index(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
+def _validate_index_field(
+    node: dict,
+    path: str,
+    defined: set[str],
+    add_error: Callable[[str, str], None],
+    validate_expr: Callable[[Any, str, set[str]], None],
+) -> None:
     if "index" not in node:
         add_error(f"{path}.index", "missing index")
-    else:
-        validate_expr(node["index"], f"{path}.index", defined)
-        # Validate literal indices are integers (negative values allowed for Python-style indexing)
-        if isinstance(node["index"], dict) and node["index"].get("type") == "Literal":
-            value = node["index"].get("value")
-            if not isinstance(value, int):
-                add_error(f"{path}.index", "index must be an integer")
+        return
+
+    validate_expr(node["index"], f"{path}.index", defined)
+    # Validate literal indices are integers (negative values allowed for Python-style indexing)
+    if isinstance(node["index"], dict) and node["index"].get("type") == "Literal":
+        value = node["index"].get("value")
+        if not isinstance(value, int):
+            add_error(f"{path}.index", "index must be an integer")
+
+
+def _validate_index(node, path, defined, add_error, validate_expr):
+    _require_expr(node, "base", path, defined, add_error, validate_expr)
+    _validate_index_field(node, path, defined, add_error, validate_expr)
 
 
 def _validate_base_only(node, path, defined, add_error, validate_expr):
@@ -506,15 +517,7 @@ def _validate_print_stmt(node, path, defined, add_error, validate_expr, in_func,
 
 def _validate_set_index(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
     _require_expr(node, "base", path, defined, add_error, validate_expr)
-    if "index" not in node:
-        add_error(f"{path}.index", "missing index")
-    else:
-        validate_expr(node["index"], f"{path}.index", defined)
-        # Validate literal indices are integers (negative values allowed for Python-style indexing)
-        if isinstance(node["index"], dict) and node["index"].get("type") == "Literal":
-            value = node["index"].get("value")
-            if not isinstance(value, int):
-                add_error(f"{path}.index", "index must be an integer")
+    _validate_index_field(node, path, defined, add_error, validate_expr)
     _require_expr(node, "value", path, defined, add_error, validate_expr)
 
 
@@ -556,46 +559,59 @@ def _validate_return(node, path, defined, add_error, validate_expr, in_func, in_
         validate_expr(node["value"], f"{path}.value", defined)
 
 
-def _validate_for(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_loop_stmt(
+    node,
+    path,
+    defined,
+    add_error,
+    validate_expr,
+    in_func,
+    validate_stmt,
+):
     var_name = node.get("var")
     if not isinstance(var_name, str) or not var_name:
         add_error(f"{path}.var", "missing or invalid var")
+
     iter_expr = node.get("iter")
     if iter_expr is None:
         add_error(f"{path}.iter", "missing iter")
     else:
         validate_expr(iter_expr, f"{path}.iter", defined)
-    # Add loop variable to defined set for body validation
+
     if isinstance(var_name, str) and var_name:
         defined.add(var_name)
+
     body = node.get("body")
     if not isinstance(body, list):
         add_error(f"{path}.body", "missing or invalid body")
-    else:
-        for i, stmt in enumerate(body):
-            # Loop body is in_loop=True
-            validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func, True)
+        return
+
+    for i, stmt in enumerate(body):
+        validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func, True)
+
+
+def _validate_for(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+    _validate_loop_stmt(
+        node,
+        path,
+        defined,
+        add_error,
+        validate_expr,
+        in_func,
+        validate_stmt,
+    )
 
 
 def _validate_for_each(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    var_name = node.get("var")
-    if not isinstance(var_name, str) or not var_name:
-        add_error(f"{path}.var", "missing or invalid var")
-    iter_expr = node.get("iter")
-    if iter_expr is None:
-        add_error(f"{path}.iter", "missing iter")
-    else:
-        validate_expr(iter_expr, f"{path}.iter", defined)
-    # Add loop variable to defined set for body validation
-    if isinstance(var_name, str) and var_name:
-        defined.add(var_name)
-    body = node.get("body")
-    if not isinstance(body, list):
-        add_error(f"{path}.body", "missing or invalid body")
-    else:
-        for i, stmt in enumerate(body):
-            # Loop body is in_loop=True
-            validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func, True)
+    _validate_loop_stmt(
+        node,
+        path,
+        defined,
+        add_error,
+        validate_expr,
+        in_func,
+        validate_stmt,
+    )
 
 
 def _validate_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
@@ -620,31 +636,28 @@ def _validate_set_remove(node, path, defined, add_error, validate_expr, in_func,
 
 
 def _validate_push_back(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "value", path, defined, add_error, validate_expr)
+    _validate_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt)
 
 
 def _validate_push_front(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+    _validate_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt)
+
+
+def _validate_pop_to_target(node, path, defined, add_error, validate_expr):
     _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "value", path, defined, add_error, validate_expr)
+    target = node.get("target")
+    if not isinstance(target, str) or not target:
+        add_error(f"{path}.target", "missing or invalid target variable name")
+    else:
+        defined.add(target)
 
 
 def _validate_pop_front(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    target = node.get("target")
-    if not isinstance(target, str) or not target:
-        add_error(f"{path}.target", "missing or invalid target variable name")
-    else:
-        defined.add(target)
+    _validate_pop_to_target(node, path, defined, add_error, validate_expr)
 
 
 def _validate_pop_back(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    target = node.get("target")
-    if not isinstance(target, str) or not target:
-        add_error(f"{path}.target", "missing or invalid target variable name")
-    else:
-        defined.add(target)
+    _validate_pop_to_target(node, path, defined, add_error, validate_expr)
 
 
 def _validate_heap_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
@@ -654,12 +667,7 @@ def _validate_heap_push(node, path, defined, add_error, validate_expr, in_func, 
 
 
 def _validate_heap_pop(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    target = node.get("target")
-    if not isinstance(target, str) or not target:
-        add_error(f"{path}.target", "missing or invalid target variable name")
-    else:
-        defined.add(target)
+    _validate_pop_to_target(node, path, defined, add_error, validate_expr)
 
 
 def _validate_break(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):

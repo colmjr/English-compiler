@@ -144,25 +144,38 @@ class BaseEmitter(ABC):
         """Emit a line with current indentation."""
         self.lines.append(self.indent_str * self.indent_level + text)
 
+    def _dispatch_node(
+        self,
+        node: dict,
+        handlers: dict[str, Callable[[dict], str] | Callable[[dict], None]],
+        expected_kind: str,
+        unknown_message_prefix: str,
+    ):
+        if not isinstance(node, dict):
+            raise ValueError(f"expected {expected_kind} node")
+        node_type = node.get("type")
+        handler = handlers.get(node_type)
+        if handler is None:
+            raise ValueError(f"{unknown_message_prefix}: {node_type}")
+        return handler(node)
+
     def emit_expr(self, node: dict) -> str:
         """Generate expression code via dispatch table."""
-        if not isinstance(node, dict):
-            raise ValueError("expected expression node")
-        node_type = node.get("type")
-        handler = self.expr_handlers.get(node_type)
-        if handler is None:
-            raise ValueError(f"unknown expression type: {node_type}")
-        return handler(node)
+        return self._dispatch_node(
+            node,
+            self.expr_handlers,
+            expected_kind="expression",
+            unknown_message_prefix="unknown expression type",
+        )
 
     def emit_stmt(self, node: dict) -> None:
         """Generate statement code via dispatch table."""
-        if not isinstance(node, dict):
-            raise ValueError("expected statement node")
-        node_type = node.get("type")
-        handler = self.stmt_handlers.get(node_type)
-        if handler is None:
-            raise ValueError(f"unknown statement type: {node_type}")
-        handler(node)
+        self._dispatch_node(
+            node,
+            self.stmt_handlers,
+            expected_kind="statement",
+            unknown_message_prefix="unknown statement type",
+        )
 
     @abstractmethod
     def emit(self) -> str:
