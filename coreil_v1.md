@@ -1,6 +1,6 @@
-# Core IL v1.0-v1.8 Specification
+# Core IL v1.0-v1.11 Specification
 
-**Version:** 1.0-1.8
+**Version:** 1.0-1.11
 **Status:** Stable
 **Date:** 2026-02-15
 
@@ -27,6 +27,7 @@ Core IL is the **semantic heart** of the English compiler. It is a closed, deter
 
 ### Version History
 
+- **v1.11**: Added Ternary (conditional expression), StringFormat (string interpolation)
 - **v1.8**: Added Throw, TryCatch (exception handling with try/catch/finally)
 - **v1.7**: Added Break, Continue (loop control flow)
 - **v1.6**: Added MethodCall, PropertyGet (Tier 2, OOP-style), WASM backend
@@ -49,7 +50,7 @@ Core IL programs are JSON documents with this top-level structure:
 
 ```json
 {
-  "version": "coreil-1.8",
+  "version": "coreil-1.11",
   "ambiguities": [],
   "body": [<statement>, <statement>, ...]
 }
@@ -57,7 +58,7 @@ Core IL programs are JSON documents with this top-level structure:
 
 ### Fields
 
-- **version** (string, required): Current version is `"coreil-1.8"`. Backward compatibility is maintained for all versions from `"coreil-0.1"` through `"coreil-1.7"`.
+- **version** (string, required): Current version is `"coreil-1.11"`. Backward compatibility is maintained for all versions from `"coreil-0.1"` through `"coreil-1.7"`.
 
 - **ambiguities** (array, optional): A list of ambiguity objects documenting places where the LLM made interpretation choices.
 
@@ -332,6 +333,71 @@ Available modules: `time`, `os`, `fs`, `http`, `crypto`
 
 ---
 
+## Expressions (v1.11)
+
+### Ternary (v1.11)
+
+Short-circuit conditional expression. Evaluates `test`, then evaluates and returns either `consequent` (if truthy) or `alternate` (if falsy). Only the chosen branch is evaluated.
+
+```json
+{"type": "Ternary", "test": <expr>, "consequent": <expr>, "alternate": <expr>}
+```
+
+**Fields:**
+
+- `test` (expression, required): The condition to evaluate.
+- `consequent` (expression, required): Returned when `test` is truthy. Only evaluated if chosen.
+- `alternate` (expression, required): Returned when `test` is falsy. Only evaluated if chosen.
+
+**Example** -- assign the smaller of two values:
+
+```json
+{
+  "type": "Ternary",
+  "test": {"type": "Binary", "op": "<", "left": {"type": "Var", "name": "a"}, "right": {"type": "Var", "name": "b"}},
+  "consequent": {"type": "Var", "name": "a"},
+  "alternate": {"type": "Var", "name": "b"}
+}
+```
+
+**Semantics:**
+- Short-circuit: only one of `consequent` / `alternate` is evaluated, never both.
+- Can be nested (the result is an expression, usable anywhere an expression is expected).
+
+### StringFormat (v1.11)
+
+Evaluates each part expression, converts each result to its string representation, and concatenates them into a single string. This is the Core IL equivalent of string interpolation / f-strings.
+
+```json
+{"type": "StringFormat", "parts": [<expr>, ...]}
+```
+
+**Fields:**
+
+- `parts` (array of expressions, required): One or more expressions. Each is evaluated in order, converted to a string, and concatenated.
+
+**Example** -- build a greeting message:
+
+```json
+{
+  "type": "StringFormat",
+  "parts": [
+    {"type": "Literal", "value": "Hello, "},
+    {"type": "Var", "name": "name"},
+    {"type": "Literal", "value": "! You are "},
+    {"type": "Var", "name": "age"},
+    {"type": "Literal", "value": " years old."}
+  ]
+}
+```
+
+**Semantics:**
+- Each part is evaluated left-to-right.
+- Non-string values are converted to their string representation (integers, floats, booleans, null, arrays, etc.).
+- An empty `parts` array produces an empty string `""`.
+
+---
+
 ## Statements (v1.0 Core)
 
 ### Let
@@ -582,6 +648,8 @@ Keys maintain insertion order.
 - **Python Codegen**: Transpiles to Python 3.10+
 - **JavaScript Codegen**: Transpiles to ES6+
 - **C++ Codegen**: Transpiles to C++17
+- **Rust Codegen**: Transpiles to Rust
+- **Go Codegen**: Transpiles to Go
 - **WASM Codegen**: Transpiles to AssemblyScript (compiled to WebAssembly)
 
 All backends produce identical output.
@@ -603,11 +671,11 @@ All backends produce identical output.
 **Core IL v1.0 is stable and frozen.**
 
 - v1.0 semantics will never change
-- v1.1-v1.8 add features without breaking v1.0
+- v1.1-v1.11 add features without breaking v1.0
 - Full backward compatibility maintained
 
 ---
 
 ## Conclusion
 
-Core IL v1.8 provides a complete, deterministic IR for the English compiler. The specification is complete, closed, deterministic, tested, and documented.
+Core IL v1.11 provides a complete, deterministic IR for the English compiler. The specification is complete, closed, deterministic, tested, and documented.

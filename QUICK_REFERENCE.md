@@ -1,4 +1,4 @@
-# Core IL v1.8 Quick Reference
+# Core IL v1.11 Quick Reference
 
 Fast reference for Core IL node types and common patterns.
 
@@ -8,7 +8,7 @@ Fast reference for Core IL node types and common patterns.
 
 ```json
 {
-  "version": "coreil-1.8",
+  "version": "coreil-1.11",
   "ambiguities": [],
   "body": [<statement>, ...]
 }
@@ -224,6 +224,39 @@ Fast reference for Core IL node types and common patterns.
   "from": <int_expr>,
   "to": <int_expr>,
   "inclusive": false  // or true
+}
+```
+
+### Ternary (v1.11)
+
+```json
+// Conditional expression (short-circuit: only chosen branch is evaluated)
+{"type": "Ternary", "test": <expr>, "consequent": <expr>, "alternate": <expr>}
+
+// Example: min(a, b)
+{
+  "type": "Ternary",
+  "test": {"type": "Binary", "op": "<", "left": {"type": "Var", "name": "a"}, "right": {"type": "Var", "name": "b"}},
+  "consequent": {"type": "Var", "name": "a"},
+  "alternate": {"type": "Var", "name": "b"}
+}
+```
+
+### StringFormat (v1.11)
+
+```json
+// String interpolation: evaluate parts, convert to string, concatenate
+{"type": "StringFormat", "parts": [<expr>, ...]}
+
+// Example: "Hello, Alice! Score: 95"
+{
+  "type": "StringFormat",
+  "parts": [
+    {"type": "Literal", "value": "Hello, "},
+    {"type": "Var", "name": "name"},
+    {"type": "Literal", "value": "! Score: "},
+    {"type": "Var", "name": "score"}
+  ]
 }
 ```
 
@@ -621,4 +654,4 @@ python -m tests.run_algorithms
 
 ---
 
-**Core IL v1.8 - Stable and Production Ready**
+**Core IL v1.11 - Stable and Production Ready**

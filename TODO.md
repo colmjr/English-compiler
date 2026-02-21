@@ -12,8 +12,8 @@ Feature ideas and improvements for the English Compiler. Items are tagged by pri
 
 ## New Core IL Nodes / Language Features
 
-- `[HIGH]` Ternary/conditional expressions (inline if/else)
-- `[HIGH]` String interpolation / f-string style expressions
+- ~~`[HIGH]` Ternary/conditional expressions (inline if/else)~~ ✅ Done (v1.11 — Ternary)
+- ~~`[HIGH]` String interpolation / f-string style expressions~~ ✅ Done (v1.11 — StringFormat)
 - `[MED]` Lambda/anonymous functions
 - `[MED]` List comprehensions / map/filter/reduce
 - `[MED]` Destructuring assignment (unpack tuple/record into variables)
@@ -63,7 +63,7 @@ Feature ideas and improvements for the English Compiler. Items are tagged by pri
 
 ## Static Analysis & Correctness
 
-- `[HIGH]` More lint rules: unused functions, infinite loop detection, unreachable branches
+- ~~`[HIGH]` More lint rules: unused functions, infinite loop detection, unreachable branches~~ ✅ Done (unused-function, infinite-loop, unreachable-branch)
 - `[MED]` Type inference pass (infer types without annotations)
 - `[MED]` Purity analysis (mark functions as pure/impure)
 - `[LOW]` Bounds checking at compile time where possible

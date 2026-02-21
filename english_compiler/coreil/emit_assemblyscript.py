@@ -476,6 +476,23 @@ class AssemblyScriptEmitter(BaseEmitter):
         value = self.emit_expr(node.get("value"))
         return f"({value}).toStringConvert()"
 
+    def _emit_ternary(self, node: dict) -> str:
+        test = self.emit_expr(node.get("test"))
+        consequent = self.emit_expr(node.get("consequent"))
+        alternate = self.emit_expr(node.get("alternate"))
+        return f"(({test}).isTruthy() ? ({consequent}) : ({alternate}))"
+
+    def _emit_string_format(self, node: dict) -> str:
+        parts = node.get("parts", [])
+        part_strs = [f"({self.emit_expr(part)}).toStringConvert()" for part in parts]
+        if not part_strs:
+            return 'Value.fromString("")'
+        # Concatenate string parts using .add()
+        result = part_strs[0]
+        for part in part_strs[1:]:
+            result = f"({result}).add({part})"
+        return result
+
     # ========== Statement Handlers ==========
 
     def _emit_let(self, node: dict) -> None:

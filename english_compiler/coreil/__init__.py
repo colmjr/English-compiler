@@ -1,12 +1,13 @@
 """Core IL package.
 
-Core IL v1.9 - Type Conversion Expressions
-===========================================
+Core IL v1.11 - Ternary Expressions and StringFormat
+=====================================================
 
-This package implements the Core IL (Core Intermediate Language) v1.9 specification.
+This package implements the Core IL (Core Intermediate Language) v1.11 specification.
 
-Core IL v1.9 adds:
-- ToInt, ToFloat, ToString type conversion expressions
+Core IL v1.11 adds:
+- Ternary conditional expression (inline if/else)
+- StringFormat string interpolation expression
 
 Core IL features:
 - Complete: All necessary primitives for algorithmic computation
@@ -15,6 +16,9 @@ Core IL features:
 - Closed specification: No extension mechanism or helper functions
 
 Version History:
+- v1.11: Added Ternary conditional expression and StringFormat string interpolation
+- v1.10.5: Added Import for multi-file module system
+- v1.10: Added Switch statement for pattern matching
 - v1.9: Added ToInt, ToFloat, ToString type conversion expressions
 - v1.8: Added Throw and TryCatch for exception handling
 - v1.7: Added Break and Continue loop control statements
@@ -31,7 +35,7 @@ Version History:
 - v0.1: Basic statements and expressions
 
 Backward Compatibility:
-All v0.1-v1.8 programs continue to work in v1.9.
+All v0.1-v1.10.5 programs continue to work in v1.11.
 """
 
 from .interp import run_coreil

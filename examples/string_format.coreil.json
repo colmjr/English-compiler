@@ -1,0 +1,46 @@
+{
+  "version": "coreil-1.11",
+  "body": [
+    {
+      "type": "Let",
+      "name": "name",
+      "value": {"type": "Literal", "value": "World"}
+    },
+    {
+      "type": "Let",
+      "name": "greeting",
+      "value": {
+        "type": "StringFormat",
+        "parts": [
+          {"type": "Literal", "value": "Hello, "},
+          {"type": "Var", "name": "name"},
+          {"type": "Literal", "value": "!"}
+        ]
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "greeting"}]
+    },
+    {
+      "type": "Let",
+      "name": "num",
+      "value": {"type": "Literal", "value": 42}
+    },
+    {
+      "type": "Let",
+      "name": "msg",
+      "value": {
+        "type": "StringFormat",
+        "parts": [
+          {"type": "Literal", "value": "The answer is "},
+          {"type": "Var", "name": "num"}
+        ]
+      }
+    },
+    {
+      "type": "Print",
+      "args": [{"type": "Var", "name": "msg"}]
+    }
+  ]
+}

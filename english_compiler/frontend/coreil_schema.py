@@ -272,6 +272,9 @@ COREIL_JSON_SCHEMA = {
                 {"$ref": "#/definitions/toint_expr"},
                 {"$ref": "#/definitions/tofloat_expr"},
                 {"$ref": "#/definitions/tostring_expr"},
+                # Ternary and StringFormat
+                {"$ref": "#/definitions/ternary_expr"},
+                {"$ref": "#/definitions/stringformat_expr"},
             ]
         },
         "literal_expr": {
@@ -994,6 +997,28 @@ COREIL_JSON_SCHEMA = {
             "properties": {
                 "type": {"const": "ToString"},
                 "value": {"$ref": "#/definitions/expr"},
+            },
+        },
+        # Ternary expression (conditional)
+        "ternary_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "test", "consequent", "alternate"],
+            "properties": {
+                "type": {"const": "Ternary"},
+                "test": {"$ref": "#/definitions/expr"},
+                "consequent": {"$ref": "#/definitions/expr"},
+                "alternate": {"$ref": "#/definitions/expr"},
+            },
+        },
+        # StringFormat expression (string interpolation)
+        "stringformat_expr": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type", "parts"],
+            "properties": {
+                "type": {"const": "StringFormat"},
+                "parts": {"type": "array", "items": {"$ref": "#/definitions/expr"}},
             },
         },
     },

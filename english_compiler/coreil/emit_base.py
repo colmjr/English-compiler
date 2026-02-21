@@ -99,6 +99,8 @@ class BaseEmitter(ABC):
             "ToInt": self._emit_to_int,
             "ToFloat": self._emit_to_float,
             "ToString": self._emit_to_string,
+            "Ternary": self._emit_ternary,
+            "StringFormat": self._emit_string_format,
         }
 
         self.stmt_handlers: dict[str, Callable[[dict], None]] = {
@@ -421,6 +423,16 @@ class BaseEmitter(ABC):
     @abstractmethod
     def _emit_to_string(self, node: dict) -> str:
         """Emit type conversion to string (v1.9)."""
+        pass
+
+    @abstractmethod
+    def _emit_ternary(self, node: dict) -> str:
+        """Emit ternary conditional expression (v1.11)."""
+        pass
+
+    @abstractmethod
+    def _emit_string_format(self, node: dict) -> str:
+        """Emit string format expression (v1.11)."""
         pass
 
     # ========== Statement Handlers (Abstract) ==========

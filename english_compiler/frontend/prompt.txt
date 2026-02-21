@@ -22,7 +22,7 @@ No prose, no markdown, no code fences.
 
 Statements: Let, Assign, If, While, For, ForEach, Print, SetIndex, Set, Push, SetField, SetAdd, SetRemove, PushBack, PushFront, PopFront, PopBack, HeapPush, HeapPop, FuncDef, Return, Break, Continue, Throw, TryCatch, Import
 
-Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, ExternalCall (Tier 2), MethodCall (Tier 2), PropertyGet (Tier 2), Call, ToInt, ToFloat, ToString
+Expressions: Literal, Var, Binary, Array, Index, Length, Range, Map, Get, GetDefault, Keys, Tuple, Record, GetField, StringLength, Substring, CharAt, Join, StringSplit, StringTrim, StringUpper, StringLower, StringStartsWith, StringEndsWith, StringContains, StringReplace, Set (literal), SetHas, SetSize, DequeNew, DequeSize, HeapNew, HeapSize, HeapPeek, Math, MathPow, MathConst, JsonParse, JsonStringify, RegexMatch, RegexFindAll, RegexReplace, RegexSplit, ExternalCall (Tier 2), MethodCall (Tier 2), PropertyGet (Tier 2), Call, ToInt, ToFloat, ToString, Ternary, StringFormat
 
 === DATA STRUCTURES QUICK REFERENCE ===
 
@@ -143,6 +143,53 @@ Examples:
   {"type": "ToInt", "value": {"type": "Literal", "value": "42"}}
   {"type": "ToFloat", "value": {"type": "Var", "name": "x"}}
   {"type": "ToString", "value": {"type": "Var", "name": "count"}}
+
+=== TERNARY EXPRESSION ===
+
+Conditional expression (short-circuit):
+  {"type": "Ternary", "test": <expr>, "consequent": <expr>, "alternate": <expr>}
+
+Notes:
+- Evaluates "test" first. If truthy, evaluates and returns "consequent"; otherwise evaluates and returns "alternate".
+- Only one of consequent/alternate is evaluated (short-circuit behavior).
+- Use instead of If when you need a conditional value in an expression context.
+
+Examples:
+  {"type": "Ternary",
+   "test": {"type": "Binary", "op": ">", "left": {"type": "Var", "name": "x"}, "right": {"type": "Literal", "value": 0}},
+   "consequent": {"type": "Literal", "value": "positive"},
+   "alternate": {"type": "Literal", "value": "non-positive"}}
+
+  {"type": "Let", "name": "label", "value":
+    {"type": "Ternary",
+     "test": {"type": "Binary", "op": "==", "left": {"type": "Var", "name": "count"}, "right": {"type": "Literal", "value": 1}},
+     "consequent": {"type": "Literal", "value": "item"},
+     "alternate": {"type": "Literal", "value": "items"}}}
+
+=== STRING FORMAT (String Interpolation) ===
+
+String interpolation by evaluating parts, converting each to string, and concatenating:
+  {"type": "StringFormat", "parts": [<expr>, ...]}
+
+Notes:
+- Each part is evaluated, converted to its string representation, and concatenated.
+- Parts can be any expression (Literal, Var, Call, Binary, etc.).
+- Use instead of manually concatenating with Binary "+" and ToString.
+
+Examples:
+  {"type": "StringFormat", "parts": [
+    {"type": "Literal", "value": "Hello, "},
+    {"type": "Var", "name": "name"},
+    {"type": "Literal", "value": "!"}
+  ]}
+
+  {"type": "StringFormat", "parts": [
+    {"type": "Literal", "value": "Result: "},
+    {"type": "Var", "name": "value"},
+    {"type": "Literal", "value": " ("},
+    {"type": "Var", "name": "count"},
+    {"type": "Literal", "value": " items)"}
+  ]}
 
 === ARRAY OPERATIONS ===
 

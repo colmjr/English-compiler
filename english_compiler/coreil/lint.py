@@ -8,6 +8,9 @@ Rules:
 - unreachable-code: Statements after Return/Break/Continue/Throw in same block
 - empty-body: If/While/For/ForEach/TryCatch with body: []
 - variable-shadowing: Let on an already-defined variable name (should be Assign)
+- unused-function: FuncDef with no Call reference to it in the remaining block
+- infinite-loop: While(true) with no Break or Return in body
+- unreachable-branch: If with constant test (Literal true/false)
 
 Usage:
     from english_compiler.coreil.lint import lint_coreil
@@ -211,3 +214,69 @@ def _check_block(
             _add(diagnostics, "unused-variable",
                  f"variable '{let_name}' is declared but never used",
                  f"{path}[{let_idx}]")
+
+    # --- Rule: unused-function ---
+    # Collect all FuncDef names and check if any Call references them.
+    func_decls: list[tuple[int, str]] = []
+    for i, stmt in enumerate(stmts):
+        if isinstance(stmt, dict) and stmt.get("type") == "FuncDef":
+            name = stmt.get("name")
+            if isinstance(name, str):
+                func_decls.append((i, name))
+
+    if func_decls:
+        # Collect all Call names in the entire block
+        all_call_names: set[str] = set()
+        for candidate in iter_nodes(stmts):
+            if candidate.get("type") == "Call":
+                call_name = candidate.get("name")
+                if isinstance(call_name, str):
+                    all_call_names.add(call_name)
+
+        for func_idx, func_name in func_decls:
+            if func_name not in all_call_names:
+                _add(diagnostics, "unused-function",
+                     f"function '{func_name}' is defined but never called",
+                     f"{path}[{func_idx}]")
+
+    # --- Rule: infinite-loop ---
+    for i, stmt in enumerate(stmts):
+        if not isinstance(stmt, dict):
+            continue
+        if stmt.get("type") != "While":
+            continue
+        test = stmt.get("test")
+        if not (isinstance(test, dict) and test.get("type") == "Literal"
+                and test.get("value") is True):
+            continue
+        # Check if body has any Break or Return
+        has_exit = False
+        body = stmt.get("body", [])
+        for candidate in iter_nodes(body):
+            if candidate.get("type") in ("Break", "Return"):
+                has_exit = True
+                break
+        if not has_exit:
+            _add(diagnostics, "infinite-loop",
+                 "while(true) loop with no Break or Return may run forever",
+                 f"{path}[{i}]")
+
+    # --- Rule: unreachable-branch ---
+    for i, stmt in enumerate(stmts):
+        if not isinstance(stmt, dict):
+            continue
+        if stmt.get("type") != "If":
+            continue
+        test = stmt.get("test")
+        if not (isinstance(test, dict) and test.get("type") == "Literal"):
+            continue
+        val = test.get("value")
+        if val is True:
+            if stmt.get("else") is not None:
+                _add(diagnostics, "unreachable-branch",
+                     "else branch is unreachable (condition is always true)",
+                     f"{path}[{i}].else")
+        elif val is False:
+            _add(diagnostics, "unreachable-branch",
+                 "then branch is unreachable (condition is always false)",
+                 f"{path}[{i}].then")

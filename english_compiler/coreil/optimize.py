@@ -376,6 +376,22 @@ def _optimize_expr(expr: Any) -> Any:
     if node_type in ("ToInt", "ToFloat", "ToString"):
         return {**expr, "value": _optimize_expr(expr.get("value"))}
 
+    if node_type == "Ternary":
+        test = _optimize_expr(expr.get("test"))
+        consequent = _optimize_expr(expr.get("consequent"))
+        alternate = _optimize_expr(expr.get("alternate"))
+        # Constant fold: if test is Literal, return chosen branch
+        if _is_literal(test):
+            return consequent if test["value"] else alternate
+        return {**expr, "test": test, "consequent": consequent, "alternate": alternate}
+
+    if node_type == "StringFormat":
+        parts = _optimize_expr_list(expr.get("parts", []))
+        # Constant fold: if all parts are string Literals, concatenate
+        if all(_is_literal(p) for p in parts):
+            return {"type": "Literal", "value": "".join(str(p["value"]) for p in parts)}
+        return {**expr, "parts": parts}
+
     if node_type == "Math":
         return {**expr, "arg": _optimize_expr(expr.get("arg"))}
 

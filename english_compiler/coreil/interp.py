@@ -467,6 +467,22 @@ def run_coreil(
         if node_type == "Call":
             return call_any(node, local_env, call_depth)
 
+        # Ternary conditional expression (v1.11)
+        if node_type == "Ternary":
+            test = eval_expr(node.get("test"), local_env, call_depth)
+            if test:
+                return eval_expr(node.get("consequent"), local_env, call_depth)
+            else:
+                return eval_expr(node.get("alternate"), local_env, call_depth)
+
+        # StringFormat expression (v1.11)
+        if node_type == "StringFormat":
+            parts = node.get("parts")
+            if not isinstance(parts, list):
+                raise ValueError("StringFormat parts must be a list")
+            values = [eval_expr(part, local_env, call_depth) for part in parts]
+            return "".join(str(v) for v in values)
+
         # Type conversions (v1.9)
         if node_type == "ToInt":
             value = eval_expr(node.get("value"), local_env, call_depth)
