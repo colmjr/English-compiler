@@ -731,7 +731,6 @@ class JavaScriptEmitter(BaseEmitter):
         return f"({test} ? {consequent} : {alternate})"
 
     def _emit_string_format(self, node: dict) -> str:
-        self.uses_print = True  # Reuse __format for toString
         parts = node.get("parts", [])
         part_strs = [f"String({self.emit_expr(part)})" for part in parts]
         return " + ".join(part_strs) if part_strs else '""'
