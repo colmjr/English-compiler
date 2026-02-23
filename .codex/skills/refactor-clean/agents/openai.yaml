@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactor Clean"
+  short_description: "Refactor, clean, and fix a specified PR"
+  default_prompt: "Use $refactor-clean to refactor, clean up, and fix code from PR #123."

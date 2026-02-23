@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-01-29T13:57:32.730Z",
-  "count": 22,
+  "generatedAt": "2026-02-23T07:57:44.105Z",
+  "count": 28,
   "examples": [
     {
       "id": "for_sum",
@@ -177,6 +177,54 @@
       "source": "{\n  \"version\": \"coreil-1.3\",\n  \"body\": [\n    {\"type\": \"Let\", \"name\": \"text\", \"value\": {\"type\": \"Literal\", \"value\": \"Hello 123 World 456\"}},\n    {\"type\": \"Let\", \"name\": \"hasDigits\", \"value\": {\"type\": \"RegexMatch\", \"string\": {\"type\": \"Var\", \"name\": \"text\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \"\\\\d+\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"has digits:\"}, {\"type\": \"Var\", \"name\": \"hasDigits\"}]},\n    {\"type\": \"Let\", \"name\": \"digits\", \"value\": {\"type\": \"RegexFindAll\", \"string\": {\"type\": \"Var\", \"name\": \"text\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \"\\\\d+\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"found digits:\"}, {\"type\": \"Var\", \"name\": \"digits\"}]},\n    {\"type\": \"Let\", \"name\": \"replaced\", \"value\": {\"type\": \"RegexReplace\", \"string\": {\"type\": \"Var\", \"name\": \"text\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \"\\\\d+\"}, \"replacement\": {\"type\": \"Literal\", \"value\": \"NUM\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"replaced:\"}, {\"type\": \"Var\", \"name\": \"replaced\"}]},\n    {\"type\": \"Let\", \"name\": \"csv\", \"value\": {\"type\": \"Literal\", \"value\": \"a,b,c,d\"}},\n    {\"type\": \"Let\", \"name\": \"parts\", \"value\": {\"type\": \"RegexSplit\", \"string\": {\"type\": \"Var\", \"name\": \"csv\"}, \"pattern\": {\"type\": \"Literal\", \"value\": \",\"}}},\n    {\"type\": \"Print\", \"args\": [{\"type\": \"Literal\", \"value\": \"split:\"}, {\"type\": \"Var\", \"name\": \"parts\"}]}\n  ]\n}\n",
       "expectedOutput": "has digits: True\nfound digits: ['123', '456']\nreplaced: Hello NUM World NUM\nsplit: ['a', 'b', 'c', 'd']\n",
       "version": "coreil-1.3"
+    },
+    {
+      "id": "module_main",
+      "name": "Module Main",
+      "category": "Other",
+      "source": "{\n  \"version\": \"coreil-1.10.5\",\n  \"body\": [\n    {\n      \"type\": \"Import\",\n      \"path\": \"module_utils\"\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\n          \"type\": \"Call\",\n          \"name\": \"module_utils.add\",\n          \"args\": [\n            {\"type\": \"Literal\", \"value\": 2},\n            {\"type\": \"Literal\", \"value\": 3}\n          ]\n        }\n      ]\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [\n        {\n          \"type\": \"Call\",\n          \"name\": \"module_utils.square\",\n          \"args\": [\n            {\"type\": \"Literal\", \"value\": 4}\n          ]\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedOutput": "5\n16\n",
+      "version": "coreil-1.10.5"
+    },
+    {
+      "id": "module_utils",
+      "name": "Module Utils",
+      "category": "Other",
+      "source": "{\n  \"version\": \"coreil-1.10.5\",\n  \"body\": [\n    {\n      \"type\": \"FuncDef\",\n      \"name\": \"add\",\n      \"params\": [\"a\", \"b\"],\n      \"body\": [\n        {\n          \"type\": \"Return\",\n          \"value\": {\n            \"type\": \"Binary\",\n            \"op\": \"+\",\n            \"left\": {\"type\": \"Var\", \"name\": \"a\"},\n            \"right\": {\"type\": \"Var\", \"name\": \"b\"}\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"FuncDef\",\n      \"name\": \"square\",\n      \"params\": [\"x\"],\n      \"body\": [\n        {\n          \"type\": \"Return\",\n          \"value\": {\n            \"type\": \"Binary\",\n            \"op\": \"*\",\n            \"left\": {\"type\": \"Var\", \"name\": \"x\"},\n            \"right\": {\"type\": \"Var\", \"name\": \"x\"}\n          }\n        }\n      ]\n    }\n  ]\n}\n",
+      "expectedOutput": "",
+      "version": "coreil-1.10.5"
+    },
+    {
+      "id": "slice_negative",
+      "name": "Slice Negative",
+      "category": "Other",
+      "source": "{\n  \"version\": \"coreil-1.5\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"arr\",\n      \"value\": {\n        \"type\": \"Array\",\n        \"items\": [\n          {\"type\": \"Literal\", \"value\": 1},\n          {\"type\": \"Literal\", \"value\": 2},\n          {\"type\": \"Literal\", \"value\": 3},\n          {\"type\": \"Literal\", \"value\": 4},\n          {\"type\": \"Literal\", \"value\": 5}\n        ]\n      }\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"last_two\",\n      \"value\": {\n        \"type\": \"Slice\",\n        \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n        \"start\": {\"type\": \"Literal\", \"value\": -2},\n        \"end\": {\"type\": \"Length\", \"base\": {\"type\": \"Var\", \"name\": \"arr\"}}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"last_two\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"all_but_last\",\n      \"value\": {\n        \"type\": \"Slice\",\n        \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n        \"start\": {\"type\": \"Literal\", \"value\": 0},\n        \"end\": {\"type\": \"Literal\", \"value\": -1}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"all_but_last\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"middle\",\n      \"value\": {\n        \"type\": \"Slice\",\n        \"base\": {\"type\": \"Var\", \"name\": \"arr\"},\n        \"start\": {\"type\": \"Literal\", \"value\": -4},\n        \"end\": {\"type\": \"Literal\", \"value\": -1}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"middle\"}]\n    }\n  ]\n}\n",
+      "expectedOutput": "[4, 5]\n[1, 2, 3, 4]\n[2, 3, 4]\n",
+      "version": "coreil-1.5"
+    },
+    {
+      "id": "string_format",
+      "name": "String Format",
+      "category": "Other",
+      "source": "{\n  \"version\": \"coreil-1.11\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"name\",\n      \"value\": {\"type\": \"Literal\", \"value\": \"World\"}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"greeting\",\n      \"value\": {\n        \"type\": \"StringFormat\",\n        \"parts\": [\n          {\"type\": \"Literal\", \"value\": \"Hello, \"},\n          {\"type\": \"Var\", \"name\": \"name\"},\n          {\"type\": \"Literal\", \"value\": \"!\"}\n        ]\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"greeting\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"num\",\n      \"value\": {\"type\": \"Literal\", \"value\": 42}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"msg\",\n      \"value\": {\n        \"type\": \"StringFormat\",\n        \"parts\": [\n          {\"type\": \"Literal\", \"value\": \"The answer is \"},\n          {\"type\": \"Var\", \"name\": \"num\"}\n        ]\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"msg\"}]\n    }\n  ]\n}\n",
+      "expectedOutput": "Hello, World!\nThe answer is 42\n",
+      "version": "coreil-1.11"
+    },
+    {
+      "id": "ternary",
+      "name": "Ternary",
+      "category": "Other",
+      "source": "{\n  \"version\": \"coreil-1.11\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"x\",\n      \"value\": {\"type\": \"Literal\", \"value\": 10}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"result\",\n      \"value\": {\n        \"type\": \"Ternary\",\n        \"test\": {\"type\": \"Binary\", \"op\": \">\", \"left\": {\"type\": \"Var\", \"name\": \"x\"}, \"right\": {\"type\": \"Literal\", \"value\": 5}},\n        \"consequent\": {\"type\": \"Literal\", \"value\": \"big\"},\n        \"alternate\": {\"type\": \"Literal\", \"value\": \"small\"}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"result\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"result2\",\n      \"value\": {\n        \"type\": \"Ternary\",\n        \"test\": {\"type\": \"Binary\", \"op\": \"<\", \"left\": {\"type\": \"Var\", \"name\": \"x\"}, \"right\": {\"type\": \"Literal\", \"value\": 5}},\n        \"consequent\": {\"type\": \"Literal\", \"value\": \"yes\"},\n        \"alternate\": {\"type\": \"Literal\", \"value\": \"no\"}\n      }\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"result2\"}]\n    }\n  ]\n}\n",
+      "expectedOutput": "big\nno\n",
+      "version": "coreil-1.11"
+    },
+    {
+      "id": "type_convert",
+      "name": "Type Convert",
+      "category": "Other",
+      "source": "{\n  \"version\": \"coreil-1.9\",\n  \"body\": [\n    {\n      \"type\": \"Let\",\n      \"name\": \"float_val\",\n      \"value\": {\"type\": \"Literal\", \"value\": 3.7}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"int_from_float\",\n      \"value\": {\"type\": \"ToInt\", \"value\": {\"type\": \"Var\", \"name\": \"float_val\"}}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"int_from_float\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"str_num\",\n      \"value\": {\"type\": \"Literal\", \"value\": \"42\"}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"int_from_str\",\n      \"value\": {\"type\": \"ToInt\", \"value\": {\"type\": \"Var\", \"name\": \"str_num\"}}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"int_from_str\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"int_val\",\n      \"value\": {\"type\": \"Literal\", \"value\": 5}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"float_from_int\",\n      \"value\": {\"type\": \"ToFloat\", \"value\": {\"type\": \"Var\", \"name\": \"int_val\"}}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"float_from_int\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"str_float\",\n      \"value\": {\"type\": \"Literal\", \"value\": \"3.14\"}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"float_from_str\",\n      \"value\": {\"type\": \"ToFloat\", \"value\": {\"type\": \"Var\", \"name\": \"str_float\"}}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"float_from_str\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"num\",\n      \"value\": {\"type\": \"Literal\", \"value\": 123}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"str_from_int\",\n      \"value\": {\"type\": \"ToString\", \"value\": {\"type\": \"Var\", \"name\": \"num\"}}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"str_from_int\"}]\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"bool_val\",\n      \"value\": {\"type\": \"Literal\", \"value\": true}\n    },\n    {\n      \"type\": \"Let\",\n      \"name\": \"str_from_bool\",\n      \"value\": {\"type\": \"ToString\", \"value\": {\"type\": \"Var\", \"name\": \"bool_val\"}}\n    },\n    {\n      \"type\": \"Print\",\n      \"args\": [{\"type\": \"Var\", \"name\": \"str_from_bool\"}]\n    }\n  ]\n}\n",
+      "expectedOutput": "3\n42\n5.0\n3.14\n123\nTrue\n",
+      "version": "coreil-1.9"
     }
   ]
 }
