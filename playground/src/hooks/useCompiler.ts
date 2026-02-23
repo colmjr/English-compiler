@@ -1,5 +1,10 @@
-import { useCallback, useState } from 'react';
-import { getStoredSettings, LLMSettings, PROVIDERS } from '../components/SettingsModal';
+import { useCallback, useState } from "react";
+import {
+  getStoredSettings,
+  LLMSettings,
+  PROVIDERS,
+  Provider,
+} from "../components/SettingsModal";
 
 // System prompt for Core IL generation
 const SYSTEM_PROMPT = `You are a compiler frontend. Output only Core IL JSON (v1.7) matching the provided schema.
@@ -93,256 +98,233 @@ function extractJSON(text: string): string {
   return text.trim();
 }
 
-async function compileWithAnthropic(settings: LLMSettings, englishText: string): Promise<CompileResult> {
+async function compileWithAnthropic(
+  settings: LLMSettings,
+  englishText: string,
+): Promise<CompileResult> {
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': settings.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        "Content-Type": "application/json",
+        "x-api-key": settings.apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
         model: settings.model,
         max_tokens: settings.maxTokens,
         temperature: settings.temperature,
         system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: englishText }],
+        messages: [{ role: "user", content: englishText }],
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || `API error: ${response.status}`;
-      return { success: false, coreIL: '', error: errorMsg };
+      const errorMsg =
+        errorData.error?.message || `API error: ${response.status}`;
+      return { success: false, coreIL: "", error: errorMsg };
     }
 
     const data = await response.json();
-    const content = extractJSON(data.content?.[0]?.text || '');
+    const content = extractJSON(data.content?.[0]?.text || "");
 
     try {
       JSON.parse(content);
       return { success: true, coreIL: content, error: null };
     } catch {
-      return { success: false, coreIL: content, error: 'LLM returned invalid JSON' };
+      return {
+        success: false,
+        coreIL: content,
+        error: "LLM returned invalid JSON",
+      };
     }
   } catch (err) {
-    return { success: false, coreIL: '', error: err instanceof Error ? err.message : 'Unknown error' };
+    return {
+      success: false,
+      coreIL: "",
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
   }
 }
 
-async function compileWithOpenAI(settings: LLMSettings, englishText: string): Promise<CompileResult> {
+const OPENAI_COMPATIBLE_URLS: Partial<Record<Provider, string>> = {
+  openai: "https://api.openai.com/v1/chat/completions",
+  groq: "https://api.groq.com/openai/v1/chat/completions",
+  together: "https://api.together.xyz/v1/chat/completions",
+};
+
+const DIRECT_COMPILERS: Partial<
+  Record<
+    Provider,
+    (settings: LLMSettings, englishText: string) => Promise<CompileResult>
+  >
+> = {
+  anthropic: compileWithAnthropic,
+  google: compileWithGoogle,
+};
+
+async function compileWithOpenAICompatible(
+  url: string,
+  settings: LLMSettings,
+  englishText: string,
+): Promise<CompileResult> {
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const response = await fetch(url, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.apiKey}`,
       },
       body: JSON.stringify({
         model: settings.model,
         max_tokens: settings.maxTokens,
         temperature: settings.temperature,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: englishText },
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: englishText },
         ],
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || `API error: ${response.status}`;
-      return { success: false, coreIL: '', error: errorMsg };
+      const errorMsg =
+        errorData.error?.message || `API error: ${response.status}`;
+      return { success: false, coreIL: "", error: errorMsg };
     }
 
     const data = await response.json();
-    const content = extractJSON(data.choices?.[0]?.message?.content || '');
+    const content = extractJSON(data.choices?.[0]?.message?.content || "");
 
     try {
       JSON.parse(content);
       return { success: true, coreIL: content, error: null };
     } catch {
-      return { success: false, coreIL: content, error: 'LLM returned invalid JSON' };
+      return {
+        success: false,
+        coreIL: content,
+        error: "LLM returned invalid JSON",
+      };
     }
   } catch (err) {
-    return { success: false, coreIL: '', error: err instanceof Error ? err.message : 'Unknown error' };
+    return {
+      success: false,
+      coreIL: "",
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
   }
 }
 
-async function compileWithGoogle(settings: LLMSettings, englishText: string): Promise<CompileResult> {
+async function compileWithGoogle(
+  settings: LLMSettings,
+  englishText: string,
+): Promise<CompileResult> {
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${settings.model}:generateContent?key=${settings.apiKey}`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${englishText}` }] }],
+          contents: [
+            { parts: [{ text: `${SYSTEM_PROMPT}\n\n${englishText}` }] },
+          ],
           generationConfig: {
             temperature: settings.temperature,
             maxOutputTokens: settings.maxTokens,
           },
         }),
-      }
+      },
     );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || `API error: ${response.status}`;
-      return { success: false, coreIL: '', error: errorMsg };
+      const errorMsg =
+        errorData.error?.message || `API error: ${response.status}`;
+      return { success: false, coreIL: "", error: errorMsg };
     }
 
     const data = await response.json();
-    const content = extractJSON(data.candidates?.[0]?.content?.parts?.[0]?.text || '');
+    const content = extractJSON(
+      data.candidates?.[0]?.content?.parts?.[0]?.text || "",
+    );
 
     try {
       JSON.parse(content);
       return { success: true, coreIL: content, error: null };
     } catch {
-      return { success: false, coreIL: content, error: 'LLM returned invalid JSON' };
+      return {
+        success: false,
+        coreIL: content,
+        error: "LLM returned invalid JSON",
+      };
     }
   } catch (err) {
-    return { success: false, coreIL: '', error: err instanceof Error ? err.message : 'Unknown error' };
-  }
-}
-
-async function compileWithGroq(settings: LLMSettings, englishText: string): Promise<CompileResult> {
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.model,
-        max_tokens: settings.maxTokens,
-        temperature: settings.temperature,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: englishText },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || `API error: ${response.status}`;
-      return { success: false, coreIL: '', error: errorMsg };
-    }
-
-    const data = await response.json();
-    const content = extractJSON(data.choices?.[0]?.message?.content || '');
-
-    try {
-      JSON.parse(content);
-      return { success: true, coreIL: content, error: null };
-    } catch {
-      return { success: false, coreIL: content, error: 'LLM returned invalid JSON' };
-    }
-  } catch (err) {
-    return { success: false, coreIL: '', error: err instanceof Error ? err.message : 'Unknown error' };
-  }
-}
-
-async function compileWithTogether(settings: LLMSettings, englishText: string): Promise<CompileResult> {
-  try {
-    const response = await fetch('https://api.together.xyz/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.model,
-        max_tokens: settings.maxTokens,
-        temperature: settings.temperature,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: englishText },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || `API error: ${response.status}`;
-      return { success: false, coreIL: '', error: errorMsg };
-    }
-
-    const data = await response.json();
-    const content = extractJSON(data.choices?.[0]?.message?.content || '');
-
-    try {
-      JSON.parse(content);
-      return { success: true, coreIL: content, error: null };
-    } catch {
-      return { success: false, coreIL: content, error: 'LLM returned invalid JSON' };
-    }
-  } catch (err) {
-    return { success: false, coreIL: '', error: err instanceof Error ? err.message : 'Unknown error' };
+    return {
+      success: false,
+      coreIL: "",
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
   }
 }
 
 export function useCompiler() {
   const [isCompiling, setIsCompiling] = useState(false);
 
-  const compile = useCallback(async (englishText: string): Promise<CompileResult> => {
-    const settings = getStoredSettings();
+  const compile = useCallback(
+    async (englishText: string): Promise<CompileResult> => {
+      const settings = getStoredSettings();
 
-    if (!settings.apiKey) {
-      return {
-        success: false,
-        coreIL: '',
-        error: `No API key configured for ${PROVIDERS[settings.provider].name}. Click the gear icon to add your API key.`,
-      };
-    }
-
-    if (!englishText.trim()) {
-      return {
-        success: false,
-        coreIL: '',
-        error: 'Please enter some English text to compile.',
-      };
-    }
-
-    setIsCompiling(true);
-
-    try {
-      switch (settings.provider) {
-        case 'anthropic':
-          return await compileWithAnthropic(settings, englishText);
-        case 'openai':
-          return await compileWithOpenAI(settings, englishText);
-        case 'google':
-          return await compileWithGoogle(settings, englishText);
-        case 'groq':
-          return await compileWithGroq(settings, englishText);
-        case 'together':
-          return await compileWithTogether(settings, englishText);
-        default:
-          return { success: false, coreIL: '', error: `Unknown provider: ${settings.provider}` };
+      if (!settings.apiKey) {
+        const providerName = PROVIDERS[settings.provider].name;
+        return {
+          success: false,
+          coreIL: "",
+          error: `No API key configured for ${providerName}. Click the gear icon to add your API key.`,
+        };
       }
-    } finally {
-      setIsCompiling(false);
-    }
-  }, []);
+
+      if (!englishText.trim()) {
+        return {
+          success: false,
+          coreIL: "",
+          error: "Please enter some English text to compile.",
+        };
+      }
+
+      setIsCompiling(true);
+
+      try {
+        const compiler = DIRECT_COMPILERS[settings.provider];
+        if (compiler) {
+          return await compiler(settings, englishText);
+        }
+
+        const url = OPENAI_COMPATIBLE_URLS[settings.provider];
+        if (!url) {
+          return {
+            success: false,
+            coreIL: "",
+            error: `Unknown provider: ${settings.provider}`,
+          };
+        }
+        return await compileWithOpenAICompatible(url, settings, englishText);
+      } finally {
+        setIsCompiling(false);
+      }
+    },
+    [],
+  );
 
   const hasApiKey = useCallback(() => {
     return !!getStoredSettings().apiKey;
-  }, []);
-
-  const getProviderName = useCallback(() => {
-    const settings = getStoredSettings();
-    return PROVIDERS[settings.provider].name;
   }, []);
 
   return {
     compile,
     isCompiling,
     hasApiKey,
-    getProviderName,
   };
 }
