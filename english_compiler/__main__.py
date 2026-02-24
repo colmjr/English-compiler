@@ -11,35 +11,143 @@ from english_compiler import __version__
 from english_compiler.cli.config_flow import config_command as _config_command
 from english_compiler.cli.emit_helpers import (
     emit_target_code as _emit_target_code,
+)
+from english_compiler.cli.emit_helpers import (
     is_tier2_unsupported_error as _is_tier2_unsupported_error,
+)
+from english_compiler.cli.emit_helpers import (
     run_tier2_fallback as _run_tier2_fallback,
 )
 from english_compiler.cli.io_utils import (
     generate_code_header as _generate_code_header,
+)
+from english_compiler.cli.io_utils import (
     get_experimental_output_path as _get_experimental_output_path,
+)
+from english_compiler.cli.io_utils import (
     get_output_path as _get_output_path,
+)
+from english_compiler.cli.io_utils import (
     load_json as _load_json,
+)
+from english_compiler.cli.io_utils import (
     print_ambiguities as _print_ambiguities,
+)
+from english_compiler.cli.io_utils import (
     print_experimental_warning as _print_experimental_warning,
+)
+from english_compiler.cli.io_utils import (
     print_validation_errors as _print_validation_errors,
+)
+from english_compiler.cli.io_utils import (
     sha256_bytes as _sha256_bytes,
+)
+from english_compiler.cli.io_utils import (
     sha256_file as _sha256_file,
+)
+from english_compiler.cli.io_utils import (
     write_json as _write_json,
 )
 from english_compiler.cli.lint_flow import (
     lint_command as _lint_command,
+)
+from english_compiler.cli.lint_flow import (
     run_lint_on_doc as _run_lint_on_doc,
 )
 from english_compiler.cli.run_targets import (
     run_cpp_file as _run_cpp_file,
+)
+from english_compiler.cli.run_targets import (
     run_javascript_file as _run_javascript_file,
+)
+from english_compiler.cli.run_targets import (
     run_python_file as _run_python_file,
+)
+from english_compiler.cli.run_targets import (
     run_rust_file as _run_rust_file,
 )
 from english_compiler.settings import load_settings
 
 # Built-in exit commands (instant, no API call)
 BUILTIN_EXIT_COMMANDS = {"exit", "quit", ":q", ":quit", ":exit"}
+TIER2_FALLBACK_TARGETS = ("python", "javascript", "cpp", "rust")
+
+
+def _run_experimental_target(target: str, output_path: Path) -> int:
+    runners = {
+        "python": _run_python_file,
+        "javascript": _run_javascript_file,
+        "cpp": _run_cpp_file,
+    }
+    runner = runners.get(target)
+    if runner is None:
+        return 0
+    return runner(output_path)
+
+
+def _process_compiled_doc(
+    args: argparse.Namespace,
+    doc: dict,
+    source_path: Path,
+    coreil_path: Path,
+    run_coreil,
+    error_callback,
+    *,
+    check_freshness: bool,
+) -> int:
+    """Run optimize/lint/emit/execute flow for a compiled Core IL document."""
+    if getattr(args, "optimize", False):
+        from english_compiler.coreil.optimize import optimize
+
+        doc = optimize(doc)
+        print("Applied optimization pass")
+
+    if getattr(args, "lint", False):
+        lint_rc = _run_lint_on_doc(doc)
+        if lint_rc != 0:
+            return lint_rc
+
+    target = getattr(args, "target", "coreil")
+    if not _emit_target_code(
+        doc,
+        source_path,
+        coreil_path,
+        target,
+        check_freshness=check_freshness,
+    ):
+        return 1
+
+    ambiguities = doc.get("ambiguities", [])
+    if isinstance(ambiguities, list) and ambiguities:
+        _print_ambiguities(ambiguities)
+        return 2
+
+    try:
+        return run_coreil(
+            doc, error_callback=error_callback, base_dir=coreil_path.parent
+        )
+    except ValueError as exc:
+        if _is_tier2_unsupported_error(exc):
+            fallback_rc = _run_tier2_fallback(
+                source_path,
+                target,
+                supported_targets=TIER2_FALLBACK_TARGETS,
+            )
+            if fallback_rc is not None:
+                return fallback_rc
+        raise
+
+
+def _load_json_doc(path: Path) -> tuple[object | None, bool]:
+    """Load a JSON file with consistent error reporting."""
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle), True
+    except OSError as exc:
+        print(f"{path}: {exc}")
+    except json.JSONDecodeError as exc:
+        print(f"{path}: invalid json: {exc}")
+    return None, False
 
 
 def _compile_experimental(args: argparse.Namespace) -> int:
@@ -97,7 +205,9 @@ def _compile_experimental(args: argparse.Namespace) -> int:
             print(str(exc))
             return 1
 
-        print(f"Generating {target} code for {source_path} using {frontend.get_model_name()}")
+        print(
+            f"Generating {target} code for {source_path} using {frontend.get_model_name()}"
+        )
 
         try:
             code = frontend.generate_code_direct(source_text, target)
@@ -140,13 +250,7 @@ def _compile_experimental(args: argparse.Namespace) -> int:
     print()
     print("Running generated code:")
     print("-" * 40)
-    if target == "python":
-        return _run_python_file(output_path)
-    elif target == "javascript":
-        return _run_javascript_file(output_path)
-    elif target == "cpp":
-        return _run_cpp_file(output_path)
-    return 0
+    return _run_experimental_target(target, output_path)
 
 
 def _handle_watch_mode(args: argparse.Namespace) -> int:
@@ -261,42 +365,15 @@ def _compile_command(args: argparse.Namespace) -> int:
         if doc is None:
             print(f"{coreil_path}: invalid json")
             return 1
-
-        # Run optimizer if requested
-        if getattr(args, "optimize", False):
-            from english_compiler.coreil.optimize import optimize
-            doc = optimize(doc)
-            print("Applied optimization pass")
-
-        # Run lint if requested
-        if getattr(args, "lint", False):
-            lint_rc = _run_lint_on_doc(doc)
-            if lint_rc != 0:
-                return lint_rc
-
-        # Emit code for the specified target (even when using cache)
-        target = getattr(args, "target", "coreil")
-        if not _emit_target_code(doc, source_path, coreil_path, target, check_freshness=True):
-            return 1
-
-        ambiguities = doc.get("ambiguities", [])
-        if isinstance(ambiguities, list) and ambiguities:
-            _print_ambiguities(ambiguities)
-            return 2
-
-        # Try interpreter first, fall back to generated code for ExternalCall
-        try:
-            return run_coreil(doc, error_callback=error_callback, base_dir=coreil_path.parent)
-        except ValueError as exc:
-            if _is_tier2_unsupported_error(exc):
-                fallback_rc = _run_tier2_fallback(
-                    source_path,
-                    target,
-                    supported_targets=("python", "javascript", "cpp", "rust"),
-                )
-                if fallback_rc is not None:
-                    return fallback_rc
-            raise
+        return _process_compiled_doc(
+            args,
+            doc,
+            source_path,
+            coreil_path,
+            run_coreil,
+            error_callback,
+            check_freshness=True,
+        )
 
     if args.freeze:
         print(f"freeze enabled: regeneration required for {source_path}")
@@ -331,6 +408,7 @@ def _compile_command(args: argparse.Namespace) -> int:
     # Run optimizer if requested
     if getattr(args, "optimize", False):
         from english_compiler.coreil.optimize import optimize
+
         doc = optimize(doc)
         print("Applied optimization pass")
 
@@ -342,7 +420,9 @@ def _compile_command(args: argparse.Namespace) -> int:
 
     # Emit code for the specified target
     target = getattr(args, "target", "coreil")
-    if not _emit_target_code(doc, source_path, coreil_path, target, check_freshness=False):
+    if not _emit_target_code(
+        doc, source_path, coreil_path, target, check_freshness=False
+    ):
         return 1
 
     lock_doc = {
@@ -355,24 +435,15 @@ def _compile_command(args: argparse.Namespace) -> int:
     if not _write_json(lock_path, lock_doc):
         return 1
 
-    ambiguities = doc.get("ambiguities", [])
-    if isinstance(ambiguities, list) and ambiguities:
-        _print_ambiguities(ambiguities)
-        return 2
-
-    # Try interpreter first, fall back to generated code for Tier 2 operations
-    try:
-        return run_coreil(doc, error_callback=error_callback, base_dir=coreil_path.parent)
-    except ValueError as exc:
-        if _is_tier2_unsupported_error(exc):
-            fallback_rc = _run_tier2_fallback(
-                source_path,
-                target,
-                supported_targets=("python", "javascript", "cpp"),
-            )
-            if fallback_rc is not None:
-                return fallback_rc
-        raise
+    return _process_compiled_doc(
+        args,
+        doc,
+        source_path,
+        coreil_path,
+        run_coreil,
+        error_callback,
+        check_freshness=False,
+    )
 
 
 def _make_error_callback(frontend, source_text: str | None = None):
@@ -403,14 +474,8 @@ def _run_command(args: argparse.Namespace) -> int:
     explain_errors = args.explain_errors or settings.explain_errors
 
     path = Path(args.file)
-    try:
-        with path.open("r", encoding="utf-8") as handle:
-            doc = json.load(handle)
-    except OSError as exc:
-        print(f"{path}: {exc}")
-        return 1
-    except json.JSONDecodeError as exc:
-        print(f"{path}: invalid json: {exc}")
+    doc, ok = _load_json_doc(path)
+    if not ok:
         return 1
 
     error_callback = None
@@ -432,14 +497,8 @@ def _debug_command(args: argparse.Namespace) -> int:
     from english_compiler.coreil.debug import debug_coreil
 
     path = Path(args.file)
-    try:
-        with path.open("r", encoding="utf-8") as handle:
-            doc = json.load(handle)
-    except OSError as exc:
-        print(f"{path}: {exc}")
-        return 1
-    except json.JSONDecodeError as exc:
-        print(f"{path}: invalid json: {exc}")
+    doc, ok = _load_json_doc(path)
+    if not ok:
         return 1
 
     return debug_coreil(doc)
@@ -543,14 +602,8 @@ def _explain_command(args: argparse.Namespace) -> int:
     from english_compiler.explain import explain
 
     path = Path(args.file)
-    try:
-        with path.open("r", encoding="utf-8") as handle:
-            doc = json.load(handle)
-    except OSError as exc:
-        print(f"{path}: {exc}")
-        return 1
-    except json.JSONDecodeError as exc:
-        print(f"{path}: invalid json: {exc}")
+    doc, ok = _load_json_doc(path)
+    if not ok:
         return 1
 
     text = explain(doc, verbose=getattr(args, "verbose", False))
@@ -561,7 +614,8 @@ def _explain_command(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="english-compiler")
     parser.add_argument(
-        "--version", "-V",
+        "--version",
+        "-V",
         action="version",
         version=f"%(prog)s {__version__}",
     )
@@ -581,7 +635,9 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Compilation target (default: coreil)",
     )
-    compile_parser.add_argument("--regen", action="store_true", help="Force regeneration")
+    compile_parser.add_argument(
+        "--regen", action="store_true", help="Force regeneration"
+    )
     compile_parser.add_argument(
         "--freeze",
         action="store_true",
@@ -598,7 +654,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Use LLM to explain runtime errors in user-friendly terms",
     )
     compile_parser.add_argument(
-        "--watch", "-w",
+        "--watch",
+        "-w",
         action="store_true",
         help="Watch file/directory for changes and recompile automatically",
     )
@@ -630,7 +687,9 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.set_defaults(func=_run_command)
 
     # Config subcommand
-    config_parser = subparsers.add_parser("config", help="Manage configuration settings")
+    config_parser = subparsers.add_parser(
+        "config", help="Manage configuration settings"
+    )
     config_subparsers = config_parser.add_subparsers(dest="config_action")
 
     # config set
@@ -682,7 +741,9 @@ def main(argv: list[str] | None = None) -> int:
     repl_parser.set_defaults(func=_repl_command)
 
     # Explain subcommand
-    explain_parser = subparsers.add_parser("explain", help="Explain a Core IL program in English")
+    explain_parser = subparsers.add_parser(
+        "explain", help="Explain a Core IL program in English"
+    )
     explain_parser.add_argument("file", help="Path to the Core IL JSON file")
     explain_parser.add_argument(
         "--verbose",
@@ -692,7 +753,9 @@ def main(argv: list[str] | None = None) -> int:
     explain_parser.set_defaults(func=_explain_command)
 
     # Lint subcommand
-    lint_parser = subparsers.add_parser("lint", help="Run static analysis on a Core IL file")
+    lint_parser = subparsers.add_parser(
+        "lint", help="Run static analysis on a Core IL file"
+    )
     lint_parser.add_argument("file", help="Path to the Core IL JSON file")
     lint_parser.add_argument(
         "--strict",
@@ -702,7 +765,9 @@ def main(argv: list[str] | None = None) -> int:
     lint_parser.set_defaults(func=_lint_command)
 
     # Debug subcommand
-    debug_parser = subparsers.add_parser("debug", help="Debug a Core IL file interactively")
+    debug_parser = subparsers.add_parser(
+        "debug", help="Debug a Core IL file interactively"
+    )
     debug_parser.add_argument("file", help="Path to the Core IL JSON file")
     debug_parser.set_defaults(func=_debug_command)
 

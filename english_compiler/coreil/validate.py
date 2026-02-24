@@ -24,20 +24,83 @@ from typing import Any, Callable
 from .constants import BINARY_OPS, DISALLOWED_HELPER_CALLS, MATH_CONSTANTS, MATH_OPS
 from .versions import SUPPORTED_VERSIONS, get_version_error_message, is_sealed_version
 
-
 _ALLOWED_NODE_TYPES = {
-    "Let", "Assign", "If", "While", "Call", "Print", "SetIndex", "FuncDef", "Return",
-    "For", "ForEach", "Set", "Push", "Literal", "Var", "Binary", "Array", "Index",
-    "Length", "Range", "Map", "Get", "GetDefault", "Keys", "Tuple", "Record", "GetField",
-    "SetField", "StringLength", "Substring", "CharAt", "Join", "SetHas", "SetSize",
-    "SetAdd", "SetRemove", "DequeNew", "DequeSize", "PushBack", "PushFront", "PopFront",
-    "PopBack", "HeapNew", "HeapSize", "HeapPeek", "HeapPush", "HeapPop", "Math", "MathPow",
-    "MathConst", "JsonParse", "JsonStringify", "RegexMatch", "RegexFindAll", "RegexReplace",
-    "RegexSplit", "StringSplit", "StringTrim", "StringUpper", "StringLower",
-    "StringStartsWith", "StringEndsWith", "StringContains", "StringReplace", "ExternalCall",
-    "Slice", "Not", "MethodCall", "PropertyGet", "Break", "Continue",
-    "Throw", "TryCatch",
-    "ToInt", "ToFloat", "ToString",
+    "Let",
+    "Assign",
+    "If",
+    "While",
+    "Call",
+    "Print",
+    "SetIndex",
+    "FuncDef",
+    "Return",
+    "For",
+    "ForEach",
+    "Set",
+    "Push",
+    "Literal",
+    "Var",
+    "Binary",
+    "Array",
+    "Index",
+    "Length",
+    "Range",
+    "Map",
+    "Get",
+    "GetDefault",
+    "Keys",
+    "Tuple",
+    "Record",
+    "GetField",
+    "SetField",
+    "StringLength",
+    "Substring",
+    "CharAt",
+    "Join",
+    "SetHas",
+    "SetSize",
+    "SetAdd",
+    "SetRemove",
+    "DequeNew",
+    "DequeSize",
+    "PushBack",
+    "PushFront",
+    "PopFront",
+    "PopBack",
+    "HeapNew",
+    "HeapSize",
+    "HeapPeek",
+    "HeapPush",
+    "HeapPop",
+    "Math",
+    "MathPow",
+    "MathConst",
+    "JsonParse",
+    "JsonStringify",
+    "RegexMatch",
+    "RegexFindAll",
+    "RegexReplace",
+    "RegexSplit",
+    "StringSplit",
+    "StringTrim",
+    "StringUpper",
+    "StringLower",
+    "StringStartsWith",
+    "StringEndsWith",
+    "StringContains",
+    "StringReplace",
+    "ExternalCall",
+    "Slice",
+    "Not",
+    "MethodCall",
+    "PropertyGet",
+    "Break",
+    "Continue",
+    "Throw",
+    "TryCatch",
+    "ToInt",
+    "ToFloat",
+    "ToString",
     "Switch",
     "Import",
     "Ternary",
@@ -47,14 +110,24 @@ _ALLOWED_NODE_TYPES = {
 
 # Type alias for validator functions
 ValidatorFunc = Callable[
-    [dict, str, set[str], Callable[[str, str], None], "Callable[[Any, str, set[str]], None]"],
-    None
+    [
+        dict,
+        str,
+        set[str],
+        Callable[[str, str], None],
+        "Callable[[Any, str, set[str]], None]",
+    ],
+    None,
 ]
 
 
 def _require_expr(
-    node: dict, key: str, path: str, defined: set[str],
-    add_error: Callable[[str, str], None], validate_expr: Callable[[Any, str, set[str]], None]
+    node: dict,
+    key: str,
+    path: str,
+    defined: set[str],
+    add_error: Callable[[str, str], None],
+    validate_expr: Callable[[Any, str, set[str]], None],
 ) -> None:
     """Require an expression field and validate it."""
     if key not in node:
@@ -64,7 +137,11 @@ def _require_expr(
 
 
 def _require_string(
-    node: dict, key: str, path: str, add_error: Callable[[str, str], None], label: str | None = None
+    node: dict,
+    key: str,
+    path: str,
+    add_error: Callable[[str, str], None],
+    label: str | None = None,
 ) -> str | None:
     """Require a non-empty string field."""
     label = label or key
@@ -75,9 +152,25 @@ def _require_string(
     return value
 
 
+def _require_expr_fields(
+    node: dict,
+    keys: tuple[str, ...],
+    path: str,
+    defined: set[str],
+    add_error: Callable[[str, str], None],
+    validate_expr: Callable[[Any, str, set[str]], None],
+) -> None:
+    """Require and validate multiple expression fields."""
+    for key in keys:
+        _require_expr(node, key, path, defined, add_error, validate_expr)
+
+
 def _validate_args_list(
-    node: dict, path: str, defined: set[str],
-    add_error: Callable[[str, str], None], validate_expr: Callable[[Any, str, set[str]], None]
+    node: dict,
+    path: str,
+    defined: set[str],
+    add_error: Callable[[str, str], None],
+    validate_expr: Callable[[Any, str, set[str]], None],
 ) -> None:
     """Validate an args field that must be a list of expressions."""
     args = node.get("args")
@@ -89,8 +182,11 @@ def _validate_args_list(
 
 
 def _validate_items_list(
-    node: dict, path: str, defined: set[str],
-    add_error: Callable[[str, str], None], validate_expr: Callable[[Any, str, set[str]], None]
+    node: dict,
+    path: str,
+    defined: set[str],
+    add_error: Callable[[str, str], None],
+    validate_expr: Callable[[Any, str, set[str]], None],
 ) -> None:
     """Validate an items field that must be a list of expressions."""
     items = node.get("items")
@@ -102,6 +198,7 @@ def _validate_items_list(
 
 
 # -- Expression Validators --
+
 
 def _validate_literal(node, path, defined, add_error, validate_expr):
     if "value" not in node:
@@ -241,45 +338,51 @@ def _validate_get_field(node, path, defined, add_error, validate_expr):
 
 
 def _validate_substring(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "start", path, defined, add_error, validate_expr)
-    _require_expr(node, "end", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "start", "end"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_char_at(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "index", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "index"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_join(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "sep", path, defined, add_error, validate_expr)
-    _require_expr(node, "items", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("sep", "items"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_string_split(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "delimiter", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "delimiter"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_string_prefix(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "prefix", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "prefix"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_string_suffix(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "suffix", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "suffix"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_string_contains(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "substring", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "substring"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_string_replace(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "old", path, defined, add_error, validate_expr)
-    _require_expr(node, "new", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "old", "new"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_set_expr(node, path, defined, add_error, validate_expr):
@@ -295,8 +398,9 @@ def _validate_set_expr(node, path, defined, add_error, validate_expr):
 
 
 def _validate_set_has(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "value", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "value"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_no_args(node, path, defined, add_error, validate_expr):
@@ -307,19 +411,25 @@ def _validate_no_args(node, path, defined, add_error, validate_expr):
 def _validate_math(node, path, defined, add_error, validate_expr):
     op = node.get("op")
     if op not in MATH_OPS:
-        add_error(f"{path}.op", f"invalid math op '{op}', must be one of {set(MATH_OPS)}")
+        add_error(
+            f"{path}.op", f"invalid math op '{op}', must be one of {set(MATH_OPS)}"
+        )
     _require_expr(node, "arg", path, defined, add_error, validate_expr)
 
 
 def _validate_math_pow(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "exponent", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "exponent"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_math_const(node, path, defined, add_error, validate_expr):
     name = node.get("name")
     if name not in MATH_CONSTANTS:
-        add_error(f"{path}.name", f"invalid math constant '{name}', must be one of {set(MATH_CONSTANTS)}")
+        add_error(
+            f"{path}.name",
+            f"invalid math constant '{name}', must be one of {set(MATH_CONSTANTS)}",
+        )
 
 
 def _validate_json_parse(node, path, defined, add_error, validate_expr):
@@ -369,9 +479,9 @@ def _validate_property_get(node, path, defined, add_error, validate_expr):
 
 
 def _validate_slice(node, path, defined, add_error, validate_expr):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "start", path, defined, add_error, validate_expr)
-    _require_expr(node, "end", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node, ("base", "start", "end"), path, defined, add_error, validate_expr
+    )
 
 
 def _validate_not(node, path, defined, add_error, validate_expr):
@@ -385,9 +495,14 @@ def _validate_value_only(node, path, defined, add_error, validate_expr):
 
 def _validate_ternary(node, path, defined, add_error, validate_expr):
     """Validator for Ternary conditional expression."""
-    _require_expr(node, "test", path, defined, add_error, validate_expr)
-    _require_expr(node, "consequent", path, defined, add_error, validate_expr)
-    _require_expr(node, "alternate", path, defined, add_error, validate_expr)
+    _require_expr_fields(
+        node,
+        ("test", "consequent", "alternate"),
+        path,
+        defined,
+        add_error,
+        validate_expr,
+    )
 
 
 def _validate_string_format(node, path, defined, add_error, validate_expr):
@@ -461,7 +576,10 @@ _EXPR_VALIDATORS: dict[str, ValidatorFunc] = {
 
 # -- Statement Validators --
 
-def _validate_let(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+
+def _validate_let(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     name = node.get("name")
     if not isinstance(name, str) or not name:
         add_error(f"{path}.name", "missing or invalid name")
@@ -470,7 +588,9 @@ def _validate_let(node, path, defined, add_error, validate_expr, in_func, in_loo
         defined.add(name)
 
 
-def _validate_assign(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_assign(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     name = node.get("name")
     if not isinstance(name, str) or not name:
         add_error(f"{path}.name", "missing or invalid name")
@@ -479,7 +599,9 @@ def _validate_assign(node, path, defined, add_error, validate_expr, in_func, in_
         defined.add(name)
 
 
-def _validate_if(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_if(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _require_expr(node, "test", path, defined, add_error, validate_expr)
     then_body = node.get("then")
     if not isinstance(then_body, list):
@@ -496,7 +618,9 @@ def _validate_if(node, path, defined, add_error, validate_expr, in_func, in_loop
                 validate_stmt(stmt, f"{path}.else[{i}]", defined, in_func, in_loop)
 
 
-def _validate_while(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_while(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _require_expr(node, "test", path, defined, add_error, validate_expr)
     body = node.get("body")
     if not isinstance(body, list):
@@ -507,27 +631,45 @@ def _validate_while(node, path, defined, add_error, validate_expr, in_func, in_l
             validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func, True)
 
 
-def _validate_call_stmt(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt, version):
+def _validate_call_stmt(
+    node,
+    path,
+    defined,
+    add_error,
+    validate_expr,
+    in_func,
+    in_loop,
+    validate_stmt,
+    version,
+):
     _validate_call_expr(node, path, defined, add_error, validate_expr, version)
 
 
-def _validate_print_stmt(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_print_stmt(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _validate_print_expr(node, path, defined, add_error, validate_expr)
 
 
-def _validate_set_index(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_set_index(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _require_expr(node, "base", path, defined, add_error, validate_expr)
     _validate_index_field(node, path, defined, add_error, validate_expr)
     _require_expr(node, "value", path, defined, add_error, validate_expr)
 
 
-def _validate_set_stmt(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_set_stmt(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _require_expr(node, "base", path, defined, add_error, validate_expr)
     _require_expr(node, "key", path, defined, add_error, validate_expr)
     _require_expr(node, "value", path, defined, add_error, validate_expr)
 
 
-def _validate_func_def(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_func_def(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     name = node.get("name")
     if not isinstance(name, str) or not name:
         add_error(f"{path}.name", "missing or invalid name")
@@ -552,7 +694,9 @@ def _validate_func_def(node, path, defined, add_error, validate_expr, in_func, i
     defined.update(original_defined)
 
 
-def _validate_return(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_return(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     if not in_func:
         add_error(path, "Return is only allowed inside FuncDef")
     if "value" in node:
@@ -590,7 +734,9 @@ def _validate_loop_stmt(
         validate_stmt(stmt, f"{path}.body[{i}]", defined, in_func, True)
 
 
-def _validate_for(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_for(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _validate_loop_stmt(
         node,
         path,
@@ -602,7 +748,9 @@ def _validate_for(node, path, defined, add_error, validate_expr, in_func, in_loo
     )
 
 
-def _validate_for_each(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_for_each(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _validate_loop_stmt(
         node,
         path,
@@ -614,33 +762,52 @@ def _validate_for_each(node, path, defined, add_error, validate_expr, in_func, i
     )
 
 
-def _validate_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "value", path, defined, add_error, validate_expr)
+def _validate_push(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
+    _require_expr_fields(
+        node, ("base", "value"), path, defined, add_error, validate_expr
+    )
 
 
-def _validate_set_field(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_set_field(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _require_expr(node, "base", path, defined, add_error, validate_expr)
     _require_string(node, "name", path, add_error, "field name")
     _require_expr(node, "value", path, defined, add_error, validate_expr)
 
 
-def _validate_set_add(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "value", path, defined, add_error, validate_expr)
+def _validate_set_add(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
+    _validate_push(
+        node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+    )
 
 
-def _validate_set_remove(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "value", path, defined, add_error, validate_expr)
+def _validate_set_remove(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
+    _validate_push(
+        node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+    )
 
 
-def _validate_push_back(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _validate_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt)
+def _validate_push_back(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
+    _validate_push(
+        node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+    )
 
 
-def _validate_push_front(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _validate_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt)
+def _validate_push_front(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
+    _validate_push(
+        node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+    )
 
 
 def _validate_pop_to_target(node, path, defined, add_error, validate_expr):
@@ -652,39 +819,60 @@ def _validate_pop_to_target(node, path, defined, add_error, validate_expr):
         defined.add(target)
 
 
-def _validate_pop_front(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_pop_front(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _validate_pop_to_target(node, path, defined, add_error, validate_expr)
 
 
-def _validate_pop_back(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_pop_back(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _validate_pop_to_target(node, path, defined, add_error, validate_expr)
 
 
-def _validate_heap_push(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
-    _require_expr(node, "base", path, defined, add_error, validate_expr)
-    _require_expr(node, "priority", path, defined, add_error, validate_expr)
-    _require_expr(node, "value", path, defined, add_error, validate_expr)
+def _validate_heap_push(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
+    _require_expr_fields(
+        node,
+        ("base", "priority", "value"),
+        path,
+        defined,
+        add_error,
+        validate_expr,
+    )
 
 
-def _validate_heap_pop(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_heap_pop(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _validate_pop_to_target(node, path, defined, add_error, validate_expr)
 
 
-def _validate_break(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_break(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     if not in_loop:
         add_error(path, "Break is only allowed inside a loop (While, For, ForEach)")
 
 
-def _validate_continue(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_continue(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     if not in_loop:
         add_error(path, "Continue is only allowed inside a loop (While, For, ForEach)")
 
 
-def _validate_throw(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_throw(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _require_expr(node, "message", path, defined, add_error, validate_expr)
 
 
-def _validate_switch(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_switch(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     _require_expr(node, "test", path, defined, add_error, validate_expr)
     cases = node.get("cases")
     if not isinstance(cases, list) or len(cases) == 0:
@@ -704,7 +892,9 @@ def _validate_switch(node, path, defined, add_error, validate_expr, in_func, in_
                 add_error(f"{case_path}.body", "missing or invalid case body")
             else:
                 for j, stmt in enumerate(case_body):
-                    validate_stmt(stmt, f"{case_path}.body[{j}]", defined, in_func, in_loop)
+                    validate_stmt(
+                        stmt, f"{case_path}.body[{j}]", defined, in_func, in_loop
+                    )
     default = node.get("default")
     if default is not None:
         if not isinstance(default, list):
@@ -714,7 +904,9 @@ def _validate_switch(node, path, defined, add_error, validate_expr, in_func, in_
                 validate_stmt(stmt, f"{path}.default[{i}]", defined, in_func, in_loop)
 
 
-def _validate_import(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_import(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     if in_func:
         add_error(path, "Import is only allowed at the top level, not inside functions")
     import_path = node.get("path")
@@ -725,7 +917,9 @@ def _validate_import(node, path, defined, add_error, validate_expr, in_func, in_
         add_error(f"{path}.alias", "alias must be a non-empty string if provided")
 
 
-def _validate_try_catch(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt):
+def _validate_try_catch(
+    node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt
+):
     body = node.get("body")
     if not isinstance(body, list):
         add_error(f"{path}.body", "missing or invalid body")
@@ -746,7 +940,9 @@ def _validate_try_catch(node, path, defined, add_error, validate_expr, in_func, 
         if isinstance(catch_var, str) and catch_var:
             catch_defined.add(catch_var)
         for i, stmt in enumerate(catch_body):
-            validate_stmt(stmt, f"{path}.catch_body[{i}]", catch_defined, in_func, in_loop)
+            validate_stmt(
+                stmt, f"{path}.catch_body[{i}]", catch_defined, in_func, in_loop
+            )
         # Propagate any new definitions back
         defined.update(catch_defined)
 
@@ -756,7 +952,9 @@ def _validate_try_catch(node, path, defined, add_error, validate_expr, in_func, 
             add_error(f"{path}.finally_body", "invalid finally_body")
         else:
             for i, stmt in enumerate(finally_body):
-                validate_stmt(stmt, f"{path}.finally_body[{i}]", defined, in_func, in_loop)
+                validate_stmt(
+                    stmt, f"{path}.finally_body[{i}]", defined, in_func, in_loop
+                )
 
 
 # Statement validator dispatch table (version-independent statements)
@@ -838,12 +1036,31 @@ def validate_coreil(doc: dict) -> list[dict]:
 
         # Special case: Call needs version for validation
         if node_type == "Call":
-            _validate_call_stmt(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt, version)
+            _validate_call_stmt(
+                node,
+                path,
+                defined,
+                add_error,
+                validate_expr,
+                in_func,
+                in_loop,
+                validate_stmt,
+                version,
+            )
             return
 
         validator = _STMT_VALIDATORS.get(node_type)
         if validator:
-            validator(node, path, defined, add_error, validate_expr, in_func, in_loop, validate_stmt)
+            validator(
+                node,
+                path,
+                defined,
+                add_error,
+                validate_expr,
+                in_func,
+                in_loop,
+                validate_stmt,
+            )
         else:
             add_error(path, f"unexpected statement type '{node_type}'")
 
@@ -914,21 +1131,34 @@ def validate_coreil(doc: dict) -> list[dict]:
                 try:
                     line_num = int(key)
                 except ValueError:
-                    add_error(sm_path, f"source_map key '{key}' must be a string integer")
+                    add_error(
+                        sm_path, f"source_map key '{key}' must be a string integer"
+                    )
                     continue
                 if line_num < 1:
-                    add_error(sm_path, f"source_map key '{key}' must be a positive integer")
+                    add_error(
+                        sm_path, f"source_map key '{key}' must be a positive integer"
+                    )
                 # Values must be arrays of non-negative ints within body range
                 if not isinstance(indices, list):
                     add_error(sm_path, "source_map value must be an array")
                     continue
                 for j, idx in enumerate(indices):
                     if not isinstance(idx, int) or idx < 0:
-                        add_error(f"{sm_path}[{j}]", "source_map index must be a non-negative integer")
+                        add_error(
+                            f"{sm_path}[{j}]",
+                            "source_map index must be a non-negative integer",
+                        )
                     elif idx >= body_len:
-                        add_error(f"{sm_path}[{j}]", f"source_map index {idx} out of range (body has {body_len} statements)")
+                        add_error(
+                            f"{sm_path}[{j}]",
+                            f"source_map index {idx} out of range (body has {body_len} statements)",
+                        )
                     elif idx in seen_indices:
-                        add_error(f"{sm_path}[{j}]", f"source_map index {idx} appears in multiple entries")
+                        add_error(
+                            f"{sm_path}[{j}]",
+                            f"source_map index {idx} appears in multiple entries",
+                        )
                     else:
                         seen_indices.add(idx)
 

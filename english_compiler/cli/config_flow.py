@@ -15,6 +15,21 @@ from english_compiler.settings import (
 
 TRUE_VALUE_STRINGS = ("true", "1", "yes", "on")
 FALSE_VALUE_STRINGS = ("false", "0", "no", "off")
+BOOL_SETTING_KEYS = {"explain_errors", "regen", "freeze"}
+
+
+def _print_invalid_bool(value: str) -> int:
+    print(f"Invalid boolean value: {value}")
+    print("Use: true, false, 1, 0, yes, no, on, off")
+    return 1
+
+
+def _format_setting_value(value: object) -> str:
+    if isinstance(value, bool):
+        return str(value).lower()
+    if value is None:
+        return "(not set)"
+    return str(value)
 
 
 def parse_bool_setting(value: str) -> bool | None:
@@ -36,33 +51,17 @@ def config_set(key: str, value: str) -> int:
             print(f"Valid options: {', '.join(VALID_FRONTENDS)}")
             return 1
         settings.frontend = value
-    elif key_normalized == "explain_errors":
-        parsed_bool = parse_bool_setting(value)
-        if parsed_bool is None:
-            print(f"Invalid boolean value: {value}")
-            print("Use: true, false, 1, 0, yes, no, on, off")
-            return 1
-        settings.explain_errors = parsed_bool
     elif key_normalized == "target":
         if value not in VALID_TARGETS:
             print(f"Invalid target: {value}")
             print(f"Valid options: {', '.join(VALID_TARGETS)}")
             return 1
         settings.target = value
-    elif key_normalized == "regen":
+    elif key_normalized in BOOL_SETTING_KEYS:
         parsed_bool = parse_bool_setting(value)
         if parsed_bool is None:
-            print(f"Invalid boolean value: {value}")
-            print("Use: true, false, 1, 0, yes, no, on, off")
-            return 1
-        settings.regen = parsed_bool
-    elif key_normalized == "freeze":
-        parsed_bool = parse_bool_setting(value)
-        if parsed_bool is None:
-            print(f"Invalid boolean value: {value}")
-            print("Use: true, false, 1, 0, yes, no, on, off")
-            return 1
-        settings.freeze = parsed_bool
+            return _print_invalid_bool(value)
+        setattr(settings, key_normalized, parsed_bool)
     else:
         print(f"Unknown setting: {key}")
         print("Valid settings: frontend, target, explain-errors, regen, freeze")
@@ -81,21 +80,17 @@ def config_get(key: str) -> int:
     key_normalized = key.replace("-", "_")
 
     if key_normalized == "frontend":
-        value = settings.frontend if settings.frontend else "(not set)"
-    elif key_normalized == "explain_errors":
-        value = str(settings.explain_errors).lower()
+        value = settings.frontend
     elif key_normalized == "target":
-        value = settings.target if settings.target else "(not set)"
-    elif key_normalized == "regen":
-        value = str(settings.regen).lower()
-    elif key_normalized == "freeze":
-        value = str(settings.freeze).lower()
+        value = settings.target
+    elif key_normalized in BOOL_SETTING_KEYS:
+        value = getattr(settings, key_normalized)
     else:
         print(f"Unknown setting: {key}")
         print("Valid settings: frontend, target, explain-errors, regen, freeze")
         return 1
 
-    print(f"{key}: {value}")
+    print(f"{key}: {_format_setting_value(value)}")
     return 0
 
 
@@ -103,11 +98,15 @@ def config_list() -> int:
     settings = load_settings()
 
     print("Current settings:")
-    print(f"  frontend: {settings.frontend if settings.frontend else '(not set)'}")
-    print(f"  target: {settings.target if settings.target else '(not set)'}")
-    print(f"  explain-errors: {str(settings.explain_errors).lower()}")
-    print(f"  regen: {str(settings.regen).lower()}")
-    print(f"  freeze: {str(settings.freeze).lower()}")
+    settings_rows = (
+        ("frontend", settings.frontend),
+        ("target", settings.target),
+        ("explain-errors", settings.explain_errors),
+        ("regen", settings.regen),
+        ("freeze", settings.freeze),
+    )
+    for name, value in settings_rows:
+        print(f"  {name}: {_format_setting_value(value)}")
 
     config_path = get_config_path()
     if config_path.exists():
@@ -153,4 +152,3 @@ def config_command(args: argparse.Namespace) -> int:
 
     print("Usage: english-compiler config {set,get,list,path,reset}")
     return 1
-
