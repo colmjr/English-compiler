@@ -405,26 +405,6 @@ def _compile_command(args: argparse.Namespace) -> int:
     if not _write_json(coreil_path, doc):
         return 1
 
-    # Run optimizer if requested
-    if getattr(args, "optimize", False):
-        from english_compiler.coreil.optimize import optimize
-
-        doc = optimize(doc)
-        print("Applied optimization pass")
-
-    # Run lint if requested
-    if getattr(args, "lint", False):
-        lint_rc = _run_lint_on_doc(doc)
-        if lint_rc != 0:
-            return lint_rc
-
-    # Emit code for the specified target
-    target = getattr(args, "target", "coreil")
-    if not _emit_target_code(
-        doc, source_path, coreil_path, target, check_freshness=False
-    ):
-        return 1
-
     lock_doc = {
         "source_sha256": source_sha256,
         "coreil_sha256": _sha256_file(coreil_path),
