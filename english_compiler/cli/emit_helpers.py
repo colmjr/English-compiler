@@ -25,30 +25,21 @@ def run_tier2_fallback(
     target: str,
     supported_targets: tuple[str, ...],
 ) -> int | None:
-    if target not in supported_targets:
+    fallback_specs = {
+        "python": ("py", ".py", run_python_file),
+        "javascript": ("js", ".js", run_javascript_file),
+        "cpp": ("cpp", ".cpp", run_cpp_file),
+        "rust": ("rust", ".rs", run_rust_file),
+    }
+
+    spec = fallback_specs.get(target)
+    if target not in supported_targets or spec is None:
         return None
 
-    if target == "python":
-        python_path = get_output_path(source_path, "py", ".py")
-        print(f"Note: Tier 2 operation not supported in interpreter, running {python_path}")
-        return run_python_file(python_path)
-
-    if target == "javascript":
-        js_path = get_output_path(source_path, "js", ".js")
-        print(f"Note: Tier 2 operation not supported in interpreter, running {js_path}")
-        return run_javascript_file(js_path)
-
-    if target == "cpp":
-        cpp_path = get_output_path(source_path, "cpp", ".cpp")
-        print(f"Note: Tier 2 operation not supported in interpreter, running {cpp_path}")
-        return run_cpp_file(cpp_path)
-
-    if target == "rust":
-        rust_path = get_output_path(source_path, "rust", ".rs")
-        print(f"Note: Tier 2 operation not supported in interpreter, running {rust_path}")
-        return run_rust_file(rust_path)
-
-    return None
+    subdir, suffix, runner = spec
+    output_path = get_output_path(source_path, subdir, suffix)
+    print(f"Note: Tier 2 operation not supported in interpreter, running {output_path}")
+    return runner(output_path)
 
 
 def emit_target_code(
@@ -59,7 +50,7 @@ def emit_target_code(
     check_freshness: bool = False,
 ) -> bool:
     """Emit code for the specified target."""
-    if target == "coreil":
+    if target in ("coreil", ""):
         return True
 
     import shutil
@@ -72,40 +63,51 @@ def emit_target_code(
     )
     from english_compiler.coreil.emit_javascript import emit_javascript
 
-    if target == "python":
-        output_path = get_output_path(source_path, "py", ".py")
-        lang_name = "Python"
-        emit_func = emit_python
-    elif target == "javascript":
-        output_path = get_output_path(source_path, "js", ".js")
-        lang_name = "JavaScript"
-        emit_func = emit_javascript
-    elif target == "cpp":
-        output_path = get_output_path(source_path, "cpp", ".cpp")
-        lang_name = "C++"
-        emit_func = emit_cpp
-    elif target == "rust":
+    if target == "wasm":
+        return emit_wasm_target(doc, source_path, coreil_path, check_freshness)
+
+    def copy_cpp_runtime(runtime_dir: Path) -> None:
+        shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
+        shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
+
+    target_specs: dict[str, tuple[str, str, str, object, object | None]] = {
+        "python": ("py", ".py", "Python", emit_python, None),
+        "javascript": ("js", ".js", "JavaScript", emit_javascript, None),
+        "cpp": ("cpp", ".cpp", "C++", emit_cpp, copy_cpp_runtime),
+    }
+
+    if target == "rust":
         from english_compiler.coreil.emit_rust import (
             emit_rust,
+        )
+        from english_compiler.coreil.emit_rust import (
             get_runtime_path as get_rust_runtime_path,
         )
 
-        output_path = get_output_path(source_path, "rust", ".rs")
-        lang_name = "Rust"
-        emit_func = emit_rust
-    elif target == "go":
+        def copy_rust_runtime(runtime_dir: Path) -> None:
+            shutil.copy(get_rust_runtime_path(), runtime_dir / "coreil_runtime.rs")
+
+        target_specs["rust"] = ("rust", ".rs", "Rust", emit_rust, copy_rust_runtime)
+
+    if target == "go":
         from english_compiler.coreil.emit_go import (
             emit_go,
+        )
+        from english_compiler.coreil.emit_go import (
             get_runtime_path as get_go_runtime_path,
         )
 
-        output_path = get_output_path(source_path, "go", ".go")
-        lang_name = "Go"
-        emit_func = emit_go
-    elif target == "wasm":
-        return emit_wasm_target(doc, source_path, coreil_path, check_freshness)
-    else:
+        def copy_go_runtime(runtime_dir: Path) -> None:
+            shutil.copy(get_go_runtime_path(), runtime_dir / "coreil_runtime.go")
+
+        target_specs["go"] = ("go", ".go", "Go", emit_go, copy_go_runtime)
+
+    target_spec = target_specs.get(target)
+    if target_spec is None:
         return True
+
+    subdir, suffix, lang_name, emit_func, runtime_copy_func = target_spec
+    output_path = get_output_path(source_path, subdir, suffix)
 
     if check_freshness and output_path.exists():
         if output_path.stat().st_mtime >= coreil_path.stat().st_mtime:
@@ -131,18 +133,8 @@ def emit_target_code(
             write_json(source_map_path, source_map_data)
             print(f"Generated source map at {source_map_path}")
 
-        if target == "cpp":
-            runtime_dir = output_path.parent
-            shutil.copy(get_runtime_header_path(), runtime_dir / "coreil_runtime.hpp")
-            shutil.copy(get_json_header_path(), runtime_dir / "json.hpp")
-
-        if target == "rust":
-            runtime_dir = output_path.parent
-            shutil.copy(get_rust_runtime_path(), runtime_dir / "coreil_runtime.rs")
-
-        if target == "go":
-            runtime_dir = output_path.parent
-            shutil.copy(get_go_runtime_path(), runtime_dir / "coreil_runtime.go")
+        if runtime_copy_func is not None:
+            runtime_copy_func(output_path.parent)
 
     except OSError as exc:
         print(f"{output_path}: {exc}")
@@ -211,4 +203,3 @@ def emit_wasm_target(
         print("      Install with: npm install -g assemblyscript")
 
     return True
-

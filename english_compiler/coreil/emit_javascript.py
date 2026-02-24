@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from english_compiler.coreil.emit_base import BaseEmitter
 
-
 # Map Core IL external module names to Node.js imports
 _EXTERNAL_MODULE_MAP = {
     "fs": "fs",
@@ -92,7 +91,9 @@ class JavaScriptEmitter(BaseEmitter):
             if "time" in self.external_modules:
                 header_lines.append("  time: {")
                 header_lines.append("    now: () => Date.now() / 1000,")
-                header_lines.append("    sleep: (ms) => new Promise(r => setTimeout(r, ms * 1000)),")
+                header_lines.append(
+                    "    sleep: (ms) => new Promise(r => setTimeout(r, ms * 1000)),"
+                )
                 header_lines.append("  },")
             if "os" in self.external_modules:
                 header_lines.append("  os: {")
@@ -103,17 +104,25 @@ class JavaScriptEmitter(BaseEmitter):
                 header_lines.append("  },")
             if "fs" in self.external_modules:
                 header_lines.append("  fs: {")
-                header_lines.append("    readFile: (path) => fs.readFileSync(path, 'utf-8'),")
-                header_lines.append("    writeFile: (path, content) => fs.writeFileSync(path, content, 'utf-8'),")
+                header_lines.append(
+                    "    readFile: (path) => fs.readFileSync(path, 'utf-8'),"
+                )
+                header_lines.append(
+                    "    writeFile: (path, content) => fs.writeFileSync(path, content, 'utf-8'),"
+                )
                 header_lines.append("    exists: (path) => fs.existsSync(path),")
                 header_lines.append("  },")
             if "crypto" in self.external_modules:
                 header_lines.append("  crypto: {")
-                header_lines.append("    hash: (data) => crypto.createHash('sha256').update(data).digest('hex'),")
+                header_lines.append(
+                    "    hash: (data) => crypto.createHash('sha256').update(data).digest('hex'),"
+                )
                 header_lines.append("  },")
             if "http" in self.external_modules:
                 header_lines.append("  http: {")
-                header_lines.append("    get: (url) => { throw new Error('http.get not implemented'); },")
+                header_lines.append(
+                    "    get: (url) => { throw new Error('http.get not implemented'); },"
+                )
                 header_lines.append("  },")
             header_lines.append("};")
 
@@ -166,8 +175,7 @@ class JavaScriptEmitter(BaseEmitter):
             # Shift coreil_line_map by the number of header lines
             offset = len(header_lines)
             self.coreil_line_map = {
-                k: [ln + offset for ln in v]
-                for k, v in self.coreil_line_map.items()
+                k: [ln + offset for ln in v] for k, v in self.coreil_line_map.items()
             }
             result = "\n".join(header_lines) + "\n".join(self.lines) + "\n"
         else:
@@ -310,22 +318,44 @@ class JavaScriptEmitter(BaseEmitter):
         """Return lines for the print helper function."""
         lines = [
             "// Print helper for Python-compatible output",
-            "function __format(v) {",
+            "function __format(v, nested = false) {",
             "  if (v === true) return 'True';",
             "  if (v === false) return 'False';",
             "  if (v === null) return 'None';",
+            "  if (typeof v === 'string') {",
+            "    if (!nested) return v;",
+            "    const escaped = v",
+            "      .replace(/\\\\/g, '\\\\\\\\')",
+            "      .replace(/'/g, \"\\\\'\")",
+            "      .replace(/\\n/g, '\\\\n')",
+            "      .replace(/\\r/g, '\\\\r')",
+            "      .replace(/\\t/g, '\\\\t');",
+            "    return '\\'' + escaped + '\\'';",
+            "  }",
         ]
         if self.uses_float:
             lines.append("  if (v instanceof __Float) return v.toString();")
-        lines.extend([
-            "  if (Array.isArray(v)) return '[' + v.map(__format).join(', ') + ']';",
-            "  return v;",
-            "}",
-            "function __print(...args) {",
-            "  console.log(args.map(__format).join(' '));",
-            "}",
-        ])
+        lines.extend(
+            [
+                "  if (Array.isArray(v)) return '[' + v.map((item) => __format(item, true)).join(', ') + ']';",
+                "  return v;",
+                "}",
+                "function __print(...args) {",
+                "  console.log(args.map((arg) => __format(arg, false)).join(' '));",
+                "}",
+            ]
+        )
         return lines
+
+    def _emit_tuple_key(self, node: object, *, allow_array: bool = False) -> str:
+        """Emit tuple/array keys as stable JSON strings for JS Map/Set usage."""
+        if isinstance(node, dict):
+            node_type = node.get("type")
+            if node_type == "Tuple" or (allow_array and node_type == "Array"):
+                key_items = node.get("items", [])
+                key_strs = [self.emit_expr(k) for k in key_items]
+                return f"JSON.stringify([{', '.join(key_strs)}])"
+        return self.emit_expr(node)
 
     def _index_helper_lines(self) -> list[str]:
         """Return lines for index helper functions (Python-style negative indexing)."""
@@ -437,47 +467,20 @@ class JavaScriptEmitter(BaseEmitter):
         for item in items:
             key_node = item.get("key")
             value_node = item.get("value")
-
-            if isinstance(key_node, dict) and key_node.get("type") == "Array":
-                key_items = key_node.get("items", [])
-                key_strs = [self.emit_expr(k) for k in key_items]
-                key = f"JSON.stringify([{', '.join(key_strs)}])"
-        
-            elif isinstance(key_node, dict) and key_node.get("type") == "Tuple":
-                key_items = key_node.get("items", [])
-                key_strs = [self.emit_expr(k) for k in key_items]
-                key = f"JSON.stringify([{', '.join(key_strs)}])"
-        
-            else:
-                key = self.emit_expr(key_node)
-
+            key = self._emit_tuple_key(key_node, allow_array=True)
             value = self.emit_expr(value_node)
             pairs.append(f"[{key}, {value}]")
         return f"new Map([{', '.join(pairs)}])"
 
     def _emit_get(self, node: dict) -> str:
         base = self.emit_expr(node.get("base"))
-        key_node = node.get("key")
-        if isinstance(key_node, dict) and key_node.get("type") == "Tuple":
-            key_items = key_node.get("items", [])
-            key_strs = [self.emit_expr(k) for k in key_items]
-            key = f"JSON.stringify([{', '.join(key_strs)}])"
-    
-        else:
-            key = self.emit_expr(key_node)
+        key = self._emit_tuple_key(node.get("key"))
         return f"{base}.get({key})"
 
     def _emit_get_default(self, node: dict) -> str:
         base = self.emit_expr(node.get("base"))
-        key_node = node.get("key")
         default = self.emit_expr(node.get("default"))
-        if isinstance(key_node, dict) and key_node.get("type") == "Tuple":
-            key_items = key_node.get("items", [])
-            key_strs = [self.emit_expr(k) for k in key_items]
-            key = f"JSON.stringify([{', '.join(key_strs)}])"
-    
-        else:
-            key = self.emit_expr(key_node)
+        key = self._emit_tuple_key(node.get("key"))
         return f"({base}.get({key}) ?? {default})"
 
     def _emit_keys(self, node: dict) -> str:
@@ -570,24 +573,14 @@ class JavaScriptEmitter(BaseEmitter):
         item_strs = []
         for item in items:
             if isinstance(item, dict) and item.get("type") == "Tuple":
-                key_items = item.get("items", [])
-                key_strs = [self.emit_expr(k) for k in key_items]
-                item_strs.append(f"JSON.stringify([{', '.join(key_strs)}])")
-        
+                item_strs.append(self._emit_tuple_key(item))
             else:
                 item_strs.append(self.emit_expr(item))
         return f"new Set([{', '.join(item_strs)}])"
 
     def _emit_set_has(self, node: dict) -> str:
         base = self.emit_expr(node.get("base"))
-        value_node = node.get("value")
-        if isinstance(value_node, dict) and value_node.get("type") == "Tuple":
-            key_items = value_node.get("items", [])
-            key_strs = [self.emit_expr(k) for k in key_items]
-            value = f"JSON.stringify([{', '.join(key_strs)}])"
-    
-        else:
-            value = self.emit_expr(value_node)
+        value = self._emit_tuple_key(node.get("value"))
         return f"{base}.has({value})"
 
     def _emit_set_size(self, node: dict) -> str:
@@ -685,7 +678,9 @@ class JavaScriptEmitter(BaseEmitter):
         if flags_node:
             self.uses_regex_flags = True
             flags = self.emit_expr(flags_node)
-            return f"({string}).split(new RegExp({pattern}, __parseRegexFlags({flags})))"
+            return (
+                f"({string}).split(new RegExp({pattern}, __parseRegexFlags({flags})))"
+            )
         return f"({string}).split(new RegExp({pattern}))"
 
     def _emit_external_call(self, node: dict) -> str:
@@ -796,15 +791,8 @@ class JavaScriptEmitter(BaseEmitter):
 
     def _emit_set_stmt(self, node: dict) -> None:
         base = self.emit_expr(node.get("base"))
-        key_node = node.get("key")
+        key = self._emit_tuple_key(node.get("key"))
         value = self.emit_expr(node.get("value"))
-        if isinstance(key_node, dict) and key_node.get("type") == "Tuple":
-            key_items = key_node.get("items", [])
-            key_strs = [self.emit_expr(k) for k in key_items]
-            key = f"JSON.stringify([{', '.join(key_strs)}])"
-    
-        else:
-            key = self.emit_expr(key_node)
         self.emit_line(f"{base}.set({key}, {value});")
 
     def _emit_push(self, node: dict) -> None:
@@ -820,26 +808,12 @@ class JavaScriptEmitter(BaseEmitter):
 
     def _emit_set_add(self, node: dict) -> None:
         base = self.emit_expr(node.get("base"))
-        value_node = node.get("value")
-        if isinstance(value_node, dict) and value_node.get("type") == "Tuple":
-            key_items = value_node.get("items", [])
-            key_strs = [self.emit_expr(k) for k in key_items]
-            value = f"JSON.stringify([{', '.join(key_strs)}])"
-    
-        else:
-            value = self.emit_expr(value_node)
+        value = self._emit_tuple_key(node.get("value"))
         self.emit_line(f"{base}.add({value});")
 
     def _emit_set_remove(self, node: dict) -> None:
         base = self.emit_expr(node.get("base"))
-        value_node = node.get("value")
-        if isinstance(value_node, dict) and value_node.get("type") == "Tuple":
-            key_items = value_node.get("items", [])
-            key_strs = [self.emit_expr(k) for k in key_items]
-            value = f"JSON.stringify([{', '.join(key_strs)}])"
-    
-        else:
-            value = self.emit_expr(value_node)
+        value = self._emit_tuple_key(node.get("value"))
         self.emit_line(f"{base}.delete({value});")
 
     def _emit_push_back(self, node: dict) -> None:
@@ -928,7 +902,9 @@ class JavaScriptEmitter(BaseEmitter):
             to_val = self.emit_expr(iter_expr.get("to"))
             inclusive = iter_expr.get("inclusive", False)
             cmp_op = "<=" if inclusive else "<"
-            self.emit_line(f"for (let {var} = {from_val}; {var} {cmp_op} {to_val}; {var}++) {{")
+            self.emit_line(
+                f"for (let {var} = {from_val}; {var} {cmp_op} {to_val}; {var}++) {{"
+            )
         else:
             iter_code = self.emit_expr(iter_expr)
             self.emit_line(f"for (const {var} of {iter_code}) {{")
@@ -978,7 +954,9 @@ class JavaScriptEmitter(BaseEmitter):
 
         self.emit_line("} catch (__e) {")
         self.indent_level += 1
-        self.emit_line(f"let {catch_var} = (__e instanceof Error) ? __e.message : String(__e);")
+        self.emit_line(
+            f"let {catch_var} = (__e instanceof Error) ? __e.message : String(__e);"
+        )
         if not catch_body:
             self.emit_line("// empty")
         else:

@@ -57,17 +57,20 @@ class _ReturnSignal(Exception):
 
 class _BreakSignal(Exception):
     """Signal to break out of a loop."""
+
     pass
 
 
 class _ContinueSignal(Exception):
     """Signal to continue to the next iteration of a loop."""
+
     pass
 
 
 @dataclass
 class _ThrowSignal(Exception):
     """Signal for explicit Throw statements."""
+
     message: str
 
 
@@ -82,15 +85,39 @@ def run_coreil(
 
     # Resolve imports if any Import nodes are present
     body = doc.get("body", [])
-    has_imports = any(
-        isinstance(s, dict) and s.get("type") == "Import" for s in body
-    )
+    has_imports = any(isinstance(s, dict) and s.get("type") == "Import" for s in body)
     if has_imports:
         from .module import resolve_imports
+
         doc = resolve_imports(doc, base_dir=base_dir)
 
     global_env: dict[str, Any] = {}
     functions: dict[str, dict] = {}
+
+    def select_env(local_env: dict[str, Any] | None, in_func: bool) -> dict[str, Any]:
+        """Return the active environment for writes."""
+        if in_func and local_env is not None:
+            return local_env
+        return global_env
+
+    def assign_name(
+        name: str,
+        value: Any,
+        local_env: dict[str, Any] | None,
+        in_func: bool,
+    ) -> None:
+        """Assign a name into function-local or global scope."""
+        env = select_env(local_env, in_func)
+        env[name] = value
+
+    def normalize_map_key(key: Any, key_error_message: str) -> Any:
+        """Normalize and validate map key compatibility."""
+        # v0.4 backward compatibility: convert list keys to tuples (hashable)
+        if isinstance(key, list):
+            key = tuple(key)
+        if not isinstance(key, (str, int, tuple)):
+            raise ValueError(key_error_message)
+        return key
 
     def lookup_var(name: str, local_env: dict[str, Any] | None) -> Any:
         if local_env is not None and name in local_env:
@@ -186,13 +213,19 @@ def run_coreil(
         if node_type == "Slice":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, (list, tuple)):
-                raise ValueError(f"runtime error: Slice base must be an array or tuple, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: Slice base must be an array or tuple, got {type(base).__name__}"
+                )
             start = eval_expr(node["start"], local_env, call_depth)
             end = eval_expr(node["end"], local_env, call_depth)
             if not isinstance(start, int):
-                raise ValueError(f"runtime error: Slice start must be an integer, got {start}")
+                raise ValueError(
+                    f"runtime error: Slice start must be an integer, got {start}"
+                )
             if not isinstance(end, int):
-                raise ValueError(f"runtime error: Slice end must be an integer, got {end}")
+                raise ValueError(
+                    f"runtime error: Slice end must be an integer, got {end}"
+                )
             # Support negative indexing (Python-style: -1 = last element)
             n = len(base)
             if start < 0:
@@ -200,7 +233,9 @@ def run_coreil(
             if end < 0:
                 end = n + end
             if start < 0 or start > n or end < 0 or end > n:
-                raise ValueError(f"runtime error: Slice range [{start}:{end}) out of bounds for array of length {n}")
+                raise ValueError(
+                    f"runtime error: Slice range [{start}:{end}) out of bounds for array of length {n}"
+                )
             return list(base[start:end])
 
         if node_type == "Not":
@@ -223,12 +258,9 @@ def run_coreil(
                 if not isinstance(item, dict):
                     raise ValueError("Map item must be an object")
                 key = eval_expr(item.get("key"), local_env, call_depth)
-                # v0.4 backward compatibility: convert list keys to tuples (hashable)
-                if isinstance(key, list):
-                    key = tuple(key)
-                # Allow tuples as keys (hashable)
-                if not isinstance(key, (str, int, tuple)):
-                    raise ValueError("Map key must be a string, integer, or tuple")
+                key = normalize_map_key(
+                    key, "Map key must be a string, integer, or tuple"
+                )
                 value = eval_expr(item.get("value"), local_env, call_depth)
                 result[key] = value
             return result
@@ -238,11 +270,7 @@ def run_coreil(
             key = eval_expr(node.get("key"), local_env, call_depth)
             if not isinstance(base, dict):
                 raise ValueError("Get base must be a map")
-            # v0.4 backward compatibility: convert list keys to tuples
-            if isinstance(key, list):
-                key = tuple(key)
-            if not isinstance(key, (str, int, tuple)):
-                raise ValueError("Get key must be a string, integer, or tuple")
+            key = normalize_map_key(key, "Get key must be a string, integer, or tuple")
             return base.get(key)
 
         if node_type == "GetDefault":
@@ -251,11 +279,10 @@ def run_coreil(
             default = eval_expr(node.get("default"), local_env, call_depth)
             if not isinstance(base, dict):
                 raise ValueError("GetDefault base must be a map")
-            # v0.4 backward compatibility: convert list keys to tuples
-            if isinstance(key, list):
-                key = tuple(key)
-            if not isinstance(key, (str, int, tuple)):
-                raise ValueError("GetDefault key must be a string, integer, or tuple")
+            key = normalize_map_key(
+                key,
+                "GetDefault key must be a string, integer, or tuple",
+            )
             return base.get(key, default)
 
         if node_type == "Keys":
@@ -294,7 +321,9 @@ def run_coreil(
         if node_type == "GetField":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, dict):
-                raise ValueError(f"runtime error: GetField base must be a record, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: GetField base must be a record, got {type(base).__name__}"
+                )
             name = node.get("name")
             if not isinstance(name, str):
                 raise ValueError("GetField name must be a string")
@@ -305,42 +334,62 @@ def run_coreil(
         if node_type == "StringLength":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringLength base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringLength base must be a string, got {type(base).__name__}"
+                )
             return len(base)
 
         if node_type == "Substring":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: Substring base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: Substring base must be a string, got {type(base).__name__}"
+                )
             start = eval_expr(node["start"], local_env, call_depth)
             end = eval_expr(node["end"], local_env, call_depth)
             if not isinstance(start, int) or start < 0:
-                raise ValueError(f"runtime error: Substring start must be a non-negative integer, got {start}")
+                raise ValueError(
+                    f"runtime error: Substring start must be a non-negative integer, got {start}"
+                )
             if not isinstance(end, int) or end < 0:
-                raise ValueError(f"runtime error: Substring end must be a non-negative integer, got {end}")
+                raise ValueError(
+                    f"runtime error: Substring end must be a non-negative integer, got {end}"
+                )
             # Python slicing automatically clamps, but we raise error for out-of-range
             if start > len(base) or end > len(base):
-                raise ValueError(f"runtime error: Substring range [{start}:{end}) out of bounds for string of length {len(base)}")
+                raise ValueError(
+                    f"runtime error: Substring range [{start}:{end}) out of bounds for string of length {len(base)}"
+                )
             return base[start:end]
 
         if node_type == "CharAt":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: CharAt base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: CharAt base must be a string, got {type(base).__name__}"
+                )
             index = eval_expr(node["index"], local_env, call_depth)
             if not isinstance(index, int) or index < 0:
-                raise ValueError(f"runtime error: CharAt index must be a non-negative integer, got {index}")
+                raise ValueError(
+                    f"runtime error: CharAt index must be a non-negative integer, got {index}"
+                )
             if index >= len(base):
-                raise ValueError(f"runtime error: CharAt index {index} out of bounds for string of length {len(base)}")
+                raise ValueError(
+                    f"runtime error: CharAt index {index} out of bounds for string of length {len(base)}"
+                )
             return base[index]
 
         if node_type == "Join":
             sep = eval_expr(node["sep"], local_env, call_depth)
             if not isinstance(sep, str):
-                raise ValueError(f"runtime error: Join separator must be a string, got {type(sep).__name__}")
+                raise ValueError(
+                    f"runtime error: Join separator must be a string, got {type(sep).__name__}"
+                )
             items = eval_expr(node["items"], local_env, call_depth)
             if not isinstance(items, list):
-                raise ValueError(f"runtime error: Join items must be an array, got {type(items).__name__}")
+                raise ValueError(
+                    f"runtime error: Join items must be an array, got {type(items).__name__}"
+                )
             # Convert all items to strings
             str_items = [str(item) for item in items]
             return sep.join(str_items)
@@ -349,67 +398,95 @@ def run_coreil(
         if node_type == "StringSplit":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringSplit base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringSplit base must be a string, got {type(base).__name__}"
+                )
             delimiter = eval_expr(node["delimiter"], local_env, call_depth)
             if not isinstance(delimiter, str):
-                raise ValueError(f"runtime error: StringSplit delimiter must be a string, got {type(delimiter).__name__}")
+                raise ValueError(
+                    f"runtime error: StringSplit delimiter must be a string, got {type(delimiter).__name__}"
+                )
             return base.split(delimiter)
 
         if node_type == "StringTrim":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringTrim base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringTrim base must be a string, got {type(base).__name__}"
+                )
             return base.strip()
 
         if node_type == "StringUpper":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringUpper base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringUpper base must be a string, got {type(base).__name__}"
+                )
             return base.upper()
 
         if node_type == "StringLower":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringLower base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringLower base must be a string, got {type(base).__name__}"
+                )
             return base.lower()
 
         if node_type == "StringStartsWith":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringStartsWith base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringStartsWith base must be a string, got {type(base).__name__}"
+                )
             prefix = eval_expr(node["prefix"], local_env, call_depth)
             if not isinstance(prefix, str):
-                raise ValueError(f"runtime error: StringStartsWith prefix must be a string, got {type(prefix).__name__}")
+                raise ValueError(
+                    f"runtime error: StringStartsWith prefix must be a string, got {type(prefix).__name__}"
+                )
             return base.startswith(prefix)
 
         if node_type == "StringEndsWith":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringEndsWith base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringEndsWith base must be a string, got {type(base).__name__}"
+                )
             suffix = eval_expr(node["suffix"], local_env, call_depth)
             if not isinstance(suffix, str):
-                raise ValueError(f"runtime error: StringEndsWith suffix must be a string, got {type(suffix).__name__}")
+                raise ValueError(
+                    f"runtime error: StringEndsWith suffix must be a string, got {type(suffix).__name__}"
+                )
             return base.endswith(suffix)
 
         if node_type == "StringContains":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringContains base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringContains base must be a string, got {type(base).__name__}"
+                )
             substring = eval_expr(node["substring"], local_env, call_depth)
             if not isinstance(substring, str):
-                raise ValueError(f"runtime error: StringContains substring must be a string, got {type(substring).__name__}")
+                raise ValueError(
+                    f"runtime error: StringContains substring must be a string, got {type(substring).__name__}"
+                )
             return substring in base
 
         if node_type == "StringReplace":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, str):
-                raise ValueError(f"runtime error: StringReplace base must be a string, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: StringReplace base must be a string, got {type(base).__name__}"
+                )
             old = eval_expr(node["old"], local_env, call_depth)
             if not isinstance(old, str):
-                raise ValueError(f"runtime error: StringReplace old must be a string, got {type(old).__name__}")
+                raise ValueError(
+                    f"runtime error: StringReplace old must be a string, got {type(old).__name__}"
+                )
             new = eval_expr(node["new"], local_env, call_depth)
             if not isinstance(new, str):
-                raise ValueError(f"runtime error: StringReplace new must be a string, got {type(new).__name__}")
+                raise ValueError(
+                    f"runtime error: StringReplace new must be a string, got {type(new).__name__}"
+                )
             return base.replace(old, new)
 
         if node_type == "Set":
@@ -419,21 +496,27 @@ def run_coreil(
                 item_value = eval_expr(item_node, local_env, call_depth)
                 # Check if value is hashable (numbers, strings, tuples)
                 if not isinstance(item_value, (int, float, str, bool, tuple)):
-                    raise ValueError(f"runtime error: Set items must be hashable (numbers, strings, tuples), got {type(item_value).__name__}")
+                    raise ValueError(
+                        f"runtime error: Set items must be hashable (numbers, strings, tuples), got {type(item_value).__name__}"
+                    )
                 result_set.add(item_value)
             return result_set
 
         if node_type == "SetHas":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, set):
-                raise ValueError(f"runtime error: SetHas base must be a set, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: SetHas base must be a set, got {type(base).__name__}"
+                )
             value = eval_expr(node["value"], local_env, call_depth)
             return value in base
 
         if node_type == "SetSize":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, set):
-                raise ValueError(f"runtime error: SetSize base must be a set, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: SetSize base must be a set, got {type(base).__name__}"
+                )
             return len(base)
 
         if node_type == "DequeNew":
@@ -442,7 +525,9 @@ def run_coreil(
         if node_type == "DequeSize":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, deque):
-                raise ValueError(f"runtime error: DequeSize base must be a deque, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: DequeSize base must be a deque, got {type(base).__name__}"
+                )
             return len(base)
 
         if node_type == "HeapNew":
@@ -452,13 +537,17 @@ def run_coreil(
         if node_type == "HeapSize":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, dict) or "_heap_items" not in base:
-                raise ValueError(f"runtime error: HeapSize base must be a heap, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: HeapSize base must be a heap, got {type(base).__name__}"
+                )
             return len(base["_heap_items"])
 
         if node_type == "HeapPeek":
             base = eval_expr(node["base"], local_env, call_depth)
             if not isinstance(base, dict) or "_heap_items" not in base:
-                raise ValueError(f"runtime error: HeapPeek base must be a heap, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: HeapPeek base must be a heap, got {type(base).__name__}"
+                )
             if len(base["_heap_items"]) == 0:
                 raise ValueError("runtime error: cannot peek from empty heap")
             # Return the value (third element of the tuple: priority, counter, value)
@@ -494,8 +583,12 @@ def run_coreil(
                 try:
                     return int(value)
                 except ValueError:
-                    raise ValueError(f"runtime error: cannot convert string '{value}' to int")
-            raise ValueError(f"runtime error: cannot convert {type(value).__name__} to int")
+                    raise ValueError(
+                        f"runtime error: cannot convert string '{value}' to int"
+                    )
+            raise ValueError(
+                f"runtime error: cannot convert {type(value).__name__} to int"
+            )
 
         if node_type == "ToFloat":
             value = eval_expr(node.get("value"), local_env, call_depth)
@@ -507,8 +600,12 @@ def run_coreil(
                 try:
                     return float(value)
                 except ValueError:
-                    raise ValueError(f"runtime error: cannot convert string '{value}' to float")
-            raise ValueError(f"runtime error: cannot convert {type(value).__name__} to float")
+                    raise ValueError(
+                        f"runtime error: cannot convert string '{value}' to float"
+                    )
+            raise ValueError(
+                f"runtime error: cannot convert {type(value).__name__} to float"
+            )
 
         if node_type == "ToString":
             value = eval_expr(node.get("value"), local_env, call_depth)
@@ -555,7 +652,9 @@ def run_coreil(
         if node_type == "JsonParse":
             source = eval_expr(node.get("source"), local_env, call_depth)
             if not isinstance(source, str):
-                raise ValueError(f"runtime error: JsonParse source must be a string, got {type(source).__name__}")
+                raise ValueError(
+                    f"runtime error: JsonParse source must be a string, got {type(source).__name__}"
+                )
             try:
                 return json.loads(source)
             except json.JSONDecodeError as e:
@@ -569,15 +668,19 @@ def run_coreil(
                 pretty_val = eval_expr(pretty, local_env, call_depth)
                 if pretty_val:
                     indent = 2
+
             # Handle non-serializable types
             def default_serializer(obj):
                 if isinstance(obj, set):
                     return list(obj)
                 if isinstance(obj, deque):
                     return list(obj)
-                if hasattr(obj, '__iter__') and not isinstance(obj, (str, dict, list)):
+                if hasattr(obj, "__iter__") and not isinstance(obj, (str, dict, list)):
                     return list(obj)
-                raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+                raise TypeError(
+                    f"Object of type {type(obj).__name__} is not JSON serializable"
+                )
+
             return json.dumps(value, indent=indent, default=default_serializer)
 
         # Regex operations (v1.3)
@@ -585,10 +688,14 @@ def run_coreil(
             """Evaluate common regex arguments: string, pattern, flags."""
             string = eval_expr(node.get("string"), local_env, call_depth)
             if not isinstance(string, str):
-                raise ValueError(f"runtime error: {op_name} string must be a string, got {type(string).__name__}")
+                raise ValueError(
+                    f"runtime error: {op_name} string must be a string, got {type(string).__name__}"
+                )
             pattern = eval_expr(node.get("pattern"), local_env, call_depth)
             if not isinstance(pattern, str):
-                raise ValueError(f"runtime error: {op_name} pattern must be a string, got {type(pattern).__name__}")
+                raise ValueError(
+                    f"runtime error: {op_name} pattern must be a string, got {type(pattern).__name__}"
+                )
             flags_node = node.get("flags")
             flags_str = ""
             if flags_node:
@@ -615,7 +722,9 @@ def run_coreil(
             string, pattern, flags = _eval_regex_args(node, "RegexReplace")
             replacement = eval_expr(node.get("replacement"), local_env, call_depth)
             if not isinstance(replacement, str):
-                raise ValueError(f"runtime error: RegexReplace replacement must be a string, got {type(replacement).__name__}")
+                raise ValueError(
+                    f"runtime error: RegexReplace replacement must be a string, got {type(replacement).__name__}"
+                )
             try:
                 return re.sub(pattern, replacement, string, flags=flags)
             except re.error as e:
@@ -628,7 +737,9 @@ def run_coreil(
             if maxsplit_node:
                 maxsplit = eval_expr(maxsplit_node, local_env, call_depth)
                 if not isinstance(maxsplit, int) or maxsplit < 0:
-                    raise ValueError(f"runtime error: RegexSplit maxsplit must be a non-negative integer, got {maxsplit}")
+                    raise ValueError(
+                        f"runtime error: RegexSplit maxsplit must be a non-negative integer, got {maxsplit}"
+                    )
             try:
                 return re.split(pattern, string, maxsplit=maxsplit, flags=flags)
             except re.error as e:
@@ -748,10 +859,7 @@ def run_coreil(
             if not isinstance(name, str) or not name:
                 raise ValueError("Let missing name")
             value = eval_expr(node.get("value"), local_env, call_depth)
-            if in_func and local_env is not None:
-                local_env[name] = value
-            else:
-                global_env[name] = value
+            assign_name(name, value, local_env, in_func)
             return
 
         if node_type == "Assign":
@@ -759,10 +867,7 @@ def run_coreil(
             if not isinstance(name, str) or not name:
                 raise ValueError("Assign missing name")
             value = eval_expr(node.get("value"), local_env, call_depth)
-            if in_func and local_env is not None:
-                local_env[name] = value
-            else:
-                global_env[name] = value
+            assign_name(name, value, local_env, in_func)
             return
 
         if node_type == "If":
@@ -811,7 +916,7 @@ def run_coreil(
                 raise ValueError("For body must be a list")
 
             # Determine where to store loop variable
-            env = local_env if (in_func and local_env is not None) else global_env
+            env = select_env(local_env, in_func)
 
             # Evaluate iterator
             if isinstance(iter_expr, dict) and iter_expr.get("type") == "Range":
@@ -847,7 +952,7 @@ def run_coreil(
                 raise ValueError("ForEach body must be a list")
 
             # Determine where to store loop variable
-            env = local_env if (in_func and local_env is not None) else global_env
+            env = select_env(local_env, in_func)
 
             # Evaluate iterator
             iterator = eval_expr(iter_expr, local_env, call_depth)
@@ -896,11 +1001,7 @@ def run_coreil(
             value = eval_expr(node.get("value"), local_env, call_depth)
             if not isinstance(base, dict):
                 raise ValueError("Set base must be a map")
-            # v0.4 backward compatibility: convert list keys to tuples
-            if isinstance(key, list):
-                key = tuple(key)
-            if not isinstance(key, (str, int, tuple)):
-                raise ValueError("Set key must be a string, integer, or tuple")
+            key = normalize_map_key(key, "Set key must be a string, integer, or tuple")
             base[key] = value
             return
 
@@ -915,7 +1016,9 @@ def run_coreil(
         if node_type == "SetField":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, dict):
-                raise ValueError(f"runtime error: SetField base must be a record, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: SetField base must be a record, got {type(base).__name__}"
+                )
             name = node.get("name")
             if not isinstance(name, str):
                 raise ValueError("SetField name must be a string")
@@ -926,18 +1029,24 @@ def run_coreil(
         if node_type == "SetAdd":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, set):
-                raise ValueError(f"runtime error: SetAdd base must be a set, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: SetAdd base must be a set, got {type(base).__name__}"
+                )
             value = eval_expr(node.get("value"), local_env, call_depth)
             # Check if value is hashable (numbers, strings, tuples)
             if not isinstance(value, (int, float, str, bool, tuple)):
-                raise ValueError(f"runtime error: SetAdd value must be hashable (numbers, strings, tuples), got {type(value).__name__}")
+                raise ValueError(
+                    f"runtime error: SetAdd value must be hashable (numbers, strings, tuples), got {type(value).__name__}"
+                )
             base.add(value)
             return
 
         if node_type == "SetRemove":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, set):
-                raise ValueError(f"runtime error: SetRemove base must be a set, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: SetRemove base must be a set, got {type(base).__name__}"
+                )
             value = eval_expr(node.get("value"), local_env, call_depth)
             # Use discard for no-op semantics (doesn't error if value not present)
             base.discard(value)
@@ -946,7 +1055,9 @@ def run_coreil(
         if node_type == "PushBack":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, deque):
-                raise ValueError(f"runtime error: PushBack base must be a deque, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: PushBack base must be a deque, got {type(base).__name__}"
+                )
             value = eval_expr(node.get("value"), local_env, call_depth)
             base.append(value)
             return
@@ -954,7 +1065,9 @@ def run_coreil(
         if node_type == "PushFront":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, deque):
-                raise ValueError(f"runtime error: PushFront base must be a deque, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: PushFront base must be a deque, got {type(base).__name__}"
+                )
             value = eval_expr(node.get("value"), local_env, call_depth)
             base.appendleft(value)
             return
@@ -962,39 +1075,39 @@ def run_coreil(
         if node_type == "PopFront":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, deque):
-                raise ValueError(f"runtime error: PopFront base must be a deque, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: PopFront base must be a deque, got {type(base).__name__}"
+                )
             if len(base) == 0:
                 raise ValueError("runtime error: cannot pop from empty deque")
             target = node.get("target")
             if not isinstance(target, str):
                 raise ValueError("PopFront target must be a variable name")
             popped_value = base.popleft()
-            if local_env is not None:
-                local_env[target] = popped_value
-            else:
-                global_env[target] = popped_value
+            assign_name(target, popped_value, local_env, in_func)
             return
 
         if node_type == "PopBack":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, deque):
-                raise ValueError(f"runtime error: PopBack base must be a deque, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: PopBack base must be a deque, got {type(base).__name__}"
+                )
             if len(base) == 0:
                 raise ValueError("runtime error: cannot pop from empty deque")
             target = node.get("target")
             if not isinstance(target, str):
                 raise ValueError("PopBack target must be a variable name")
             popped_value = base.pop()
-            if local_env is not None:
-                local_env[target] = popped_value
-            else:
-                global_env[target] = popped_value
+            assign_name(target, popped_value, local_env, in_func)
             return
 
         if node_type == "HeapPush":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, dict) or "_heap_items" not in base:
-                raise ValueError(f"runtime error: HeapPush base must be a heap, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: HeapPush base must be a heap, got {type(base).__name__}"
+                )
             priority = eval_expr(node.get("priority"), local_env, call_depth)
             value = eval_expr(node.get("value"), local_env, call_depth)
             # Use counter for stable ordering
@@ -1006,7 +1119,9 @@ def run_coreil(
         if node_type == "HeapPop":
             base = eval_expr(node.get("base"), local_env, call_depth)
             if not isinstance(base, dict) or "_heap_items" not in base:
-                raise ValueError(f"runtime error: HeapPop base must be a heap, got {type(base).__name__}")
+                raise ValueError(
+                    f"runtime error: HeapPop base must be a heap, got {type(base).__name__}"
+                )
             if len(base["_heap_items"]) == 0:
                 raise ValueError("runtime error: cannot pop from empty heap")
             target = node.get("target")
@@ -1014,10 +1129,7 @@ def run_coreil(
                 raise ValueError("HeapPop target must be a variable name")
             # Pop the min element and extract the value (third element)
             _, _, popped_value = heapq.heappop(base["_heap_items"])
-            if local_env is not None:
-                local_env[target] = popped_value
-            else:
-                global_env[target] = popped_value
+            assign_name(target, popped_value, local_env, in_func)
             return
 
         if node_type == "FuncDef":
@@ -1054,11 +1166,11 @@ def run_coreil(
             except (_ReturnSignal, _BreakSignal, _ContinueSignal):
                 raise
             except _ThrowSignal as e:
-                env = local_env if (in_func and local_env is not None) else global_env
+                env = select_env(local_env, in_func)
                 env[catch_var] = e.message
                 exec_block(node.get("catch_body", []), local_env, in_func, call_depth)
             except Exception as e:
-                env = local_env if (in_func and local_env is not None) else global_env
+                env = select_env(local_env, in_func)
                 env[catch_var] = str(e)
                 exec_block(node.get("catch_body", []), local_env, in_func, call_depth)
             finally:
@@ -1092,7 +1204,11 @@ def run_coreil(
         exec_block(body, None, False, 0)
     except ValueError as exc:
         # Re-raise Tier 2 (non-portable) errors so caller can handle them
-        if "ExternalCall" in str(exc) or "MethodCall" in str(exc) or "PropertyGet" in str(exc):
+        if (
+            "ExternalCall" in str(exc)
+            or "MethodCall" in str(exc)
+            or "PropertyGet" in str(exc)
+        ):
             raise
         error_msg = f"runtime error: {exc}"
         if error_callback:

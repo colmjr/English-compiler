@@ -36,6 +36,7 @@ def optimize(program: dict) -> dict:
 # Statement-level optimizations
 # ---------------------------------------------------------------------------
 
+
 def _optimize_stmts(stmts: list[dict]) -> list[dict]:
     """Optimize a list of statements, applying DCE and recursing."""
     result: list[dict] = []
@@ -60,6 +61,14 @@ def _optimize_expr_list(items: Any) -> Any:
     if not isinstance(items, list):
         return items
     return [_optimize_expr(item) for item in items]
+
+
+def _copy_with_optimized_expr_fields(node: dict, *field_names: str) -> dict:
+    """Return a shallow copy with named expression fields optimized."""
+    result = dict(node)
+    for field_name in field_names:
+        result[field_name] = _optimize_expr(node.get(field_name))
+    return result
 
 
 def _optimize_stmt(stmt: dict) -> dict:
@@ -87,7 +96,11 @@ def _optimize_stmt(stmt: dict) -> dict:
                 return result
             else:
                 # Always false — replace then with else body (or empty)
-                result = {**stmt, "test": test, "then": else_body if else_body is not None else []}
+                result = {
+                    **stmt,
+                    "test": test,
+                    "then": else_body if else_body is not None else [],
+                }
                 result.pop("else", None)
                 return result
 
@@ -97,9 +110,9 @@ def _optimize_stmt(stmt: dict) -> dict:
         return result
 
     if node_type == "While":
-        test = _optimize_expr(stmt.get("test"))
-        body = _optimize_block(stmt.get("body", []))
-        return {**stmt, "test": test, "body": body}
+        result = _copy_with_optimized_expr_fields(stmt, "test")
+        result["body"] = _optimize_block(stmt.get("body", []))
+        return result
 
     if node_type == "For":
         iter_expr = stmt.get("iter")
@@ -109,63 +122,36 @@ def _optimize_stmt(stmt: dict) -> dict:
         return {**stmt, "iter": iter_expr, "body": body}
 
     if node_type == "ForEach":
-        iter_expr = _optimize_expr(stmt.get("iter"))
-        body = _optimize_block(stmt.get("body", []))
-        return {**stmt, "iter": iter_expr, "body": body}
+        result = _copy_with_optimized_expr_fields(stmt, "iter")
+        result["body"] = _optimize_block(stmt.get("body", []))
+        return result
 
     if node_type in ("Print", "Call"):
         return {**stmt, "args": _optimize_expr_list(stmt.get("args", []))}
 
     if node_type == "SetIndex":
-        return {
-            **stmt,
-            "base": _optimize_expr(stmt.get("base")),
-            "index": _optimize_expr(stmt.get("index")),
-            "value": _optimize_expr(stmt.get("value")),
-        }
+        return _copy_with_optimized_expr_fields(stmt, "base", "index", "value")
 
     if node_type == "Set":
-        return {
-            **stmt,
-            "base": _optimize_expr(stmt.get("base")),
-            "key": _optimize_expr(stmt.get("key")),
-            "value": _optimize_expr(stmt.get("value")),
-        }
+        return _copy_with_optimized_expr_fields(stmt, "base", "key", "value")
 
     if node_type == "Push":
-        return {
-            **stmt,
-            "base": _optimize_expr(stmt.get("base")),
-            "value": _optimize_expr(stmt.get("value")),
-        }
+        return _copy_with_optimized_expr_fields(stmt, "base", "value")
 
     if node_type == "SetField":
-        return {
-            **stmt,
-            "base": _optimize_expr(stmt.get("base")),
-            "value": _optimize_expr(stmt.get("value")),
-        }
+        return _copy_with_optimized_expr_fields(stmt, "base", "value")
 
     if node_type in ("SetAdd", "SetRemove", "PushBack", "PushFront"):
-        return {
-            **stmt,
-            "base": _optimize_expr(stmt.get("base")),
-            "value": _optimize_expr(stmt.get("value")),
-        }
+        return _copy_with_optimized_expr_fields(stmt, "base", "value")
 
     if node_type in ("PopFront", "PopBack"):
-        return {**stmt, "base": _optimize_expr(stmt.get("base"))}
+        return _copy_with_optimized_expr_fields(stmt, "base")
 
     if node_type == "HeapPush":
-        return {
-            **stmt,
-            "base": _optimize_expr(stmt.get("base")),
-            "priority": _optimize_expr(stmt.get("priority")),
-            "value": _optimize_expr(stmt.get("value")),
-        }
+        return _copy_with_optimized_expr_fields(stmt, "base", "priority", "value")
 
     if node_type == "HeapPop":
-        return {**stmt, "base": _optimize_expr(stmt.get("base"))}
+        return _copy_with_optimized_expr_fields(stmt, "base")
 
     if node_type == "FuncDef":
         body = _optimize_block(stmt.get("body", []))
@@ -177,7 +163,7 @@ def _optimize_stmt(stmt: dict) -> dict:
         return stmt
 
     if node_type == "Throw":
-        return {**stmt, "message": _optimize_expr(stmt.get("message"))}
+        return _copy_with_optimized_expr_fields(stmt, "message")
 
     if node_type == "Switch":
         result = {**stmt, "test": _optimize_expr(stmt.get("test"))}
@@ -215,6 +201,7 @@ def _optimize_stmt(stmt: dict) -> dict:
 # Expression-level optimizations
 # ---------------------------------------------------------------------------
 
+
 def _optimize_expr(expr: Any) -> Any:
     """Optimize an expression (constant folding, identity simplification)."""
     if not isinstance(expr, dict):
@@ -243,22 +230,13 @@ def _optimize_expr(expr: Any) -> Any:
         return {**expr, "items": _optimize_expr_list(expr.get("items", []))}
 
     if node_type == "Index":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "index": _optimize_expr(expr.get("index")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "index")
 
     if node_type == "Slice":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "start": _optimize_expr(expr.get("start")),
-            "end": _optimize_expr(expr.get("end")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "start", "end")
 
     if node_type == "Length":
-        return {**expr, "base": _optimize_expr(expr.get("base"))}
+        return _copy_with_optimized_expr_fields(expr, "base")
 
     if node_type == "Call":
         return {**expr, "args": _optimize_expr_list(expr.get("args", []))}
@@ -270,10 +248,12 @@ def _optimize_expr(expr: Any) -> Any:
             if not isinstance(item, dict):
                 optimized_items.append(item)
                 continue
-            optimized_items.append({
-                "key": _optimize_expr(item.get("key")),
-                "value": _optimize_expr(item.get("value")),
-            })
+            optimized_items.append(
+                {
+                    "key": _optimize_expr(item.get("key")),
+                    "value": _optimize_expr(item.get("value")),
+                }
+            )
         return {**expr, "items": optimized_items}
 
     if node_type == "Record":
@@ -291,79 +271,51 @@ def _optimize_expr(expr: Any) -> Any:
         return {**expr, "fields": optimized_fields}
 
     if node_type in ("Get", "GetDefault"):
-        result = {**expr, "base": _optimize_expr(expr.get("base")), "key": _optimize_expr(expr.get("key"))}
+        result = _copy_with_optimized_expr_fields(expr, "base", "key")
         if "default" in expr:
             result["default"] = _optimize_expr(expr["default"])
         return result
 
-    if node_type in ("GetField", "Keys", "StringLength", "StringTrim", "StringUpper", "StringLower",
-                     "DequeSize", "HeapSize", "HeapPeek", "SetSize"):
-        return {**expr, "base": _optimize_expr(expr.get("base"))}
+    if node_type in (
+        "GetField",
+        "Keys",
+        "StringLength",
+        "StringTrim",
+        "StringUpper",
+        "StringLower",
+        "DequeSize",
+        "HeapSize",
+        "HeapPeek",
+        "SetSize",
+    ):
+        return _copy_with_optimized_expr_fields(expr, "base")
 
     if node_type == "Substring":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "start": _optimize_expr(expr.get("start")),
-            "end": _optimize_expr(expr.get("end")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "start", "end")
 
     if node_type == "CharAt":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "index": _optimize_expr(expr.get("index")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "index")
 
     if node_type == "Join":
-        return {
-            **expr,
-            "sep": _optimize_expr(expr.get("sep")),
-            "items": _optimize_expr(expr.get("items")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "sep", "items")
 
     if node_type == "StringSplit":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "delimiter": _optimize_expr(expr.get("delimiter")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "delimiter")
 
     if node_type == "StringStartsWith":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "prefix": _optimize_expr(expr.get("prefix")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "prefix")
 
     if node_type == "StringEndsWith":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "suffix": _optimize_expr(expr.get("suffix")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "suffix")
 
     if node_type == "StringContains":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "substring": _optimize_expr(expr.get("substring")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "substring")
 
     if node_type == "StringReplace":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "old": _optimize_expr(expr.get("old")),
-            "new": _optimize_expr(expr.get("new")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "old", "new")
 
     if node_type == "SetHas":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "value": _optimize_expr(expr.get("value")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "value")
 
     if node_type == "Range":
         result = {**expr}
@@ -374,7 +326,7 @@ def _optimize_expr(expr: Any) -> Any:
         return result
 
     if node_type in ("ToInt", "ToFloat", "ToString"):
-        return {**expr, "value": _optimize_expr(expr.get("value"))}
+        return _copy_with_optimized_expr_fields(expr, "value")
 
     if node_type == "Ternary":
         test = _optimize_expr(expr.get("test"))
@@ -393,20 +345,16 @@ def _optimize_expr(expr: Any) -> Any:
         return {**expr, "parts": parts}
 
     if node_type == "Math":
-        return {**expr, "arg": _optimize_expr(expr.get("arg"))}
+        return _copy_with_optimized_expr_fields(expr, "arg")
 
     if node_type == "MathPow":
-        return {
-            **expr,
-            "base": _optimize_expr(expr.get("base")),
-            "exponent": _optimize_expr(expr.get("exponent")),
-        }
+        return _copy_with_optimized_expr_fields(expr, "base", "exponent")
 
     if node_type == "JsonParse":
-        return {**expr, "source": _optimize_expr(expr.get("source"))}
+        return _copy_with_optimized_expr_fields(expr, "source")
 
     if node_type == "JsonStringify":
-        result = {**expr, "value": _optimize_expr(expr.get("value"))}
+        result = _copy_with_optimized_expr_fields(expr, "value")
         if "pretty" in expr:
             result["pretty"] = _optimize_expr(expr.get("pretty"))
         return result
@@ -448,14 +396,12 @@ def _optimize_expr(expr: Any) -> Any:
         return {**expr, "args": _optimize_expr_list(expr.get("args", []))}
 
     if node_type == "MethodCall":
-        return {
-            **expr,
-            "object": _optimize_expr(expr.get("object")),
-            "args": _optimize_expr_list(expr.get("args", [])),
-        }
+        result = _copy_with_optimized_expr_fields(expr, "object")
+        result["args"] = _optimize_expr_list(expr.get("args", []))
+        return result
 
     if node_type == "PropertyGet":
-        return {**expr, "object": _optimize_expr(expr.get("object"))}
+        return _copy_with_optimized_expr_fields(expr, "object")
 
     return expr
 
@@ -463,6 +409,7 @@ def _optimize_expr(expr: Any) -> Any:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _is_literal(node: Any) -> bool:
     return isinstance(node, dict) and node.get("type") == "Literal"
@@ -495,7 +442,7 @@ def _try_fold_binary(op: str, left: Any, right: Any) -> dict | None:
                 return None
             return {"type": "Literal", "value": lv % rv}
         # Comparisons
-        if op == "==" :
+        if op == "==":
             return {"type": "Literal", "value": lv == rv}
         if op == "!=":
             return {"type": "Literal", "value": lv != rv}
