@@ -2,7 +2,10 @@
 
 Review and merge open PRs with code review, testing, and merge safety checks.
 
-**Usage**: `/review-merge` (all open PRs) or `/review-merge <number>` (specific PR)
+**Usage**: `/review-merge [--headless] [<number>]`
+
+- Without `--headless`: reviews PRs and asks before merging (default, safe)
+- With `--headless`: reviews PRs and merges automatically if all checks pass; does NOT merge if any check fails
 
 ## Steps
 
@@ -19,9 +22,11 @@ Review and merge open PRs with code review, testing, and merge safety checks.
 
 ### 3. Report and merge
 
-- If all checks pass: report results and **ask before merging**.
-- If any check fails: report the issues but do NOT merge.
-- Merge with `gh pr merge <number> --merge` when approved.
+- If all checks pass:
+  - **Default (no `--headless`):** report results and **ask before merging**.
+  - **With `--headless`:** report results and merge automatically without asking.
+- If any check fails: report the issues but do NOT merge (regardless of `--headless`).
+- Merge with `gh pr merge <number> --merge` when approved or auto-approved.
 - Pull latest main: `git checkout main && git pull`
 
 ### 4. Summary
