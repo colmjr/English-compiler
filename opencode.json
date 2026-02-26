@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "python *": "allow",
+      "python3 *": "allow",
+      ".venv/bin/python *": "allow",
+      "PYTHONPATH=. python *": "allow",
+      "english-compiler *": "allow",
+      "pip install *": "allow",
+      "pip3 install *": "allow",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git add *": "allow",
+      "git commit *": "allow",
+      "git checkout *": "allow",
+      "git pull *": "allow",
+      "git stash *": "allow",
+      "git tag *": "allow",
+      "git push * main": "deny",
+      "git push * master": "deny",
+      "git push *": "allow",
+      "gh pr *": "allow",
+      "gh api *": "allow",
+      "gh release *": "allow",
+      "gh run *": "allow",
+      "grep *": "allow",
+      "find *": "allow",
+      "wc *": "allow",
+      "node -e *": "allow",
+      "npm run build *": "allow"
+    }
+  }
+}
