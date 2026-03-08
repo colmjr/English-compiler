@@ -1,11 +1,71 @@
 name: Publish to PyPI
 
 on:
+  push:
+    branches: [main]
+  # Keep manual release trigger as fallback
   release:
     types: [published]
 
 jobs:
+  test:
+    # Skip tests for release events (assumed already tested via PR)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: pip install -e ".[all]"
+
+      - name: Run core tests
+        run: python -m tests.run
+
+      - name: Run algorithm tests
+        run: python -m tests.run_algorithms
+
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check if version exists on PyPI
+        id: check
+        run: |
+          VERSION=$(python -c "exec(open('english_compiler/coreil/versions.py').read()); print(PACKAGE_VERSION)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Check if this version already exists on PyPI
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/english-compiler/$VERSION/json")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "Version $VERSION already exists on PyPI — skipping publish"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version $VERSION not found on PyPI — will publish"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: [test, check-version]
+    # Run if: version is new AND (tests passed OR this is a release event)
+    # The always() is needed because 'test' job is skipped on release events
+    if: |
+      always() &&
+      needs.check-version.outputs.should_publish == 'true' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +88,8 @@ jobs:
           path: dist/
 
   publish:
-    needs: build
+    needs: [build, check-version]
+    if: needs.check-version.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
